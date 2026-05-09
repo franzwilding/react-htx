@@ -226,6 +226,105 @@ describe("createLoader", () => {
     }
   });
 
+  it("falls back to a case-insensitive export match", async () => {
+    const Loader = createLoader({
+      modules: {
+        "/src/components/ui/field-label.tsx": () =>
+          Promise.resolve({
+            // Casing intentionally does not match the kebab→Pascal conversion
+            // ("FieldLabel"). The loader should still resolve via the
+            // case-insensitive fallback in findExport().
+            fieldlabel: ({ children }: { children?: React.ReactNode }) => (
+              <span data-testid="case-insensitive">{children}</span>
+            ),
+          }),
+      },
+      prefix: "ui-",
+    });
+
+    await renderLoader(Loader, "ui-field-label", "label");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("case-insensitive")).toBeInTheDocument();
+    });
+    expect(screen.getByTestId("case-insensitive")).toHaveTextContent("label");
+  });
+
+  it("resolves modules whose paths have no extension", async () => {
+    const Loader = createLoader({
+      // Paths like these come up when bundlers strip extensions in import maps.
+      modules: {
+        "/src/components/ui/widget": () =>
+          Promise.resolve({
+            Widget: () => <div data-testid="extensionless">widget</div>,
+          }),
+      },
+      prefix: "ui-",
+    });
+
+    await renderLoader(Loader, "ui-widget");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("extensionless")).toBeInTheDocument();
+    });
+  });
+
+  it("throws when onMissing returns null", async () => {
+    const Loader = createLoader({
+      modules: {
+        "/src/components/ui/button.tsx": () =>
+          Promise.resolve({
+            Button: () => <button>btn</button>,
+          }),
+      },
+      prefix: "ui-",
+      onMissing: () => null,
+    });
+
+    type BoundaryState = { error: Error | null };
+    type BoundaryProps = { children: React.ReactNode };
+    class Boundary extends React.Component<BoundaryProps, BoundaryState> {
+      state: BoundaryState = { error: null };
+      static getDerivedStateFromError(error: Error): BoundaryState {
+        return { error };
+      }
+      render() {
+        if (this.state.error) {
+          return <span data-testid="boundary">{this.state.error.message}</span>;
+        }
+        return this.props.children;
+      }
+    }
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    try {
+      await act(async () => {
+        root.render(
+          <Boundary>
+            <Loader is="ui-unknown" />
+          </Boundary>,
+        );
+      });
+
+      const boundary = await waitFor(() => screen.getByTestId("boundary"));
+      expect(boundary.textContent).toContain("Could not resolve component");
+      expect(boundary.textContent).toContain("unknown");
+    } finally {
+      consoleError.mockRestore();
+      await act(async () => {
+        root.unmount();
+      });
+      container.remove();
+    }
+  });
+
   it("renders the fallback while loading and resolves afterwards", async () => {
     let resolveFn: ((m: Record<string, unknown>) => void) | null = null;
     const slow = () =>

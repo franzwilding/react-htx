@@ -1,7 +1,9 @@
 import { screen, waitFor, fireEvent } from "@testing-library/dom";
 import { vi, describe, it, expect, beforeEach } from "vitest";
+import React, { ReactNode, act } from "react";
+import { createRoot } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 import { App } from "../src";
-import { ReactNode, act } from "react";
 import { useRouter } from "../src/provider/RouterProvider";
 import { useApp } from "../src/provider/AppProvider";
 
@@ -227,6 +229,20 @@ describe("RouterProvider", () => {
     });
 
     expect(capturedRouter).toBe(app.router);
+  });
+
+  it("throws when useRouter is used outside <RouterProvider>", () => {
+    // Render through react-dom/server so the throw bubbles synchronously,
+    // avoiding the noisy React error boundary path that the client renderer
+    // takes when a hook throws.
+    function Consumer() {
+      useRouter();
+      return null;
+    }
+
+    expect(() => renderToString(<Consumer />)).toThrow(
+      /useRouter must be used inside <RouterProvider>/,
+    );
   });
 
   it("cleans up event listeners on unmount", async () => {

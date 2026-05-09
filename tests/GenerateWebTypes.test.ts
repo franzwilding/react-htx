@@ -405,4 +405,146 @@ describe("generateWebTypes", () => {
     expect(names).not.toContain("button");
     expect(names).toContain("card");
   });
+
+  it("emits expression-kind attributes for primitive and function unions", () => {
+    generateWebTypes({
+      componentsDir,
+      outFile,
+      tsconfig,
+    });
+
+    const content = JSON.parse(fs.readFileSync(outFile, "utf-8"));
+    const elements = content.contributions.html.elements;
+    const mixed = elements.find((el: any) => el.name === "mixed-types");
+
+    expect(mixed).toBeDefined();
+    const count = mixed.attributes.find((a: any) => a.name === "count");
+    expect(count.value.kind).toBe("expression");
+
+    const onSelect = mixed.attributes.find((a: any) => a.name === "on-select");
+    expect(onSelect.value.kind).toBe("expression");
+  });
+
+  it("does not turn function-valued ReactNode props into slots", () => {
+    generateWebTypes({
+      componentsDir,
+      outFile,
+      tsconfig,
+    });
+
+    const content = JSON.parse(fs.readFileSync(outFile, "utf-8"));
+    const elements = content.contributions.html.elements;
+    const mixed = elements.find((el: any) => el.name === "mixed-types");
+
+    expect(mixed.slots).toBeUndefined();
+    // It does still surface as an attribute (under the `expression` kind),
+    // not silently dropped.
+    expect(mixed.attributes.some((a: any) => a.name === "render-item")).toBe(
+      true,
+    );
+  });
+
+  it("leaves the description undefined for props without JSDoc", () => {
+    generateWebTypes({
+      componentsDir,
+      outFile,
+      tsconfig,
+    });
+
+    const content = JSON.parse(fs.readFileSync(outFile, "utf-8"));
+    const elements = content.contributions.html.elements;
+
+    // Badge's `color` prop has no JSDoc.
+    const badge = elements.find((el: any) => el.name === "badge");
+    expect(badge).toBeDefined();
+    const color = badge.attributes.find((a: any) => a.name === "color");
+    expect(color).toBeDefined();
+    expect(color.description).toBeUndefined();
+  });
+
+  it("extracts props from forwardRef-wrapped components", () => {
+    generateWebTypes({
+      componentsDir,
+      outFile,
+      tsconfig,
+    });
+
+    const content = JSON.parse(fs.readFileSync(outFile, "utf-8"));
+    const elements = content.contributions.html.elements;
+    const fwd = elements.find((el: any) => el.name === "forward-ref-button");
+
+    expect(fwd).toBeDefined();
+    const tone = fwd.attributes.find((a: any) => a.name === "tone");
+    expect(tone).toBeDefined();
+    expect(Array.isArray(tone.values)).toBe(true);
+    expect(tone.values.some((v: any) => v.name === "danger")).toBe(true);
+  });
+
+  it("extracts props from function-expression components", () => {
+    generateWebTypes({
+      componentsDir,
+      outFile,
+      tsconfig,
+    });
+
+    const content = JSON.parse(fs.readFileSync(outFile, "utf-8"));
+    const elements = content.contributions.html.elements;
+    const widget = elements.find(
+      (el: any) => el.name === "function-expression-widget",
+    );
+
+    expect(widget).toBeDefined();
+    const heading = widget.attributes.find((a: any) => a.name === "heading");
+    expect(heading).toBeDefined();
+    expect(heading.required).toBe(true);
+  });
+
+  it("throws when a configured components directory is missing", () => {
+    expect(() =>
+      generateWebTypes({
+        componentsDir: path.join(fixturesDir, "does-not-exist"),
+        outFile,
+        tsconfig,
+      }),
+    ).toThrow(/Components directory does not exist/);
+  });
+
+  it("warns when no component files match the configured directory", () => {
+    const emptyDir = path.join(fixturesDir, "empty-components");
+    fs.mkdirSync(emptyDir, { recursive: true });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    try {
+      generateWebTypes({
+        componentsDir: emptyDir,
+        outFile,
+        tsconfig,
+      });
+      expect(warn).toHaveBeenCalled();
+      const message = warn.mock.calls[0]?.[0];
+      expect(String(message)).toContain("no component files found");
+    } finally {
+      warn.mockRestore();
+      fs.rmSync(emptyDir, { recursive: true, force: true });
+    }
+  });
+
+  it("resolves a default export declared as `export default <Identifier>`", () => {
+    generateWebTypes({
+      componentsDir,
+      outFile,
+      tsconfig,
+    });
+
+    const content = JSON.parse(fs.readFileSync(outFile, "utf-8"));
+    const elements = content.contributions.html.elements;
+    const def = elements.find(
+      (el: any) => el.name === "default-export-identifier",
+    );
+
+    expect(def).toBeDefined();
+    const title = def.attributes.find((a: any) => a.name === "title");
+    expect(title).toBeDefined();
+    expect(title.required).toBe(true);
+  });
 });
