@@ -66,47 +66,58 @@ new App(resolveComponent);
 
 Any tag name with a hyphen (e.g. `<my-button>`) is treated as a custom React component and resolved through the function you pass to `new App(...)`. Everything else (`<h1>`, `<div>`, `<svg>`, …) is rendered as a native HTML element.
 
-### Lazy-loading components
+### Lazy-loading a folder of components
 
-For larger apps it’s common to lazy-load components by tag name:
+For larger apps — including drop-in shadcn directories — `createLoader` resolves
+tag names to a folder of files without any per-component setup:
 
 ```tsx
-import loadable from "@loadable/component";
-import { App } from "reactolith";
+import { App, createLoader } from "reactolith";
 
-const component = loadable(
-  async ({ is }: { is: string }) => {
-    return import(`./components/ui/${is.substring(3)}.tsx`);
-  },
-  {
-    cacheKey: ({ is }) => is,
-    // Most shadcn components don’t export a default,
-    // so resolve the named export based on the tag.
-    resolveComponent: (mod, { is }: { is: string }) => {
-      const cmpName = is
-        .substring(3)
-        .replace(/(^\w|-\w)/g, (match) => match.replace(/-/, "").toUpperCase());
-      return mod[cmpName];
-    },
-  },
-);
+const component = createLoader({
+  modules: import.meta.glob("./components/ui/*.tsx"),
+  prefix: "ui-", // strip "ui-" before resolving
+});
 
-// Uses the HTML element with id="reactolith-app" as root
 new App(component);
 ```
+
+`<ui-button>` → `./components/ui/button.tsx` (named export `Button` or
+`default`). Names with multiple kebab segments fall back to a parent file —
+`<ui-accordion-item>` finds `accordion.tsx` and picks its `AccordionItem` export.
+
+To layer custom components on top of shadcn (or any other base set), pass
+multiple module maps; earlier maps take priority:
+
+```ts
+const component = createLoader({
+  modules: [
+    import.meta.glob("./components/custom/*.tsx"), // wins on conflict
+    import.meta.glob("./components/ui/*.tsx"),
+  ],
+  prefix: "ui-",
+});
+```
+
+`createLoader` options:
+
+| Option       | Type                                  | Description                                                                  |
+|--------------|---------------------------------------|------------------------------------------------------------------------------|
+| `modules`    | `ModuleMap` or `ModuleMap[]`          | Output of `import.meta.glob`. Earlier maps take priority.                    |
+| `prefix`     | `string`                              | Prefix to strip from `is` before resolving (e.g. `"ui-"`).                   |
+| `fallback`   | `ReactNode`                           | Rendered while a component is being lazy-loaded. Default `null`.             |
+| `onMissing`  | `(name, is) => ComponentType \| null` | Called when no module resolves; return a placeholder to render in its place. |
 
 ### Custom Root Component & Selector
 
 ```tsx
 // src/main.tsx
-import loadable from "@loadable/component";
-import { App } from "reactolith";
+import { App, createLoader } from "reactolith";
 import { AppProvider } from "./providers/app-provider";
 
-const component = loadable(
-  async ({ is }: { is: string }) => import(`./components/${is}.tsx`),
-  { cacheKey: ({ is }) => is },
-);
+const component = createLoader({
+  modules: import.meta.glob("./components/**/*.tsx"),
+});
 
 new App(component, AppProvider, "#app");
 ```
@@ -141,6 +152,103 @@ export const AppProvider: React.FC<{
 2. **Navigation**: Clicking links fetches new HTML via AJAX, React reconciles the differences in place.
 3. **Real-time**: Mercure pushes HTML updates from server, the UI updates automatically.
 4. **State Preserved**: React component state survives both navigation and real-time updates.
+
+---
+
+## 📋 Forms
+
+Use `<Form>` and `<FormField>` to render forms that integrate cleanly with
+backend validation and reactolith's submission model.
+
+```tsx
+import { Form, FormField, useFormSubmitting, useFormField } from "reactolith";
+
+function MyForm({ errors }) {
+  return (
+    <Form action="/users" method="POST" errors={errors}>
+      <FormField name="email">
+        <input name="email" />
+        <FieldError />
+      </FormField>
+      <FormField name="password">
+        <input name="password" type="password" />
+        <FieldError />
+      </FormField>
+      <SubmitButton />
+    </Form>
+  );
+}
+
+function FieldError() {
+  const field = useFormField();
+  if (!field?.invalid) return null;
+  return <span role="alert">{field.errors[0].message}</span>;
+}
+
+function SubmitButton() {
+  const submitting = useFormSubmitting();
+  return (
+    <button type="submit" disabled={submitting}>
+      {submitting ? "…" : "Save"}
+    </button>
+  );
+}
+```
+
+### Backend validation errors
+
+Render the form (and any backend errors) on the server, then ship them to the
+frontend via `json-errors`:
+
+```html
+<my-form
+  action="/users"
+  method="POST"
+  json-errors='[{"name":"email","message":"Already taken"}]'
+>
+  <ui-form-field name="email">
+    <ui-input name="email" />
+  </ui-form-field>
+</my-form>
+```
+
+After submission reactolith re-renders the new HTML — including new errors —
+without losing component state.
+
+### Touched behavior
+
+As soon as the user changes a field, that field's errors disappear from the
+summary and the field's own `invalid` flag flips to `false`. This is tracked by
+*error reference*, so when the backend returns a fresh error list those new
+errors show up immediately (without an explicit reset).
+
+You can also pre-mark errors as touched from the backend:
+
+```json
+[
+  { "name": "email", "message": "Invalid", "touched": true }
+]
+```
+
+### Submitting state
+
+`useFormSubmitting()` returns `true` while the form has been submitted but the
+next navigation has not yet finished. Use it for spinners, disabled buttons,
+etc. The state is per-`<Form>`, so multiple forms on a page can each track
+their own.
+
+### Hooks
+
+| Hook                     | Returns                                           |
+|--------------------------|---------------------------------------------------|
+| `useFormSubmitting()`    | `boolean` — whether the surrounding form is busy. |
+| `useFormErrors(name?)`   | Errors for a single field, or all non-touched.    |
+| `useFormErrorsContext()` | Full context including `touchErrors`.             |
+| `useFormField()`         | The surrounding `<FormField>`'s state, or `null`. |
+
+`<Form>` accepts an optional `onSubmit` handler. Calling `event.preventDefault()`
+inside it stops the request entirely (reactolith's Router will not pick it up
+either), which is useful for client-side validation.
 
 ---
 
