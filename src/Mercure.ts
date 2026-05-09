@@ -1,6 +1,8 @@
 import { App } from "./App";
+import { EventEmitter } from "./util/EventEmitter";
+import type { Handler } from "./util/EventEmitter";
 
-export type Handler<Args extends readonly unknown[]> = (...args: Args) => void;
+export type { Handler };
 
 export type MercureEventMap = {
   "sse:connected": [url: string];
@@ -50,15 +52,9 @@ type RawEntry = {
   errorListeners: Set<RawErrorListener>;
 };
 
-export class Mercure {
+export class Mercure extends EventEmitter<MercureEventMap> {
   private readonly app: App;
   private eventSource: EventSource | null = null;
-  private listeners: Partial<
-    Record<
-      keyof MercureEventMap,
-      Set<Handler<MercureEventMap[keyof MercureEventMap]>>
-    >
-  > = {};
   private currentUrl: string | null = null;
   private currentTopic: string | null = null;
   private options: MercureOptions | null = null;
@@ -68,6 +64,7 @@ export class Mercure {
   private rawConfigUnsubscribe: (() => void) | null = null;
 
   constructor(app: App) {
+    super();
     this.app = app;
   }
 
@@ -87,46 +84,6 @@ export class Mercure {
       url.searchParams.set("lastEventID", lastEventId);
     }
     return url.toString();
-  }
-
-  private ensureSet<K extends keyof MercureEventMap>(
-    type: K,
-  ): Set<Handler<MercureEventMap[K]>> {
-    const existing = this.listeners[type] as
-      | Set<Handler<MercureEventMap[K]>>
-      | undefined;
-    if (existing) return existing;
-
-    const created = new Set<Handler<MercureEventMap[K]>>();
-    this.listeners[type] = created as unknown as Set<
-      Handler<MercureEventMap[keyof MercureEventMap]>
-    >;
-    return created;
-  }
-
-  protected emit<K extends keyof MercureEventMap>(
-    type: K,
-    ...args: MercureEventMap[K]
-  ): void {
-    this.listeners[type]?.forEach((h) => h(...args));
-  }
-
-  on<K extends keyof MercureEventMap>(
-    type: K,
-    handler: Handler<MercureEventMap[K]>,
-  ): () => void {
-    const set = this.ensureSet(type);
-    set.add(handler);
-    return () => this.off(type, handler);
-  }
-
-  off<K extends keyof MercureEventMap>(
-    type: K,
-    handler: Handler<MercureEventMap[K]>,
-  ): void {
-    this.listeners[type]?.delete(
-      handler as Handler<MercureEventMap[keyof MercureEventMap]>,
-    );
   }
 
   /**
