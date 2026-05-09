@@ -41,6 +41,15 @@ export type MercureOptions = {
   events?: string[];
 };
 
+export type RawMessageListener = (data: string, event: MessageEvent) => void;
+export type RawErrorListener = (error: Event) => void;
+
+type RawEntry = {
+  source: EventSource | null;
+  messageListeners: Set<RawMessageListener>;
+  errorListeners: Set<RawErrorListener>;
+};
+
 export class Mercure {
   private readonly app: App;
   private eventSource: EventSource | null = null;
@@ -55,9 +64,29 @@ export class Mercure {
   private options: MercureOptions | null = null;
   private routerUnsubscribe: (() => void) | null = null;
   private _lastEventId: string | undefined;
+  private rawSources = new Map<string, RawEntry>();
+  private rawConfigUnsubscribe: (() => void) | null = null;
 
   constructor(app: App) {
     this.app = app;
+  }
+
+  /**
+   * Build a Mercure subscription URL for a given topic. Centralizes URL
+   * construction so all consumers (path-based `subscribe` and per-topic
+   * `subscribeRaw`) agree on the wire format.
+   */
+  private buildTopicUrl(
+    hubUrl: string,
+    topic: string,
+    lastEventId?: string,
+  ): string {
+    const url = new URL(hubUrl);
+    url.searchParams.append("topic", topic);
+    if (lastEventId) {
+      url.searchParams.set("lastEventID", lastEventId);
+    }
+    return url.toString();
   }
 
   private ensureSet<K extends keyof MercureEventMap>(
@@ -159,15 +188,7 @@ export class Mercure {
 
     const { hubUrl, withCredentials = false } = this.options;
 
-    // Build the subscription URL with current topic
-    const url = new URL(hubUrl);
-    url.searchParams.append("topic", topic);
-
-    if (this._lastEventId) {
-      url.searchParams.set("lastEventID", this._lastEventId);
-    }
-
-    this.currentUrl = url.toString();
+    this.currentUrl = this.buildTopicUrl(hubUrl, topic, this._lastEventId);
     this.currentTopic = topic;
 
     // Create EventSource connection
@@ -247,6 +268,95 @@ export class Mercure {
         });
       }
     }
+  }
+
+  /**
+   * Subscribe to raw SSE messages on a single Mercure topic, sharing one
+   * EventSource per topic across all listeners.
+   *
+   * - URL is built from `app.mercureConfig`. If the config is missing, a
+   *   warning is logged and a no-op unsubscribe is returned.
+   * - When `app.mercureConfig` changes, all open raw connections are closed
+   *   and re-opened with the new config — listeners stay registered.
+   * - The EventSource is closed automatically when the last listener for a
+   *   topic unsubscribes.
+   *
+   * Returns an unsubscribe function. Always call it on cleanup.
+   */
+  subscribeRaw(
+    topic: string,
+    onMessage: RawMessageListener,
+    onError?: RawErrorListener,
+  ): () => void {
+    let entry = this.rawSources.get(topic);
+    if (!entry) {
+      entry = {
+        source: null,
+        messageListeners: new Set(),
+        errorListeners: new Set(),
+      };
+      this.rawSources.set(topic, entry);
+      this.openRawSource(entry, topic);
+    }
+
+    entry.messageListeners.add(onMessage);
+    if (onError) entry.errorListeners.add(onError);
+
+    this.ensureRawConfigListener();
+
+    return () => {
+      const e = this.rawSources.get(topic);
+      if (!e) return;
+      e.messageListeners.delete(onMessage);
+      if (onError) e.errorListeners.delete(onError);
+      if (e.messageListeners.size === 0 && e.errorListeners.size === 0) {
+        e.source?.close();
+        this.rawSources.delete(topic);
+        if (this.rawSources.size === 0 && this.rawConfigUnsubscribe) {
+          this.rawConfigUnsubscribe();
+          this.rawConfigUnsubscribe = null;
+        }
+      }
+    };
+  }
+
+  private openRawSource(entry: RawEntry, topic: string): void {
+    const config = this.app.mercureConfig;
+    if (!config) {
+      console.warn(
+        `Mercure.subscribeRaw: app.mercureConfig is not set. ` +
+          `Add a "data-mercure-hub-url" attribute to your root element ` +
+          `or assign "app.mercureConfig" before subscribing to "${topic}".`,
+      );
+      return;
+    }
+
+    const url = this.buildTopicUrl(config.hubUrl, topic);
+    const source = new EventSource(url, {
+      withCredentials: config.withCredentials ?? false,
+    });
+
+    source.onmessage = (event: MessageEvent) => {
+      entry.messageListeners.forEach((l) => l(event.data, event));
+    };
+    source.onerror = (error: Event) => {
+      entry.errorListeners.forEach((l) => l(error));
+    };
+
+    entry.source = source;
+  }
+
+  private ensureRawConfigListener(): void {
+    if (this.rawConfigUnsubscribe) return;
+    this.rawConfigUnsubscribe = this.app.onMercureConfigChange(() => {
+      // Config changed: close all open raw connections and reopen with the
+      // new config. Listeners stay registered.
+      for (const [topic, entry] of this.rawSources) {
+        entry.source?.close();
+        entry.source = null;
+        this.openRawSource(entry, topic);
+      }
+    });
   }
 
   /**

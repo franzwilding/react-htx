@@ -2,6 +2,7 @@ import { createRoot, Root } from "react-dom/client";
 import React, { ElementType, PropsWithChildren } from "react";
 import { AppProvider } from "./provider/AppProvider";
 import { FetchLike, Router } from "./Router";
+import { Mercure } from "./Mercure";
 import { ReactolithComponent } from "./ReactolithComponent";
 import { detectScrollContainer } from "./ScrollRestoration";
 
@@ -24,6 +25,7 @@ export type AppOptions = {
 export class App {
   public readonly element: HTMLElement;
   public readonly router: Router;
+  public readonly mercure: Mercure;
   public readonly component: ElementType;
   public readonly doc: Document;
   public readonly hideUntilHydrated: boolean;
@@ -78,6 +80,7 @@ export class App {
       : detectScrollContainer(this.element, doc);
 
     this.router = new Router(this, doc, fetchImp, scrollElement);
+    this.mercure = new Mercure(this);
 
     // Auto-configure Mercure from data-mercure-hub-url attribute
     const mercureHubUrl = this.element.getAttribute("data-mercure-hub-url");
