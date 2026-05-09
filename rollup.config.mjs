@@ -33,7 +33,31 @@ export default [
       },
     ],
   },
-  // JS bundles
+  // Server-only entry (react-dom/server)
+  {
+    input: "src/server.ts",
+    external,
+    plugins: [
+      peerDepsExternal(),
+      resolve({ extensions: [".mjs", ".js", ".ts", ".tsx"] }),
+      commonjs(),
+      typescript({
+        tsconfig: "./tsconfig.json",
+        clean: true,
+        tsconfigOverride: { compilerOptions: { declaration: false } },
+      }),
+    ],
+    output: [
+      { file: "dist/server.mjs", format: "esm", sourcemap: true },
+      {
+        file: "dist/server.cjs",
+        format: "cjs",
+        sourcemap: true,
+        exports: "named",
+      },
+    ],
+  },
+  // CLI bundle
   {
     input: "src/cli/generate-web-types.ts",
     external,
@@ -56,10 +80,16 @@ export default [
       },
     ],
   },
-  // Types
+  // Types — main
   {
     input: "src/index.ts",
     plugins: [dts()],
     output: { file: "dist/index.d.ts", format: "es" },
+  },
+  // Types — server
+  {
+    input: "src/server.ts",
+    plugins: [dts()],
+    output: { file: "dist/server.d.ts", format: "es" },
   },
 ];

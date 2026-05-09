@@ -19,6 +19,7 @@ class MockEventSource {
   onopen: ((event: Event) => void) | null = null;
   onmessage: ((event: MessageEvent) => void) | null = null;
   onerror: ((event: Event) => void) | null = null;
+  namedListeners: Record<string, Array<(event: MessageEvent) => void>> = {};
 
   constructor(url: string, options?: { withCredentials?: boolean }) {
     this.url = url;
@@ -27,6 +28,10 @@ class MockEventSource {
 
   close() {
     this.readyState = MockEventSource.CLOSED;
+  }
+
+  addEventListener(name: string, listener: (event: MessageEvent) => void) {
+    (this.namedListeners[name] ||= []).push(listener);
   }
 
   // Helper methods for testing
@@ -45,6 +50,11 @@ class MockEventSource {
       });
       this.onmessage(event);
     }
+  }
+
+  simulateNamed(name: string, data: string, id?: string) {
+    const event = new MessageEvent(name, { data, lastEventId: id });
+    (this.namedListeners[name] || []).forEach((l) => l(event));
   }
 
   simulateError() {
@@ -740,5 +750,57 @@ describe("Mercure SSE integration", () => {
     // Should NOT trigger refetch
     expect(refetchStartedHandler).not.toHaveBeenCalled();
     expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("delivers named SSE events through sse:named", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Initial</my-component>
+    </div>`;
+
+    const app = new App(testComponent);
+    appInstances.push(app);
+    const mercure = new Mercure(app);
+    const namedHandler = vi.fn();
+
+    mercure.on("sse:named", namedHandler);
+
+    mercure.subscribe({
+      hubUrl: "https://example.com/.well-known/mercure",
+      events: ["notification", "sidebar"],
+    });
+
+    mockEventSource!.simulateOpen();
+    mockEventSource!.simulateNamed("notification", '{"count":1}', "evt-1");
+    mockEventSource!.simulateNamed("sidebar", "<aside>x</aside>");
+
+    expect(namedHandler).toHaveBeenCalledTimes(2);
+    expect(namedHandler.mock.calls[0][0]).toBe("notification");
+    expect(namedHandler.mock.calls[0][2]).toBe('{"count":1}');
+    expect(mercure.lastEventId).toBe("evt-1");
+    expect(namedHandler.mock.calls[1][0]).toBe("sidebar");
+    expect(namedHandler.mock.calls[1][2]).toBe("<aside>x</aside>");
+  });
+
+  it("does not deliver named events for unsubscribed names", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Initial</my-component>
+    </div>`;
+
+    const app = new App(testComponent);
+    appInstances.push(app);
+    const mercure = new Mercure(app);
+    const namedHandler = vi.fn();
+
+    mercure.on("sse:named", namedHandler);
+
+    mercure.subscribe({
+      hubUrl: "https://example.com/.well-known/mercure",
+      events: ["notification"],
+    });
+
+    mockEventSource!.simulateOpen();
+    mockEventSource!.simulateNamed("sidebar", "ignored");
+
+    expect(namedHandler).not.toHaveBeenCalled();
   });
 });

@@ -10,7 +10,7 @@ export const AppProvider: React.FC<PropsWithChildren<{ app: App }>> = ({
   children,
 }) => {
   useEffect(() => {
-    app.element.classList.remove("hidden");
+    app.notifyHydrated();
   }, [app]);
   return (
     <AppContext.Provider value={app}>

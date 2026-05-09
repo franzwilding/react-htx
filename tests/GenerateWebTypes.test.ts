@@ -374,4 +374,35 @@ describe("generateWebTypes", () => {
     const button = elements.find((el: any) => el.name === "button");
     expect(button.slots).toBeUndefined();
   });
+
+  it("accepts multiple components directories", () => {
+    const accordionDir = path.join(componentsDir, "accordion");
+    generateWebTypes({
+      componentsDir: [componentsDir, accordionDir],
+      outFile,
+      tsconfig,
+    });
+
+    const content = JSON.parse(fs.readFileSync(outFile, "utf-8"));
+    const names = content.contributions.html.elements.map((el: any) => el.name);
+
+    // Accordion components show up exactly once even though both dirs cover them
+    expect(names.filter((n: string) => n === "accordion-item")).toHaveLength(1);
+    expect(names).toContain("button");
+  });
+
+  it("excludes files matching glob patterns", () => {
+    generateWebTypes({
+      componentsDir,
+      outFile,
+      tsconfig,
+      exclude: ["**/Button.tsx"],
+    });
+
+    const content = JSON.parse(fs.readFileSync(outFile, "utf-8"));
+    const names = content.contributions.html.elements.map((el: any) => el.name);
+
+    expect(names).not.toContain("button");
+    expect(names).toContain("card");
+  });
 });

@@ -27,6 +27,82 @@ describe("AppProvider", () => {
     expect(root).toHaveClass("other-class");
   });
 
+  it("removes a custom hiddenClass when configured", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app" class="invisible other-class">
+      <my-component>Content</my-component>
+    </div>`;
+
+    function testComponent({ is }: { is: string }) {
+      return <pre data-is={is}>Rendered</pre>;
+    }
+
+    new App(
+      testComponent,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { hiddenClass: "invisible" },
+    );
+
+    const root = await screen.findByTestId("reactolith-app");
+
+    await waitFor(() => {
+      expect(root).not.toHaveClass("invisible");
+    });
+    expect(root).toHaveClass("other-class");
+  });
+
+  it("keeps the hidden class when hideUntilHydrated is false", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app" class="hidden">
+      <my-component>Content</my-component>
+    </div>`;
+
+    function testComponent({ is }: { is: string }) {
+      return <pre data-is={is}>Rendered</pre>;
+    }
+
+    new App(
+      testComponent,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { hideUntilHydrated: false },
+    );
+
+    const root = await screen.findByTestId("reactolith-app");
+    await waitFor(() => {
+      expect(root.querySelector("pre")).not.toBeNull();
+    });
+    expect(root).toHaveClass("hidden");
+  });
+
+  it("fires onHydrated callbacks after first commit", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Content</my-component>
+    </div>`;
+
+    function testComponent({ is }: { is: string }) {
+      return <pre data-is={is}>Rendered</pre>;
+    }
+
+    const app = new App(testComponent);
+    const handler = vi.fn();
+    app.onHydrated(handler);
+
+    await waitFor(() => {
+      expect(handler).toHaveBeenCalledTimes(1);
+    });
+
+    // Subsequent listeners attached after hydration fire synchronously
+    const lateHandler = vi.fn();
+    app.onHydrated(lateHandler);
+    expect(lateHandler).toHaveBeenCalledTimes(1);
+  });
+
   it("provides app instance via useApp hook", async () => {
     document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
       <my-component>Content</my-component>

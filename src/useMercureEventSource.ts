@@ -5,6 +5,9 @@ import { useApp } from "./provider/AppContext";
  * Generic hook for subscribing to a Mercure topic and receiving raw message data.
  * This is a low-level hook that handles EventSource connection management.
  *
+ * Re-subscribes automatically when `app.mercureConfig` is reassigned, so it is
+ * safe to set the config after mount (e.g. once your auth flow finishes).
+ *
  * @param topic - The Mercure topic to subscribe to
  * @param onMessage - Callback when a message is received
  * @param onError - Optional callback when an error occurs
@@ -19,33 +22,49 @@ export function useMercureEventSource(
   const app = useApp();
 
   useEffect(() => {
-    if (!app.mercureConfig) {
-      console.warn(
-        `useMercureEventSource: app.mercureConfig is not set. ` +
-          `Add a "data-mercure-hub-url" attribute to your root element ` +
-          `or assign "app.mercureConfig" before subscribing to "${topic}".`,
-      );
-      return;
-    }
+    let eventSource: EventSource | null = null;
 
-    const url = new URL(app.mercureConfig.hubUrl);
-    url.searchParams.append("topic", topic);
-
-    const eventSource = new EventSource(url.toString(), {
-      withCredentials: app.mercureConfig.withCredentials ?? false,
-    });
-
-    eventSource.onmessage = (event) => {
-      onMessage(event.data, event);
-    };
-
-    eventSource.onerror = (error) => {
-      if (onError) {
-        onError(error);
+    const connect = () => {
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
       }
-      // EventSource will automatically reconnect
+
+      const config = app.mercureConfig;
+      if (!config) {
+        console.warn(
+          `useMercureEventSource: app.mercureConfig is not set. ` +
+            `Add a "data-mercure-hub-url" attribute to your root element ` +
+            `or assign "app.mercureConfig" before subscribing to "${topic}".`,
+        );
+        return;
+      }
+
+      const url = new URL(config.hubUrl);
+      url.searchParams.append("topic", topic);
+
+      eventSource = new EventSource(url.toString(), {
+        withCredentials: config.withCredentials ?? false,
+      });
+
+      eventSource.onmessage = (event) => {
+        onMessage(event.data, event);
+      };
+
+      eventSource.onerror = (error) => {
+        if (onError) {
+          onError(error);
+        }
+        // EventSource will automatically reconnect
+      };
     };
 
-    return () => eventSource.close();
+    connect();
+    const unsubscribe = app.onMercureConfigChange(connect);
+
+    return () => {
+      unsubscribe();
+      eventSource?.close();
+    };
   }, [topic, app, onMessage, onError]);
 }

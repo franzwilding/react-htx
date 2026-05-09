@@ -46,6 +46,33 @@ export const isRelativeHref = (href: string | null): href is string => {
   return !/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(href);
 };
 
+/**
+ * Decide whether a given href should be intercepted by the SPA router.
+ *
+ * Resolves the candidate against the document's base URL and compares origins
+ * against the current location. Returns `true` for relative paths and for
+ * absolute URLs that share the page's origin; returns `false` for hash links,
+ * non-http(s) schemes (mailto:, tel:, javascript:, data:), and cross-origin URLs.
+ */
+export const isSameOriginNavigation = (
+  href: string | null,
+  doc: Document,
+): href is string => {
+  if (!href) return false;
+  if (href.startsWith("#")) return false;
+
+  const win = doc.defaultView;
+  const pageOrigin = win?.location.origin ?? doc.location?.origin;
+  if (!pageOrigin) return false;
+
+  try {
+    const target = new URL(href, doc.baseURI);
+    return target.origin === pageOrigin;
+  } catch {
+    return false;
+  }
+};
+
 export const hasNavBypassModifiers = (e: MouseEvent) =>
   e.defaultPrevented ||
   e.button !== 0 ||
@@ -198,7 +225,7 @@ export class Router {
     if (!link) return;
 
     const hrefAttr = link.getAttribute("href");
-    if (!isRelativeHref(hrefAttr)) return;
+    if (!isSameOriginNavigation(hrefAttr, this.doc)) return;
 
     // Respect targets like _blank or any non-_self
     if (link.target && link.target.toLowerCase() !== "_self") return;
@@ -220,10 +247,11 @@ export class Router {
     if (!form) return;
 
     const actionAttr = form.getAttribute("action");
-    const isRelativeAction = actionAttr === null || isRelativeHref(actionAttr);
+    const isSameOriginAction =
+      actionAttr === null || isSameOriginNavigation(actionAttr, this.doc);
 
     if (form.target && form.target.toLowerCase() !== "_self") return;
-    if (!isRelativeAction) return;
+    if (!isSameOriginAction) return;
 
     event.preventDefault();
     event.stopPropagation();

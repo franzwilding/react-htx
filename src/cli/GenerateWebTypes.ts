@@ -16,12 +16,22 @@ import fs from "fs";
 import path from "path";
 
 export interface GenerateWebTypesOptions {
-  componentsDir?: string;
+  /**
+   * One or more directories scanned recursively for component files.
+   * Accepts a single path or an array of paths. Defaults to `components/ui`.
+   */
+  componentsDir?: string | string[];
   outFile?: string;
   tsconfig?: string;
   libraryName?: string;
   libraryVersion?: string;
   prefix?: string;
+  /**
+   * Glob-like patterns of component files to skip (e.g. `**\/*.stories.tsx`).
+   * Patterns are matched against the file's absolute path; `*` is greedy
+   * within a single segment, `**` crosses path separators.
+   */
+  exclude?: string[];
 }
 
 interface ComponentInfo {
@@ -67,18 +77,78 @@ function findComponentFiles(dir: string): string[] {
   return results;
 }
 
+/** Convert a glob-like pattern to a RegExp matched against absolute paths. */
+function globToRegExp(pattern: string): RegExp {
+  // Normalise path separators, escape regex specials except * and ?,
+  // then translate ** -> .*, * -> [^/]*, ? -> [^/].
+  let re = "";
+  let i = 0;
+  while (i < pattern.length) {
+    const c = pattern[i];
+    if (c === "*") {
+      if (pattern[i + 1] === "*") {
+        re += ".*";
+        i += 2;
+        if (pattern[i] === "/") i++;
+      } else {
+        re += "[^/]*";
+        i++;
+      }
+    } else if (c === "?") {
+      re += "[^/]";
+      i++;
+    } else if (/[.+^$(){}|[\]\\]/.test(c)) {
+      re += "\\" + c;
+      i++;
+    } else if (c === "/") {
+      re += "/";
+      i++;
+    } else {
+      re += c;
+      i++;
+    }
+  }
+  return new RegExp(`(?:^|/)${re}$`);
+}
+
 export function generateWebTypes(options: GenerateWebTypesOptions): void {
   const project = new Project({
     tsConfigFilePath: options.tsconfig || "./tsconfig.json",
   });
 
-  const componentsDir = path.resolve(options.componentsDir || "components/ui");
+  const dirs = (
+    Array.isArray(options.componentsDir)
+      ? options.componentsDir
+      : [options.componentsDir || "components/ui"]
+  ).map((d) => path.resolve(d));
 
-  if (!fs.existsSync(componentsDir)) {
-    throw new Error(`Components directory does not exist: ${componentsDir}`);
+  for (const dir of dirs) {
+    if (!fs.existsSync(dir)) {
+      throw new Error(`Components directory does not exist: ${dir}`);
+    }
   }
 
-  const files = findComponentFiles(componentsDir);
+  const excludePatterns = (options.exclude || []).map(globToRegExp);
+  const seen = new Set<string>();
+  const files: string[] = [];
+  for (const dir of dirs) {
+    for (const file of findComponentFiles(dir)) {
+      if (seen.has(file)) continue;
+      const normalised = file.replace(/\\/g, "/");
+      if (excludePatterns.some((re) => re.test(normalised))) continue;
+      seen.add(file);
+      files.push(file);
+    }
+  }
+
+  if (files.length === 0) {
+    console.warn(
+      `generate-web-types: no component files found in ${dirs.join(", ")}` +
+        (excludePatterns.length
+          ? ` after applying ${excludePatterns.length} exclude pattern(s)`
+          : ""),
+    );
+  }
 
   const elements: WebTypeElement[] = [];
   const prefix = options.prefix || "";

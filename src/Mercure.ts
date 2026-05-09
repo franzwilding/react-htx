@@ -6,6 +6,11 @@ export type MercureEventMap = {
   "sse:connected": [url: string];
   "sse:disconnected": [url: string];
   "sse:message": [event: MessageEvent, html: string];
+  /**
+   * Fires for SSE messages with a named event type (`event: foo\ndata: …`).
+   * Subscribe to a name via `events` in MercureOptions to start receiving them.
+   */
+  "sse:named": [name: string, event: MessageEvent, data: string];
   "render:success": [event: MessageEvent, html: string];
   "render:failed": [event: MessageEvent, html: string];
   "refetch:started": [event: MessageEvent];
@@ -27,6 +32,13 @@ export type MercureOptions = {
    * Re-evaluated whenever the router emits `render:success`.
    */
   getTopic?: () => string;
+  /**
+   * Optional: SSE event names to listen for in addition to the default
+   * `message` event. Each named event is delivered through the `sse:named`
+   * listener as `(name, event, data)`. The default `message` event continues
+   * to flow through `sse:message` and the HTML render pipeline as before.
+   */
+  events?: string[];
 };
 
 export class Mercure {
@@ -220,6 +232,21 @@ export class Mercure {
         this.emit("sse:disconnected", this.currentUrl!);
       }
     };
+
+    // Named SSE events: register listeners for each requested event name.
+    const names = this.options.events;
+    if (names && names.length > 0) {
+      const source = this.eventSource;
+      for (const name of names) {
+        source.addEventListener(name, (event) => {
+          const messageEvent = event as MessageEvent;
+          if (messageEvent.lastEventId) {
+            this._lastEventId = messageEvent.lastEventId;
+          }
+          this.emit("sse:named", name, messageEvent, messageEvent.data);
+        });
+      }
+    }
   }
 
   /**

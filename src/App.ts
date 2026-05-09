@@ -10,12 +10,28 @@ export type MercureConfig = {
   withCredentials?: boolean;
 };
 
+export type AppOptions = {
+  /**
+   * Remove a class (default `"hidden"`) from the root element after the React
+   * tree first commits. Lets backends emit a hidden root to avoid FOUC.
+   * Set `false` to disable. Default `true`.
+   */
+  hideUntilHydrated?: boolean;
+  /** Class name removed when `hideUntilHydrated` is enabled. Default `"hidden"`. */
+  hiddenClass?: string;
+};
+
 export class App {
   public readonly element: HTMLElement;
   public readonly router: Router;
   public readonly component: ElementType;
   public readonly doc: Document;
-  public mercureConfig?: MercureConfig;
+  public readonly hideUntilHydrated: boolean;
+  public readonly hiddenClass: string;
+  private _mercureConfig?: MercureConfig;
+  private readonly mercureConfigListeners = new Set<() => void>();
+  private readonly hydratedListeners = new Set<() => void>();
+  private hydrated = false;
   private readonly appProvider: ElementType<PropsWithChildren<{ app: App }>>;
   private readonly selector: (doc: Document) => HTMLElement | null;
   private readonly root: Root;
@@ -29,10 +45,13 @@ export class App {
     root?: Root,
     doc: Document = document,
     fetchImp: FetchLike = fetch,
+    options: AppOptions = {},
   ) {
     this.component = component;
     this.appProvider = appProvider;
     this.doc = doc;
+    this.hideUntilHydrated = options.hideUntilHydrated ?? true;
+    this.hiddenClass = options.hiddenClass ?? "hidden";
 
     if (typeof selector === "string") {
       const selStr = selector;
@@ -63,7 +82,7 @@ export class App {
     // Auto-configure Mercure from data-mercure-hub-url attribute
     const mercureHubUrl = this.element.getAttribute("data-mercure-hub-url");
     if (mercureHubUrl) {
-      this.mercureConfig = {
+      this._mercureConfig = {
         hubUrl: mercureHubUrl,
         withCredentials: this.element.hasAttribute(
           "data-mercure-with-credentials",
@@ -72,6 +91,56 @@ export class App {
     }
 
     this.renderElement(this.element);
+  }
+
+  public get mercureConfig(): MercureConfig | undefined {
+    return this._mercureConfig;
+  }
+
+  public set mercureConfig(value: MercureConfig | undefined) {
+    this._mercureConfig = value;
+    this.mercureConfigListeners.forEach((listener) => listener());
+  }
+
+  /**
+   * Subscribe to changes of `mercureConfig`. The callback fires every time the
+   * config is reassigned, including when it is set or cleared after mount.
+   * Returns a cleanup function to remove the listener.
+   */
+  public onMercureConfigChange(listener: () => void): () => void {
+    this.mercureConfigListeners.add(listener);
+    return () => {
+      this.mercureConfigListeners.delete(listener);
+    };
+  }
+
+  /**
+   * Called by `AppProvider` (or a custom provider) once the React tree has
+   * committed. Removes the configured hidden class to reveal the app and
+   * notifies `onHydrated` listeners. Idempotent.
+   */
+  public notifyHydrated(): void {
+    if (this.hideUntilHydrated) {
+      this.element.classList.remove(this.hiddenClass);
+    }
+    if (this.hydrated) return;
+    this.hydrated = true;
+    this.hydratedListeners.forEach((listener) => listener());
+  }
+
+  /**
+   * Subscribe to the first hydration of the app. If hydration has already
+   * happened, the callback fires synchronously.
+   */
+  public onHydrated(listener: () => void): () => void {
+    if (this.hydrated) {
+      listener();
+      return () => {};
+    }
+    this.hydratedListeners.add(listener);
+    return () => {
+      this.hydratedListeners.delete(listener);
+    };
   }
 
   public render(document: string | Document): boolean {
