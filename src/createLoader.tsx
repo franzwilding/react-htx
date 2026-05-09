@@ -130,6 +130,11 @@ export function createLoader(options: LoaderOptions): ElementType<{
             const Fallback = onMissing(name, is);
             if (Fallback) return { default: Fallback };
           }
+          // Drop the cached lazy wrapper so a subsequent render can retry.
+          // Without this, React.lazy caches the rejection internally and
+          // re-throws forever, leaving the consumer stuck behind an Error
+          // Boundary with no recovery path.
+          cache.delete(name);
           throw err;
         }
       }) as ComponentType<unknown>;
