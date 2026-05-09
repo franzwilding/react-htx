@@ -1,6 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { AppThemeToggle } from "./app-theme-toggle";
+import { AppSidebarTrigger } from "./app-sidebar-trigger";
 
 export interface AppHeaderProps extends React.HTMLAttributes<HTMLElement> {
   homeHref?: string;
@@ -23,14 +24,17 @@ export function AppHeader({
       )}
       {...props}
     >
-      <div className="mx-auto flex h-14 w-full max-w-screen-2xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <a
-          href={homeHref}
-          className="flex items-center gap-2 font-semibold tracking-tight no-underline"
-        >
-          <span aria-hidden="true" className="text-xl">⚡️</span>
-          <span>reactolith</span>
-        </a>
+      <div className="mx-auto flex h-14 w-full max-w-screen-2xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center gap-2">
+          <AppSidebarTrigger />
+          <a
+            href={homeHref}
+            className="flex items-center gap-2 font-semibold tracking-tight no-underline"
+          >
+            <span aria-hidden="true" className="text-xl">⚡️</span>
+            <span>reactolith</span>
+          </a>
+        </div>
         <div className="flex items-center gap-2">
           <a
             href={repoHref}

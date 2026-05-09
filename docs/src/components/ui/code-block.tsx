@@ -1,12 +1,25 @@
 import * as React from "react";
 import { Check, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getHighlighter, isSupportedLang } from "@/lib/shiki";
 
 export interface CodeBlockProps extends React.HTMLAttributes<HTMLDivElement> {
   lang?: string;
   filename?: string;
-  /** Inline code source. If not given, the children's text is copied. */
+  /** Inline code source. If not given, the children's text is used. */
   code?: string;
+}
+
+function reactChildrenToText(children: React.ReactNode): string {
+  if (children == null || children === false) return "";
+  if (typeof children === "string" || typeof children === "number") {
+    return String(children);
+  }
+  if (Array.isArray(children)) return children.map(reactChildrenToText).join("");
+  if (React.isValidElement<{ children?: React.ReactNode }>(children)) {
+    return reactChildrenToText(children.props.children);
+  }
+  return "";
 }
 
 export function CodeBlock({
@@ -17,16 +30,43 @@ export function CodeBlock({
   children,
   ...props
 }: CodeBlockProps) {
-  const ref = React.useRef<HTMLPreElement>(null);
+  const text = React.useMemo(
+    () => (code ?? reactChildrenToText(children)).replace(/\n$/, ""),
+    [code, children],
+  );
+  const [highlighted, setHighlighted] = React.useState<string | null>(null);
   const [copied, setCopied] = React.useState(false);
 
+  React.useEffect(() => {
+    if (!isSupportedLang(lang)) {
+      setHighlighted(null);
+      return;
+    }
+    let cancelled = false;
+    getHighlighter().then((h) => {
+      if (cancelled) return;
+      try {
+        const html = h.codeToHtml(text, {
+          lang: (lang ?? "").toLowerCase(),
+          themes: { light: "github-light", dark: "github-dark" },
+          defaultColor: false,
+        });
+        setHighlighted(html);
+      } catch {
+        setHighlighted(null);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [text, lang]);
+
   const onCopy = React.useCallback(() => {
-    const text = code ?? ref.current?.innerText ?? "";
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
     });
-  }, [code]);
+  }, [text]);
 
   return (
     <div
@@ -58,14 +98,16 @@ export function CodeBlock({
           <Copy className="size-3.5" />
         )}
       </button>
-      <pre
-        ref={ref}
-        className={cn(
-          "overflow-x-auto p-4 text-[13px] leading-relaxed font-mono",
-        )}
-      >
-        <code>{code ?? children}</code>
-      </pre>
+      {highlighted ? (
+        <div
+          className="shiki-host overflow-x-auto text-[13px] leading-relaxed [&_pre]:!bg-transparent [&_pre]:p-4"
+          dangerouslySetInnerHTML={{ __html: highlighted }}
+        />
+      ) : (
+        <pre className="overflow-x-auto p-4 text-[13px] leading-relaxed font-mono">
+          <code>{text}</code>
+        </pre>
+      )}
     </div>
   );
 }
