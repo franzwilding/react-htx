@@ -67,7 +67,7 @@ describe("Mercure SSE integration", () => {
 
     // Mock EventSource globally with a proper constructor function
     const TrackedEventSource: any = class extends MockEventSource {
-      constructor(url: string, options?: { withCredentials?: boolean}) {
+      constructor(url: string, options?: { withCredentials?: boolean }) {
         super(url, options);
         mockEventSource = this;
         eventSourceCalls.push([url, options]);
@@ -88,7 +88,7 @@ describe("Mercure SSE integration", () => {
 
   afterEach(() => {
     // Clean up all app instances
-    appInstances.forEach(app => {
+    appInstances.forEach((app) => {
       try {
         app.unmount();
       } catch (e) {
@@ -133,7 +133,9 @@ describe("Mercure SSE integration", () => {
     });
 
     expect(eventSourceCalls.length).toBe(1);
-    expect(eventSourceCalls[0][0]).toBe("https://example.com/.well-known/mercure?topic=%2Fdashboard");
+    expect(eventSourceCalls[0][0]).toBe(
+      "https://example.com/.well-known/mercure?topic=%2Fdashboard",
+    );
     expect(eventSourceCalls[0][1]).toEqual({ withCredentials: false });
   });
 
@@ -415,7 +417,15 @@ describe("Mercure SSE integration", () => {
     });
 
     // Emit router's render:success event (cast to any for testing protected method)
-    (app.router as any).emit("render:success", "/new-route", {}, true, new Response(), "<html></html>", "/new-route");
+    (app.router as any).emit(
+      "render:success",
+      "/new-route",
+      {},
+      true,
+      new Response(),
+      "<html></html>",
+      "/new-route",
+    );
 
     expect(firstEventSource!.readyState).toBe(MockEventSource.CLOSED);
     expect(disconnectedHandler).toHaveBeenCalledTimes(1);
@@ -504,7 +514,15 @@ describe("Mercure SSE integration", () => {
       writable: true,
     });
 
-    (app.router as any).emit("render:success", "/new-route", {}, true, new Response(), "<html></html>", "/new-route");
+    (app.router as any).emit(
+      "render:success",
+      "/new-route",
+      {},
+      true,
+      new Response(),
+      "<html></html>",
+      "/new-route",
+    );
 
     // Should still only have 1 call (the initial one)
     expect(eventSourceCalls.length).toBe(1);
@@ -524,7 +542,14 @@ describe("Mercure SSE integration", () => {
       </div>`,
     });
 
-    const app = new App(testComponent, undefined, undefined, undefined, undefined, mockFetch as any);
+    const app = new App(
+      testComponent,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      mockFetch as any,
+    );
     appInstances.push(app);
     const mercure = new Mercure(app);
 
@@ -558,7 +583,7 @@ describe("Mercure SSE integration", () => {
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
         window.location.pathname + window.location.search,
-        { method: "GET" }
+        { method: "GET" },
       );
     });
 
@@ -586,7 +611,14 @@ describe("Mercure SSE integration", () => {
       </div>`,
     });
 
-    const app = new App(testComponent, undefined, undefined, undefined, undefined, mockFetch as any);
+    const app = new App(
+      testComponent,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      mockFetch as any,
+    );
     appInstances.push(app);
     const mercure = new Mercure(app);
 
@@ -633,7 +665,14 @@ describe("Mercure SSE integration", () => {
     // Mock fetch to reject
     const mockFetch = vi.fn().mockRejectedValue(new Error("Network error"));
 
-    const app = new App(testComponent, undefined, undefined, undefined, undefined, mockFetch as any);
+    const app = new App(
+      testComponent,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      mockFetch as any,
+    );
     appInstances.push(app);
     const mercure = new Mercure(app);
 
@@ -654,7 +693,9 @@ describe("Mercure SSE integration", () => {
     await waitFor(() => {
       expect(refetchFailedHandler).toHaveBeenCalledTimes(1);
       expect(refetchFailedHandler.mock.calls[0][1]).toBeInstanceOf(Error);
-      expect(refetchFailedHandler.mock.calls[0][1].message).toBe("Network error");
+      expect(refetchFailedHandler.mock.calls[0][1].message).toBe(
+        "Network error",
+      );
     });
   });
 
@@ -665,7 +706,14 @@ describe("Mercure SSE integration", () => {
 
     const mockFetch = vi.fn();
 
-    const app = new App(testComponent, undefined, undefined, undefined, undefined, mockFetch as any);
+    const app = new App(
+      testComponent,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      mockFetch as any,
+    );
     appInstances.push(app);
     const mercure = new Mercure(app);
 

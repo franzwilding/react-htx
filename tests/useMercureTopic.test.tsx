@@ -81,7 +81,11 @@ describe("useMercureTopic", () => {
   it("returns initial value before receiving updates", async () => {
     function TestComponent({ is }: { is: string }) {
       const count = useMercureTopic("/notifications/count", 0);
-      return <div data-testid="count" data-is={is}>{count}</div>;
+      return (
+        <div data-testid="count" data-is={is}>
+          {count}
+        </div>
+      );
     }
 
     document.body.innerHTML = `<div id="reactolith-app">
@@ -101,7 +105,11 @@ describe("useMercureTopic", () => {
   it("sets up onmessage handler", async () => {
     function TestComponent({ is }: { is: string }) {
       const count = useMercureTopic("/notifications/count", 0);
-      return <div data-testid="count" data-is={is}>{count}</div>;
+      return (
+        <div data-testid="count" data-is={is}>
+          {count}
+        </div>
+      );
     }
 
     document.body.innerHTML = `<div id="reactolith-app">
@@ -129,21 +137,25 @@ describe("useMercureTopic", () => {
       return <div data-is={is}>Test</div>;
     }
 
-    const div = document.createElement('div');
-    div.id = 'reactolith-app';
-    div.setAttribute('data-mercure-hub-url', 'https://example.com/.well-known/mercure');
-    div.setAttribute('data-mercure-with-credentials', '');
-    div.innerHTML = '<test-component></test-component>';
-    document.body.innerHTML = '';
+    const div = document.createElement("div");
+    div.id = "reactolith-app";
+    div.setAttribute(
+      "data-mercure-hub-url",
+      "https://example.com/.well-known/mercure",
+    );
+    div.setAttribute("data-mercure-with-credentials", "");
+    div.innerHTML = "<test-component></test-component>";
+    document.body.innerHTML = "";
     document.body.appendChild(div);
 
     const app = new App(TestComponent);
 
     await waitFor(() => {
       // Find the call for this specific test with the correct withCredentials value
-      const relevantCall = eventSourceCalls.find(call =>
-        call[0].includes('topic=%2Fnotifications%2Fcount') &&
-        call[1]?.withCredentials === true
+      const relevantCall = eventSourceCalls.find(
+        (call) =>
+          call[0].includes("topic=%2Fnotifications%2Fcount") &&
+          call[1]?.withCredentials === true,
       );
 
       expect(relevantCall).toBeDefined();
@@ -188,7 +200,11 @@ describe("useMercureTopic", () => {
   it("sets up onerror handler", async () => {
     function TestComponent({ is }: { is: string }) {
       const count = useMercureTopic("/notifications/count", 0);
-      return <div data-testid="count" data-is={is}>{count}</div>;
+      return (
+        <div data-testid="count" data-is={is}>
+          {count}
+        </div>
+      );
     }
 
     document.body.innerHTML = `<div id="reactolith-app">
@@ -212,7 +228,11 @@ describe("useMercureTopic", () => {
   it("creates EventSource with correct config", async () => {
     function TestComponent({ is }: { is: string }) {
       const count = useMercureTopic("/count", 0);
-      return <div data-testid="count" data-is={is}>{count}</div>;
+      return (
+        <div data-testid="count" data-is={is}>
+          {count}
+        </div>
+      );
     }
 
     document.body.innerHTML = `<div id="reactolith-app">
@@ -234,7 +254,11 @@ describe("useMercureTopic", () => {
   it("does nothing when mercureConfig is not set", async () => {
     function TestComponent({ is }: { is: string }) {
       const count = useMercureTopic("/count", 42);
-      return <div data-testid="count" data-is={is}>{count}</div>;
+      return (
+        <div data-testid="count" data-is={is}>
+          {count}
+        </div>
+      );
     }
 
     document.body.innerHTML = `<div id="reactolith-app">

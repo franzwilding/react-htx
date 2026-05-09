@@ -43,7 +43,9 @@ describe("isRelativeHref", () => {
 });
 
 describe("hasNavBypassModifiers", () => {
-  const createMouseEvent = (overrides: Partial<MouseEvent> = {}): MouseEvent => {
+  const createMouseEvent = (
+    overrides: Partial<MouseEvent> = {},
+  ): MouseEvent => {
     return {
       defaultPrevented: false,
       button: 0,

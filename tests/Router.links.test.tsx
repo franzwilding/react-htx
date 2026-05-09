@@ -102,7 +102,11 @@ describe("Router link handling", () => {
 
     const link = root.querySelector("a")!;
     // Create click event with the link as target
-    const clickEvent = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 });
+    const clickEvent = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+    });
     Object.defineProperty(clickEvent, "target", { value: link });
     await app.router.onClick(clickEvent);
 
@@ -131,7 +135,11 @@ describe("Router link handling", () => {
 
     const link = root.querySelector("a")!;
     // Create click event with the link as target
-    const clickEvent = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 });
+    const clickEvent = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+    });
     Object.defineProperty(clickEvent, "target", { value: link });
     await app.router.onClick(clickEvent);
 
@@ -160,7 +168,11 @@ describe("Router link handling", () => {
 
     const link = root.querySelector("a")!;
     // Create click event with the link as target
-    const clickEvent = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 });
+    const clickEvent = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+    });
     Object.defineProperty(clickEvent, "target", { value: link });
     await app.router.onClick(clickEvent);
 
@@ -190,25 +202,45 @@ describe("Router link handling", () => {
     const link = root.querySelector("a")!;
 
     // Test with Ctrl key
-    const ctrlEvent = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0, ctrlKey: true });
+    const ctrlEvent = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      ctrlKey: true,
+    });
     Object.defineProperty(ctrlEvent, "target", { value: link });
     await app.router.onClick(ctrlEvent);
     expect(fetchMock).not.toHaveBeenCalled();
 
     // Test with Meta key (Cmd on Mac)
-    const metaEvent = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0, metaKey: true });
+    const metaEvent = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      metaKey: true,
+    });
     Object.defineProperty(metaEvent, "target", { value: link });
     await app.router.onClick(metaEvent);
     expect(fetchMock).not.toHaveBeenCalled();
 
     // Test with Shift key
-    const shiftEvent = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0, shiftKey: true });
+    const shiftEvent = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      shiftKey: true,
+    });
     Object.defineProperty(shiftEvent, "target", { value: link });
     await app.router.onClick(shiftEvent);
     expect(fetchMock).not.toHaveBeenCalled();
 
     // Test with Alt key
-    const altEvent = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0, altKey: true });
+    const altEvent = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      altKey: true,
+    });
     Object.defineProperty(altEvent, "target", { value: link });
     await app.router.onClick(altEvent);
     expect(fetchMock).not.toHaveBeenCalled();
@@ -237,13 +269,21 @@ describe("Router link handling", () => {
     const link = root.querySelector("a")!;
 
     // Test middle click
-    const middleEvent = new MouseEvent("click", { bubbles: true, cancelable: true, button: 1 });
+    const middleEvent = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      button: 1,
+    });
     Object.defineProperty(middleEvent, "target", { value: link });
     await app.router.onClick(middleEvent);
     expect(fetchMock).not.toHaveBeenCalled();
 
     // Test right click
-    const rightEvent = new MouseEvent("click", { bubbles: true, cancelable: true, button: 2 });
+    const rightEvent = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      button: 2,
+    });
     Object.defineProperty(rightEvent, "target", { value: link });
     await app.router.onClick(rightEvent);
     expect(fetchMock).not.toHaveBeenCalled();
@@ -255,7 +295,8 @@ describe("Router link handling", () => {
       <a href="/page"><span data-testid="inner">Click me</span></a>
     </div>`;
 
-    const fetchMock = createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
+    const fetchMock =
+      createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
       <my-component>Bar</my-component>
     </div>`);
     global.fetch = fetchMock as any;
@@ -271,7 +312,11 @@ describe("Router link handling", () => {
 
     // Click on the nested span - the router should find the parent link
     const span = root.querySelector('[data-testid="inner"]')!;
-    const clickEvent = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 });
+    const clickEvent = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+    });
     Object.defineProperty(clickEvent, "target", { value: span });
     await app.router.onClick(clickEvent);
 
@@ -286,7 +331,8 @@ describe("Router link handling", () => {
       <a href="/page" target="_self">Link</a>
     </div>`;
 
-    const fetchMock = createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
+    const fetchMock =
+      createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
       <my-component>Bar</my-component>
     </div>`);
     global.fetch = fetchMock as any;
@@ -302,7 +348,11 @@ describe("Router link handling", () => {
 
     const link = root.querySelector("a")!;
     // Create click event with the link as target
-    const clickEvent = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 });
+    const clickEvent = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+    });
     Object.defineProperty(clickEvent, "target", { value: link });
     await app.router.onClick(clickEvent);
 
@@ -316,7 +366,8 @@ describe("Router link handling", () => {
       <my-component>Foo</my-component>
     </div>`;
 
-    const fetchMock = createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
+    const fetchMock =
+      createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
       <my-component>Bar</my-component>
     </div>`);
     global.fetch = fetchMock as any;

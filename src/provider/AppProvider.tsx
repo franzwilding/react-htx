@@ -1,21 +1,9 @@
-import React, {
-  createContext,
-  PropsWithChildren,
-  useContext,
-  useEffect,
-} from "react";
+import React, { PropsWithChildren, useEffect } from "react";
 import { RouterProvider } from "./RouterProvider";
+import { AppContext } from "./AppContext";
 import type { App } from "../App";
 
-const AppContext = createContext<App | undefined>(undefined);
-
-export function useApp(): App {
-  const ctx = useContext(AppContext);
-  if (!ctx) {
-    throw new Error("useApp must be used inside <AppProvider>");
-  }
-  return ctx;
-}
+export { useApp } from "./AppContext";
 
 export const AppProvider: React.FC<PropsWithChildren<{ app: App }>> = ({
   app,

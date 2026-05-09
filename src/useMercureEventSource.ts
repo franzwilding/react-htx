@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useApp } from "./provider/AppProvider";
+import { useApp } from "./provider/AppContext";
 
 /**
  * Generic hook for subscribing to a Mercure topic and receiving raw message data.
@@ -13,7 +13,7 @@ import { useApp } from "./provider/AppProvider";
  */
 export function useMercureEventSource(
   topic: string,
-  onMessage: (data: string) => void,
+  onMessage: (data: string, event: MessageEvent) => void,
   onError?: (error: Event) => void,
 ): void {
   const app = useApp();
@@ -21,7 +21,9 @@ export function useMercureEventSource(
   useEffect(() => {
     if (!app.mercureConfig) {
       console.warn(
-        `useMercureEventSource: app.mercureConfig is not set. Please configure it before using Mercure features.`,
+        `useMercureEventSource: app.mercureConfig is not set. ` +
+          `Add a "data-mercure-hub-url" attribute to your root element ` +
+          `or assign "app.mercureConfig" before subscribing to "${topic}".`,
       );
       return;
     }
@@ -34,7 +36,7 @@ export function useMercureEventSource(
     });
 
     eventSource.onmessage = (event) => {
-      onMessage(event.data);
+      onMessage(event.data, event);
     };
 
     eventSource.onerror = (error) => {
