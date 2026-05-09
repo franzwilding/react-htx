@@ -6,7 +6,7 @@ import React, {
   useState,
 } from "react";
 import type { Router } from "../Router";
-import { useApp } from "./AppProvider";
+import { useApp } from "./AppContext";
 
 type RenderFailedPayload = {
   /** whatever your router emits, kept as unknown to avoid tight coupling */

@@ -14,16 +14,18 @@ export class App {
   public readonly element: HTMLElement;
   public readonly router: Router;
   public readonly component: ElementType;
+  public readonly doc: Document;
   public mercureConfig?: MercureConfig;
   private readonly appProvider: ElementType<PropsWithChildren<{ app: App }>>;
   private readonly selector: (doc: Document) => HTMLElement | null;
   private readonly root: Root;
-  private readonly doc: Document;
 
   constructor(
     component: ElementType,
     appProvider: ElementType<PropsWithChildren<{ app: App }>> = AppProvider,
-    selector: ((doc: Document) => HTMLElement | null) | string = "#reactolith-app",
+    selector:
+      | ((doc: Document) => HTMLElement | null)
+      | string = "#reactolith-app",
     root?: Root,
     doc: Document = document,
     fetchImp: FetchLike = fetch,

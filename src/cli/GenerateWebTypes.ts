@@ -10,6 +10,7 @@ import {
   SourceFile,
   Identifier,
   ImportDeclaration,
+  JSDocableNode,
 } from "ts-morph";
 import fs from "fs";
 import path from "path";
@@ -30,6 +31,29 @@ interface ComponentInfo {
   sourceFile: SourceFile;
 }
 
+interface WebTypeAttribute {
+  name: string;
+  description?: string;
+  required: boolean;
+  value?: {
+    kind: "no-value" | "plain" | "expression";
+    type: string;
+  };
+  values?: Array<{ name: string }>;
+}
+
+interface WebTypeSlot {
+  name: string;
+  description: string;
+}
+
+interface WebTypeElement {
+  name: string;
+  description: string;
+  attributes: WebTypeAttribute[];
+  slots?: WebTypeSlot[];
+}
+
 function findComponentFiles(dir: string): string[] {
   const results: string[] = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -43,15 +67,20 @@ function findComponentFiles(dir: string): string[] {
   return results;
 }
 
-export function generateWebTypes(options: GenerateWebTypesOptions) {
+export function generateWebTypes(options: GenerateWebTypesOptions): void {
   const project = new Project({
     tsConfigFilePath: options.tsconfig || "./tsconfig.json",
   });
 
   const componentsDir = path.resolve(options.componentsDir || "components/ui");
+
+  if (!fs.existsSync(componentsDir)) {
+    throw new Error(`Components directory does not exist: ${componentsDir}`);
+  }
+
   const files = findComponentFiles(componentsDir);
 
-  const elements: any[] = [];
+  const elements: WebTypeElement[] = [];
   const prefix = options.prefix || "";
 
   files.forEach((filePath: string) => {
@@ -76,17 +105,14 @@ export function generateWebTypes(options: GenerateWebTypesOptions) {
     });
 
     componentMap.forEach((info) => {
-      if (info.propsType === undefined) return;
-
       const { attributes, slots } = extractAttributesAndSlots(
         info.propsType,
         info.propsNode || info.sourceFile,
       );
       const tagName =
-        prefix +
-        info.name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
+        prefix + info.name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
 
-      const element: any = {
+      const element: WebTypeElement = {
         name: tagName,
         description: `${info.name} component`,
         attributes,
@@ -123,7 +149,9 @@ export function generateWebTypes(options: GenerateWebTypesOptions) {
 /**
  * Strategy 1: Extract from exported types ending with "Props"
  */
-function extractFromExportedPropsTypes(sourceFile: SourceFile): ComponentInfo[] {
+function extractFromExportedPropsTypes(
+  sourceFile: SourceFile,
+): ComponentInfo[] {
   const results: ComponentInfo[] = [];
   const exported = sourceFile.getExportedDeclarations();
 
@@ -133,7 +161,7 @@ function extractFromExportedPropsTypes(sourceFile: SourceFile): ComponentInfo[] 
     const decl = decls[0];
     if (!decl) continue;
 
-    const type = (decl as any).getType?.();
+    const type = getTypeOfDeclaration(decl);
     if (!type) continue;
 
     const componentName = name.substring(0, name.length - 5);
@@ -151,7 +179,9 @@ function extractFromExportedPropsTypes(sourceFile: SourceFile): ComponentInfo[] 
 /**
  * Strategy 2: Extract props from exported React component functions
  */
-function extractFromComponentFunctions(sourceFile: SourceFile): ComponentInfo[] {
+function extractFromComponentFunctions(
+  sourceFile: SourceFile,
+): ComponentInfo[] {
   const results: ComponentInfo[] = [];
   const exported = sourceFile.getExportedDeclarations();
 
@@ -185,16 +215,19 @@ function extractFromComponentFunctions(sourceFile: SourceFile): ComponentInfo[] 
 
       // If no props found directly, check if it's an ExportAssignment with an Identifier
       if (!propsInfo && Node.isExportAssignment(decl)) {
-        const expr = (decl as any).getExpression?.();
-        if (expr && Node.isIdentifier(expr)) {
+        const expr = decl.getExpression();
+        if (Node.isIdentifier(expr)) {
           // Try to resolve the identifier to its declaration
-          propsInfo = resolveIdentifierToProps(expr as Identifier, sourceFile);
+          propsInfo = resolveIdentifierToProps(expr, sourceFile);
         }
       }
 
       if (propsInfo) {
         // Use filename as component name for default exports, converting kebab-case to PascalCase
-        const fileName = path.basename(sourceFile.getFilePath(), path.extname(sourceFile.getFilePath()));
+        const fileName = path.basename(
+          sourceFile.getFilePath(),
+          path.extname(sourceFile.getFilePath()),
+        );
         const componentName = fileName
           .split("-")
           .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
@@ -261,17 +294,18 @@ function resolveIdentifierToProps(
     // Check named imports
     const namedImports = importDecl.getNamedImports();
     for (const namedImport of namedImports) {
-      const importedName = namedImport.getAliasNode()?.getText() || namedImport.getName();
+      const importedName =
+        namedImport.getAliasNode()?.getText() || namedImport.getName();
       if (importedName === identifierName) {
         // Found the import - resolve from the imported module
-        return resolveImportedComponent(importDecl, namedImport.getName(), sourceFile);
+        return resolveImportedComponent(importDecl, namedImport.getName());
       }
     }
 
     // Check default import
     const defaultImport = importDecl.getDefaultImport();
     if (defaultImport && defaultImport.getText() === identifierName) {
-      return resolveImportedComponent(importDecl, "default", sourceFile);
+      return resolveImportedComponent(importDecl, "default");
     }
   }
 
@@ -284,7 +318,6 @@ function resolveIdentifierToProps(
 function resolveImportedComponent(
   importDecl: ImportDeclaration,
   exportName: string,
-  _currentSourceFile: SourceFile,
 ): { type: Type | null; node: Node } | null {
   try {
     const resolvedModule = importDecl.getModuleSpecifierSourceFile();
@@ -322,6 +355,16 @@ function resolveImportedComponent(
 }
 
 /**
+ * Get the Type of a declaration node, if available.
+ */
+function getTypeOfDeclaration(decl: Node): Type | null {
+  if ("getType" in decl && typeof decl.getType === "function") {
+    return (decl as { getType: () => Type }).getType();
+  }
+  return null;
+}
+
+/**
  * Extract props type from a function/variable declaration
  */
 function extractPropsFromDeclaration(
@@ -329,7 +372,7 @@ function extractPropsFromDeclaration(
 ): { type: Type | null; node: Node } | null {
   // Handle function declarations: export function Button(props: ButtonProps) {}
   if (Node.isFunctionDeclaration(decl)) {
-    return extractPropsFromFunction(decl as FunctionDeclaration);
+    return extractPropsFromFunction(decl);
   }
 
   // Handle variable declarations: export const Button = (props: ButtonProps) => {}
@@ -338,13 +381,11 @@ function extractPropsFromDeclaration(
     const initializer = varDecl.getInitializer();
 
     if (initializer && Node.isArrowFunction(initializer)) {
-      return extractPropsFromArrowFunction(initializer as ArrowFunction);
+      return extractPropsFromArrowFunction(initializer);
     }
 
     if (initializer && Node.isFunctionExpression(initializer)) {
-      return extractPropsFromFunctionExpression(
-        initializer as FunctionExpression,
-      );
+      return extractPropsFromFunctionExpression(initializer);
     }
 
     // Handle React.forwardRef, React.memo, etc.
@@ -352,16 +393,20 @@ function extractPropsFromDeclaration(
       const args = initializer.getArguments();
       for (const arg of args) {
         if (Node.isArrowFunction(arg)) {
-          return extractPropsFromArrowFunction(arg as ArrowFunction);
+          return extractPropsFromArrowFunction(arg);
         }
         if (Node.isFunctionExpression(arg)) {
-          return extractPropsFromFunctionExpression(arg as FunctionExpression);
+          return extractPropsFromFunctionExpression(arg);
         }
       }
     }
 
     // Handle property access expressions: const Select = SelectPrimitive.Root
-    if (initializer && (Node.isPropertyAccessExpression(initializer) || Node.isIdentifier(initializer))) {
+    if (
+      initializer &&
+      (Node.isPropertyAccessExpression(initializer) ||
+        Node.isIdentifier(initializer))
+    ) {
       // Try to get the type from the variable declaration
       const varType = varDecl.getType();
       // Check if this is a React component type (has Props in the call signature)
@@ -383,14 +428,12 @@ function extractPropsFromDeclaration(
 
   // Handle export default function() {}
   if (Node.isExportAssignment(decl)) {
-    const expr = (decl as any).getExpression?.();
-    if (expr) {
-      if (Node.isArrowFunction(expr)) {
-        return extractPropsFromArrowFunction(expr as ArrowFunction);
-      }
-      if (Node.isFunctionExpression(expr)) {
-        return extractPropsFromFunctionExpression(expr as FunctionExpression);
-      }
+    const expr = decl.getExpression();
+    if (Node.isArrowFunction(expr)) {
+      return extractPropsFromArrowFunction(expr);
+    }
+    if (Node.isFunctionExpression(expr)) {
+      return extractPropsFromFunctionExpression(expr);
     }
   }
 
@@ -471,17 +514,14 @@ function isJsxReturnType(type: Type): boolean {
  */
 function isSlotType(typeText: string): boolean {
   // Exact patterns that indicate a slot type
-  const slotPatterns = [
-    "ReactNode",
-    "ReactElement",
-    "JSX.Element",
-  ];
+  const slotPatterns = ["ReactNode", "ReactElement", "JSX.Element"];
 
   // Check if type is a slot type (but not a function returning ReactNode or event handler)
   const isSlot = slotPatterns.some((pattern) => typeText.includes(pattern));
 
   // Exclude event handlers and functions
-  const isFunction = typeText.includes("=>") ||
+  const isFunction =
+    typeText.includes("=>") ||
     typeText.includes("EventHandler") ||
     typeText.includes("Handler<");
 
@@ -494,9 +534,9 @@ function isSlotType(typeText: string): boolean {
 function extractAttributesAndSlots(
   type: Type | null,
   contextNode: Node,
-): { attributes: any[]; slots: any[] } {
-  const attributes: any[] = [];
-  const slots: any[] = [];
+): { attributes: WebTypeAttribute[]; slots: WebTypeSlot[] } {
+  const attributes: WebTypeAttribute[] = [];
+  const slots: WebTypeSlot[] = [];
 
   // Handle null type (components with no props)
   if (!type) {
@@ -529,7 +569,7 @@ function extractAttributesAndSlots(
     if (propName === "children") return;
 
     // Regular attribute
-    const attr: any = {
+    const attr: WebTypeAttribute = {
       name: toKebabCase(propName),
       description: description || undefined,
       required,
@@ -632,10 +672,19 @@ function toKebabCase(str: string): string {
 function getPropertyDescription(prop: TsSymbol): string | undefined {
   const declarations = prop.getDeclarations();
   for (const decl of declarations) {
-    const jsDocs = (decl as any).getJsDocs?.();
-    if (jsDocs && jsDocs.length > 0) {
-      return jsDocs[0].getDescription?.()?.trim();
+    if (isJsDocableNode(decl)) {
+      const jsDocs = decl.getJsDocs();
+      if (jsDocs.length > 0) {
+        return jsDocs[0].getDescription().trim();
+      }
     }
   }
   return undefined;
+}
+
+function isJsDocableNode(node: Node): node is Node & JSDocableNode {
+  return (
+    "getJsDocs" in node &&
+    typeof (node as { getJsDocs?: unknown }).getJsDocs === "function"
+  );
 }

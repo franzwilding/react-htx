@@ -21,6 +21,12 @@ export type MercureOptions = {
   lastEventId?: string;
   /** Optional: Whether to include credentials (cookies) */
   withCredentials?: boolean;
+  /**
+   * Optional: a function returning the topic to subscribe to.
+   * Defaults to the current pathname (`window.location.pathname`).
+   * Re-evaluated whenever the router emits `render:success`.
+   */
+  getTopic?: () => string;
 };
 
 export class Mercure {
@@ -33,8 +39,10 @@ export class Mercure {
     >
   > = {};
   private currentUrl: string | null = null;
+  private currentTopic: string | null = null;
   private options: MercureOptions | null = null;
   private routerUnsubscribe: (() => void) | null = null;
+  private _lastEventId: string | undefined;
 
   constructor(app: App) {
     this.app = app;
@@ -87,6 +95,9 @@ export class Mercure {
   subscribe(options: MercureOptions): void {
     // Store options for re-subscription
     this.options = options;
+    if (options.lastEventId) {
+      this._lastEventId = options.lastEventId;
+    }
 
     // Unsubscribe from previous router listener
     if (this.routerUnsubscribe) {
@@ -102,11 +113,28 @@ export class Mercure {
     this.connectToCurrentPath();
   }
 
+  private getTopic(): string {
+    if (this.options?.getTopic) return this.options.getTopic();
+    return this.app.doc.defaultView?.location.pathname ?? "/";
+  }
+
   /**
-   * Connect to EventSource with current pathname as topic
+   * Connect to EventSource with the configured topic.
+   * If we're already connected to the same topic, do nothing.
    */
   private connectToCurrentPath(): void {
     if (!this.options) return;
+
+    const topic = this.getTopic();
+
+    // Skip if we're already connected to this topic
+    if (
+      this.eventSource &&
+      this.eventSource.readyState !== EventSource.CLOSED &&
+      this.currentTopic === topic
+    ) {
+      return;
+    }
 
     // Close existing connection if any
     if (this.eventSource) {
@@ -117,18 +145,18 @@ export class Mercure {
       this.eventSource = null;
     }
 
-    const { hubUrl, lastEventId, withCredentials = false } = this.options;
+    const { hubUrl, withCredentials = false } = this.options;
 
-    // Build the subscription URL with current pathname as topic
+    // Build the subscription URL with current topic
     const url = new URL(hubUrl);
-    const topic = window.location.pathname;
     url.searchParams.append("topic", topic);
 
-    if (lastEventId) {
-      url.searchParams.set("lastEventID", lastEventId);
+    if (this._lastEventId) {
+      url.searchParams.set("lastEventID", this._lastEventId);
     }
 
     this.currentUrl = url.toString();
+    this.currentTopic = topic;
 
     // Create EventSource connection
     this.eventSource = new EventSource(this.currentUrl, {
@@ -141,14 +169,20 @@ export class Mercure {
 
     this.eventSource.onmessage = async (event: MessageEvent) => {
       const html = event.data;
+      // Track last event id for reconnection
+      if (event.lastEventId) {
+        this._lastEventId = event.lastEventId;
+      }
       this.emit("sse:message", event, html);
 
       // If message is empty or only whitespace, refetch the current route
       if (!html || html.trim() === "") {
         this.emit("refetch:started", event);
         try {
+          const win = this.app.doc.defaultView;
+          const path = win ? win.location.pathname + win.location.search : "/";
           const response = await this.app.router.visit(
-            window.location.pathname + window.location.search,
+            path,
             { method: "GET" },
             false, // Don't push state, we're already on this page
           );
@@ -156,7 +190,11 @@ export class Mercure {
           if (response.result) {
             this.emit("refetch:success", event, response.html);
           } else {
-            this.emit("refetch:failed", event, new Error("Failed to render refetched content"));
+            this.emit(
+              "refetch:failed",
+              event,
+              new Error("Failed to render refetched content"),
+            );
           }
         } catch (error) {
           this.emit("refetch:failed", event, error as Error);
@@ -201,6 +239,7 @@ export class Mercure {
       }
       this.eventSource = null;
       this.currentUrl = null;
+      this.currentTopic = null;
     }
 
     this.options = null;
@@ -221,11 +260,9 @@ export class Mercure {
   }
 
   /**
-   * Get the last event ID (useful for reconnection)
+   * Get the last event ID seen on this connection (useful for reconnection).
    */
   get lastEventId(): string | undefined {
-    // EventSource doesn't expose lastEventId directly,
-    // but you can track it via sse:message events
-    return undefined;
+    return this._lastEventId;
   }
 }

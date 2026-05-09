@@ -37,7 +37,8 @@ describe("Router form submission", () => {
       </form>
     </div>`;
 
-    const fetchMock = createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
+    const fetchMock =
+      createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
       <my-component>Results</my-component>
     </div>`);
     global.fetch = fetchMock as any;
@@ -71,7 +72,8 @@ describe("Router form submission", () => {
       </form>
     </div>`;
 
-    const fetchMock = createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
+    const fetchMock =
+      createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
       <my-component>Submitted</my-component>
     </div>`);
     global.fetch = fetchMock as any;
@@ -107,7 +109,8 @@ describe("Router form submission", () => {
       </form>
     </div>`;
 
-    const fetchMock = createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
+    const fetchMock =
+      createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
       <my-component>Results</my-component>
     </div>`);
     global.fetch = fetchMock as any;
@@ -142,7 +145,8 @@ describe("Router form submission", () => {
       </form>
     </div>`;
 
-    const fetchMock = createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
+    const fetchMock =
+      createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
       <my-component>Done</my-component>
     </div>`);
     global.fetch = fetchMock as any;
@@ -187,7 +191,8 @@ describe("Router form submission", () => {
       </form>
     </div>`;
 
-    const fetchMock = createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
+    const fetchMock =
+      createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
       <my-component>Results</my-component>
     </div>`);
     global.fetch = fetchMock as any;

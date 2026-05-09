@@ -280,13 +280,10 @@ describe("ScrollRestoration", () => {
       const stored = sessionStorage.getItem("reactolith-scroll-positions");
       expect(stored).not.toBeNull();
 
-      const entries: [string, { x: number; y: number }][] =
-        JSON.parse(stored!);
+      const entries: [string, { x: number; y: number }][] = JSON.parse(stored!);
       expect(entries.length).toBeGreaterThanOrEqual(1);
 
-      const pos = entries.find(
-        ([key]) => key === history.state.restorationId,
-      );
+      const pos = entries.find(([key]) => key === history.state.restorationId);
       expect(pos).toBeDefined();
     });
 

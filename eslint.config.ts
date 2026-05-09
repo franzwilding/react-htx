@@ -16,8 +16,23 @@ export default defineConfig([
   pluginReact.configs.flat.recommended,
   prettier,
   {
+    settings: {
+      react: { version: "detect" },
+    },
     rules: {
       "react/react-in-jsx-scope": "off",
+    },
+  },
+  // Tests intentionally use `any` for mocks and stubs, and frequently
+  // shadow imported test utilities while iterating on assertions.
+  {
+    files: ["tests/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-this-alias": "off",
+      "react/no-unknown-property": "off",
+      "react/display-name": "off",
     },
   },
 ]);
