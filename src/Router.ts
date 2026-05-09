@@ -1,5 +1,4 @@
 import { App } from "./App";
-import { Href } from "@react-types/shared";
 import { ScrollRestoration } from "./ScrollRestoration";
 
 export type ScrollOption = "top" | "preserve";
@@ -285,7 +284,7 @@ export class Router {
   }
 
   public async navigate(
-    path: Href,
+    path: string,
     options?: { scroll?: ScrollOption },
   ): Promise<void> {
     await this.visit(path, { method: "GET" }, true, options?.scroll);
