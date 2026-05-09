@@ -4,6 +4,7 @@ import { ReactolithComponent } from "./ReactolithComponent";
 import { AppProvider } from "./provider/AppProvider";
 import type { App, MercureConfig } from "./App";
 import type { Router } from "./Router";
+import type { Mercure } from "./Mercure";
 
 export type RenderToStringOptions = {
   /**
@@ -34,9 +35,21 @@ function createServerApp(
     off: () => {},
   } as unknown as Router;
 
+  const mercure = {
+    on: () => noopUnsubscribe,
+    off: () => {},
+    subscribe: () => {},
+    subscribeRaw: () => noopUnsubscribe,
+    close: () => {},
+    connected: false,
+    url: null,
+    lastEventId: undefined,
+  } as unknown as Mercure;
+
   const stub = {
     element: rootElement as HTMLElement,
     router,
+    mercure,
     component,
     doc,
     hideUntilHydrated: false,

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useApp } from "./provider/AppContext";
 
 /**
@@ -7,6 +7,11 @@ import { useApp } from "./provider/AppContext";
  *
  * Re-subscribes automatically when `app.mercureConfig` is reassigned, so it is
  * safe to set the config after mount (e.g. once your auth flow finishes).
+ *
+ * Callbacks are tracked via refs, so passing inline functions (the idiomatic
+ * React style) does **not** cause the underlying EventSource to be torn down
+ * and rebuilt on every render. Multiple subscribers to the same topic share a
+ * single EventSource via `app.mercure.subscribeRaw`.
  *
  * @param topic - The Mercure topic to subscribe to
  * @param onMessage - Callback when a message is received
@@ -20,51 +25,22 @@ export function useMercureEventSource(
   onError?: (error: Event) => void,
 ): void {
   const app = useApp();
+  const onMessageRef = useRef(onMessage);
+  const onErrorRef = useRef(onError);
 
   useEffect(() => {
-    let eventSource: EventSource | null = null;
+    onMessageRef.current = onMessage;
+  }, [onMessage]);
 
-    const connect = () => {
-      if (eventSource) {
-        eventSource.close();
-        eventSource = null;
-      }
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
 
-      const config = app.mercureConfig;
-      if (!config) {
-        console.warn(
-          `useMercureEventSource: app.mercureConfig is not set. ` +
-            `Add a "data-mercure-hub-url" attribute to your root element ` +
-            `or assign "app.mercureConfig" before subscribing to "${topic}".`,
-        );
-        return;
-      }
-
-      const url = new URL(config.hubUrl);
-      url.searchParams.append("topic", topic);
-
-      eventSource = new EventSource(url.toString(), {
-        withCredentials: config.withCredentials ?? false,
-      });
-
-      eventSource.onmessage = (event) => {
-        onMessage(event.data, event);
-      };
-
-      eventSource.onerror = (error) => {
-        if (onError) {
-          onError(error);
-        }
-        // EventSource will automatically reconnect
-      };
-    };
-
-    connect();
-    const unsubscribe = app.onMercureConfigChange(connect);
-
-    return () => {
-      unsubscribe();
-      eventSource?.close();
-    };
-  }, [topic, app, onMessage, onError]);
+  useEffect(() => {
+    return app.mercure.subscribeRaw(
+      topic,
+      (data, event) => onMessageRef.current(data, event),
+      (error) => onErrorRef.current?.(error),
+    );
+  }, [topic, app]);
 }
