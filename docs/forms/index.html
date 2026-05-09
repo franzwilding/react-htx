@@ -11,33 +11,38 @@
       <app-page>
         <h1>Forms</h1>
         <p>
-          Use <code>&lt;Form&gt;</code> and <code>&lt;FormField&gt;</code> to
-          render forms that integrate cleanly with backend validation and
-          reactolith's submission model.
+          Use <code>&lt;Form&gt;</code> to render forms that integrate cleanly
+          with backend validation and reactolith's submission model. Per-field
+          error display is just <code>useFormErrors(name)</code> &mdash; no
+          wrapper component required.
         </p>
 
-        <ui-code-block lang="tsx">import { Form, FormField, useFormSubmitting, useFormField } from "reactolith";
+        <ui-code-block lang="tsx">import { Form, useFormErrors, useFormSubmitting } from "reactolith";
 
 function MyForm({ errors }) {
   return (
     &lt;Form action="/users" method="POST" errors={errors}&gt;
-      &lt;FormField name="email"&gt;
+      &lt;label&gt;
+        Email
         &lt;input name="email" /&gt;
-        &lt;FieldError /&gt;
-      &lt;/FormField&gt;
-      &lt;FormField name="password"&gt;
+      &lt;/label&gt;
+      &lt;FieldError name="email" /&gt;
+
+      &lt;label&gt;
+        Password
         &lt;input name="password" type="password" /&gt;
-        &lt;FieldError /&gt;
-      &lt;/FormField&gt;
+      &lt;/label&gt;
+      &lt;FieldError name="password" /&gt;
+
       &lt;SubmitButton /&gt;
     &lt;/Form&gt;
   );
 }
 
-function FieldError() {
-  const field = useFormField();
-  if (!field?.invalid) return null;
-  return &lt;span role="alert"&gt;{field.errors[0].message}&lt;/span&gt;;
+function FieldError({ name }) {
+  const errors = useFormErrors(name);
+  if (!errors.length) return null;
+  return &lt;span role="alert"&gt;{errors[0].message}&lt;/span&gt;;
 }
 
 function SubmitButton() {
@@ -59,27 +64,31 @@ function SubmitButton() {
   method="POST"
   json-errors='[{"name":"email","message":"Already taken"}]'
 &gt;
-  &lt;ui-form-field name="email"&gt;
-    &lt;ui-input name="email" /&gt;
-  &lt;/ui-form-field&gt;
+  &lt;ui-input name="email" /&gt;
 &lt;/my-form&gt;</ui-code-block>
         <p>
           After submission reactolith re-renders the new HTML &mdash; including
           new errors &mdash; without losing component state.
         </p>
 
-        <h2>Touched behavior</h2>
+        <h2>Native validity & <code>:user-invalid</code></h2>
         <p>
-          As soon as the user changes a field, that field's errors disappear
-          from the summary and the field's own <code>invalid</code> flag flips
-          to <code>false</code>. This is tracked by <em>error reference</em>,
-          so when the backend returns a fresh error list those new errors show
-          up immediately (without an explicit reset).
+          When errors include a <code>name</code> that matches an input,
+          <code>&lt;Form&gt;</code> calls <code>setCustomValidity()</code> on
+          that input. The browser then matches <code>:user-invalid</code> as
+          soon as the user interacts with the field, so styling invalid fields
+          is just CSS:
         </p>
-        <p>You can also pre-mark errors as touched from the backend:</p>
-        <ui-code-block lang="json">[
-  { "name": "email", "message": "Invalid", "touched": true }
-]</ui-code-block>
+        <ui-code-block lang="css">input:user-invalid {
+  border-color: red;
+}</ui-code-block>
+        <p>
+          The first time the user edits a field, its custom validity is
+          cleared automatically &mdash; no React touched-state machinery
+          needed. The full error array remains accessible via
+          <code>useFormErrors(name)</code> if you want to render messages
+          unconditionally until the next submit.
+        </p>
 
         <h2>Submitting state</h2>
         <p>
@@ -97,9 +106,7 @@ function SubmitButton() {
           </thead>
           <tbody>
             <tr><td><code>useFormSubmitting()</code></td><td><code>boolean</code> &mdash; whether the surrounding form is busy.</td></tr>
-            <tr><td><code>useFormErrors(name?)</code></td><td>Errors for a single field, or all non-touched.</td></tr>
-            <tr><td><code>useFormErrorsContext()</code></td><td>Full context including <code>touchErrors</code>.</td></tr>
-            <tr><td><code>useFormField()</code></td><td>The surrounding <code>&lt;FormField&gt;</code>'s state, or <code>null</code>.</td></tr>
+            <tr><td><code>useFormErrors(name?)</code></td><td>Errors for a single field (matched by <code>name</code> or <code>id</code>), or every error in the form when called without an argument.</td></tr>
           </tbody>
         </table>
 

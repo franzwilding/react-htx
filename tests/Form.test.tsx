@@ -2,14 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { screen, waitFor, fireEvent } from "@testing-library/dom";
 import React from "react";
 import { App } from "../src";
-import {
-  Form,
-  FormField,
-  useFormErrors,
-  useFormErrorsContext,
-  useFormField,
-  useFormSubmitting,
-} from "../src/form";
+import { Form, useFormErrors, useFormSubmitting } from "../src/form";
 import type { FormError } from "../src/form";
 
 const makeFetch = (html: string) =>
@@ -52,12 +45,8 @@ describe("Form errors via context", () => {
       if (is !== "my-page") return null;
       return (
         <Form errors={errors} action="/submit" method="POST">
-          <FormField name="email">
-            <EmailErrors />
-          </FormField>
-          <FormField name="password">
-            <PasswordErrors />
-          </FormField>
+          <EmailErrors />
+          <PasswordErrors />
           <SummaryErrors />
         </Form>
       );
@@ -73,22 +62,22 @@ describe("Form errors via context", () => {
     }
 
     function PasswordErrors() {
-      const field = useFormField();
+      const errs = useFormErrors("password");
       return (
         <div
           data-testid="password-errors"
-          data-invalid={field?.invalid ? "true" : "false"}
+          data-invalid={errs.length > 0 ? "true" : "false"}
         >
-          {field?.errors.map((e) => e.message).join("|")}
+          {errs.map((e) => e.message).join("|")}
         </div>
       );
     }
 
     function SummaryErrors() {
-      const ctx = useFormErrorsContext();
+      const all = useFormErrors();
       return (
         <ul data-testid="summary">
-          {ctx.getAllErrors().map((e) => (
+          {all.map((e) => (
             <li key={`${e.name}:${e.message}`}>{e.message}</li>
           ))}
         </ul>
@@ -114,88 +103,34 @@ describe("Form errors via context", () => {
     expect(screen.getByTestId("summary")).toHaveTextContent("Too short");
   });
 
-  it("hides a field's errors once the user changes the field (touched)", async () => {
+  it("wires errors to native constraint validation and clears them on input", async () => {
     const errors: FormError[] = [{ name: "email", message: "Invalid email" }];
 
     function Page({ is }: { is: string }) {
       if (is !== "my-page") return null;
       return (
         <Form errors={errors} action="/submit" method="POST">
-          <FormField name="email">
-            <input data-testid="email-input" name="email" />
-            <EmailErrors />
-          </FormField>
+          <input data-testid="email-input" name="email" />
         </Form>
-      );
-    }
-
-    function EmailErrors() {
-      const field = useFormField();
-      return (
-        <div
-          data-testid="email-errors"
-          data-invalid={field?.invalid ? "true" : "false"}
-        >
-          {field?.errors.map((e) => e.message).join("|")}
-        </div>
       );
     }
 
     document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app"><my-page></my-page></div>`;
     mountApp(Page);
 
-    await waitFor(() => {
-      expect(screen.getByTestId("email-errors")).toHaveTextContent(
-        "Invalid email",
-      );
-    });
-
-    fireEvent.input(screen.getByTestId("email-input"), {
-      target: { value: "user@example.com" },
-    });
+    const input = (await screen.findByTestId(
+      "email-input",
+    )) as HTMLInputElement;
 
     await waitFor(() => {
-      expect(screen.getByTestId("email-errors")).toHaveAttribute(
-        "data-invalid",
-        "false",
-      );
+      expect(input.validity.customError).toBe(true);
     });
-    expect(screen.getByTestId("email-errors")).toHaveTextContent("");
-  });
+    expect(input.validationMessage).toBe("Invalid email");
 
-  it("respects the touched flag set on the error itself", async () => {
-    const errors: FormError[] = [
-      { name: "email", message: "Invalid", touched: true },
-      { name: "password", message: "Too short" },
-    ];
+    fireEvent.input(input, { target: { value: "user@example.com" } });
 
-    function Page({ is }: { is: string }) {
-      if (is !== "my-page") return null;
-      return (
-        <Form errors={errors} action="/submit" method="POST">
-          <SummaryErrors />
-        </Form>
-      );
-    }
-
-    function SummaryErrors() {
-      const ctx = useFormErrorsContext();
-      return (
-        <ul data-testid="summary">
-          {ctx.getAllErrors().map((e) => (
-            <li key={`${e.name}:${e.message}`}>{e.message}</li>
-          ))}
-        </ul>
-      );
-    }
-
-    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app"><my-page></my-page></div>`;
-    mountApp(Page);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("summary")).toHaveTextContent("Too short");
-    });
-    expect(screen.getByTestId("summary")).not.toHaveTextContent("Invalid");
+    expect(input.validity.customError).toBe(false);
+    expect(input.validationMessage).toBe("");
   });
 });
 
