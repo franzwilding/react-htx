@@ -183,3 +183,17 @@
     @apply border-b border-border px-3 py-2 align-top;
   }
 }
+
+/* Shiki dual-theme: light by default, swap to the dark variant when .dark
+   is on an ancestor. defaultColor: false makes shiki emit both colors as
+   --shiki / --shiki-dark CSS vars on each token. */
+.shiki-host .shiki,
+.shiki-host .shiki span {
+  color: var(--shiki-light);
+  background-color: var(--shiki-light-bg);
+}
+.dark .shiki-host .shiki,
+.dark .shiki-host .shiki span {
+  color: var(--shiki-dark);
+  background-color: var(--shiki-dark-bg);
+}

@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { useSidebarContext } from "./app-sidebar-context";
 
 type NavItem = { label: string; href: string };
 type NavGroup = { label: string; items: NavItem[] };
@@ -56,6 +57,7 @@ function withBase(href: string): string {
 export function AppSidebar({
   className,
 }: React.HTMLAttributes<HTMLDivElement>) {
+  const { setMobileOpen } = useSidebarContext();
   const [path, setPath] = React.useState<string>(() =>
     typeof window === "undefined" ? "/" : normalize(window.location.pathname),
   );
@@ -64,8 +66,6 @@ export function AppSidebar({
     const update = () => setPath(normalize(window.location.pathname));
     update();
     window.addEventListener("popstate", update);
-    // Reactolith dispatches a popstate-like flow via pushState, but in case the
-    // app navigates without a popstate (rare), poll on pathname change too.
     const interval = window.setInterval(() => {
       const current = normalize(window.location.pathname);
       setPath((prev) => (prev === current ? prev : current));
@@ -76,8 +76,6 @@ export function AppSidebar({
     };
   }, []);
 
-  // Strip the base prefix so item hrefs (which are written without it) can
-  // be compared directly to the current path.
   const baseStripped = BASE === "/" ? path : path.replace(BASE, "/");
 
   return (
@@ -94,6 +92,7 @@ export function AppSidebar({
                 <li key={item.href}>
                   <a
                     href={withBase(item.href)}
+                    onClick={() => setMobileOpen(false)}
                     className={cn(
                       "block rounded-md px-2 py-1.5 no-underline transition-colors",
                       active

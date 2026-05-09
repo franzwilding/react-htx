@@ -1,46 +1,26 @@
 # ⚡️ reactolith
 
-> **Proof of Concept** – This project is still experimental and **not ready for production**.
+> **Proof of Concept** — experimental, **not ready for production**.
 
-`reactolith` lets you **write React components directly in HTML** — making it possible to render and hydrate a React app using server-generated HTML from any backend (e.g. Symfony/Twig, Rails, Laravel, Django, etc.).
+`reactolith` lets you **write React components directly in HTML** so you can render and hydrate a React app from any backend (Symfony/Twig, Rails, Laravel, Django, …).
 
-✨ Instead of manually wiring React components everywhere, just return HTML from your backend and `reactolith` will transform it into a live, interactive React application.
+Return HTML from your backend; reactolith turns it into a live React app — including a built-in router that **preserves React state across navigations**.
 
-It even includes a **built-in router** that intercepts link clicks and form submissions, fetches the next page via AJAX, and updates only what changed — **keeping React state intact between navigations**.
-
----
-
-## 🚀 Features
-- 🔌 **Backend-agnostic** – Works with any backend (Symfony, Rails, Laravel, etc.)
-- 🛠 **Use existing backend helpers** (Twig path functions, permission checks, etc.)
-- 🔄 **State preserved across pages** – No resets on navigation
-- 📋 **Form support** – Modify forms dynamically (e.g., add buttons on checkbox click) **without losing state or focus**
-- 🪶 **Lightweight** – Just a few lines of setup, no heavy dependencies
-- 📡 **Real-time updates** – Works with Mercure Server-Sent-Events to push updates from the backend to the frontend
-- 🧠 **Scroll restoration** – Browser-like scroll behavior preserved between SPA-style navigations
-- 🧩 **IDE Autocomplete** – Generate JetBrains/VS Code web-types for your custom elements
+📖 **Full documentation:** **<https://reactolith.github.io/reactolith/>**
 
 ---
 
-## 📦 Installation
+## Install
 
 ```bash
-npm install reactolith
+npm install reactolith react react-dom
 ```
 
-Since `react` and `react-dom` are peer dependencies, make sure to also install them:
-
-```bash
-npm install react react-dom
-```
-
-> **Requirements**: Node 18+, React 18 or 19.
+Requires Node 18+ and React 18 or 19.
 
 ---
 
-## 🏎 Quick Start
-
-The minimum to get a working reactolith app is:
+## A 30-second tour
 
 ```html
 <!-- index.html (rendered by your backend) -->
@@ -55,783 +35,67 @@ The minimum to get a working reactolith app is:
 import { App } from "reactolith";
 import { MyButton } from "./components/my-button";
 
-function resolveComponent({ is }: { is: string }) {
-  // Match each tag name to a real React component.
-  if (is === "my-button") return MyButton;
-  throw new Error(`Unknown component: ${is}`);
-}
-
-new App(resolveComponent);
+new App(({ is }) => (is === "my-button" ? MyButton : null));
 ```
 
-Any tag name with a hyphen (e.g. `<my-button>`) is treated as a custom React component and resolved through the function you pass to `new App(...)`. Everything else (`<h1>`, `<div>`, `<svg>`, …) is rendered as a native HTML element.
+Any tag name with a hyphen (`<my-button>`) is resolved to a React component;
+everything else renders as a native element.
 
-### Lazy-loading a folder of components
-
-For larger apps — including drop-in shadcn directories — `createLoader` resolves
-tag names to a folder of files without any per-component setup:
+For larger apps, point `createLoader` at a folder of components and skip the
+per-tag wiring:
 
 ```tsx
 import { App, createLoader } from "reactolith";
 
-const component = createLoader({
+new App(createLoader({
   modules: import.meta.glob("./components/ui/*.tsx"),
-  prefix: "ui-", // strip "ui-" before resolving
-});
-
-new App(component);
-```
-
-`<ui-button>` → `./components/ui/button.tsx` (named export `Button` or
-`default`). Names with multiple kebab segments fall back to a parent file —
-`<ui-accordion-item>` finds `accordion.tsx` and picks its `AccordionItem` export.
-
-To layer custom components on top of shadcn (or any other base set), pass
-multiple module maps; earlier maps take priority:
-
-```ts
-const component = createLoader({
-  modules: [
-    import.meta.glob("./components/custom/*.tsx"), // wins on conflict
-    import.meta.glob("./components/ui/*.tsx"),
-  ],
   prefix: "ui-",
-});
-```
-
-`createLoader` options:
-
-| Option       | Type                                  | Description                                                                  |
-|--------------|---------------------------------------|------------------------------------------------------------------------------|
-| `modules`    | `ModuleMap` or `ModuleMap[]`          | Output of `import.meta.glob`. Earlier maps take priority.                    |
-| `prefix`     | `string`                              | Prefix to strip from `is` before resolving (e.g. `"ui-"`).                   |
-| `fallback`   | `ReactNode`                           | Rendered while a component is being lazy-loaded. Default `null`.             |
-| `onMissing`  | `(name, is) => ComponentType \| null` | Called when no module resolves; return a placeholder to render in its place. |
-
-### Custom Root Component & Selector
-
-```tsx
-// src/main.tsx
-import { App, createLoader } from "reactolith";
-import { AppProvider } from "./providers/app-provider";
-
-const component = createLoader({
-  modules: import.meta.glob("./components/**/*.tsx"),
-});
-
-new App(component, AppProvider, "#app");
-```
-
-```tsx
-// src/providers/app-provider.tsx
-import React, { ElementType } from "react";
-import { App, RootComponent } from "reactolith";
-import { RouterProvider } from "react-aria-components";
-import { ThemeProvider } from "./theme-provider";
-
-export const AppProvider: React.FC<{
-  app: App;
-  element: HTMLElement;
-  component: ElementType;
-}> = ({ app, element, component }) => (
-  <React.StrictMode>
-    <RouterProvider navigate={app.router.navigate}>
-      <ThemeProvider>
-        <RootComponent element={element} component={component} />
-      </ThemeProvider>
-    </RouterProvider>
-  </React.StrictMode>
-);
+}));
 ```
 
 ---
 
-## 🧠 How It Works
+## Highlights
 
-1. **Initial Load**: Your backend renders HTML with Twig/ERB/Blade/etc., `reactolith` hydrates it into React components.
-2. **Navigation**: Clicking links fetches new HTML via AJAX, React reconciles the differences in place.
-3. **Real-time**: Mercure pushes HTML updates from server, the UI updates automatically.
-4. **State Preserved**: React component state survives both navigation and real-time updates.
+- 🔌 **Backend-agnostic** — works with any backend (Symfony, Rails, Laravel, …)
+- 🔄 **State preserved across pages** — no resets on link clicks or form submits
+- 📋 **Forms** — modify forms dynamically without losing state or focus
+- 📡 **Realtime** — Mercure SSE pipes server pushes through the same render path
+- 🧠 **Scroll restoration** — browser-like behavior across SPA navigations
+- 🧩 **IDE autocomplete** — generate web-types for JetBrains/VS Code
 
-### Avoiding FOUC
-
-To hide the unhydrated tree until React mounts, give your root element the
-class `hidden` (and define `.hidden { display: none }` in your CSS). After the
-first React commit, reactolith removes that class to reveal the app:
-
-```html
-<div id="reactolith-app" class="hidden">
-  <h1>Hello world</h1>
-</div>
-```
-
-This is configurable via `AppOptions`:
-
-```ts
-new App(component, AppProvider, "#reactolith-app", undefined, document, fetch, {
-  hideUntilHydrated: true,   // default: true; pass false to opt out
-  hiddenClass: "invisible",  // default: "hidden"
-});
-```
-
-Custom `appProvider` implementations should call `app.notifyHydrated()` from a
-`useEffect` so the hidden class is removed and `app.onHydrated(...)` listeners
-fire.
+See the docs for the full feature list, API reference, and end-to-end guides.
 
 ---
 
-## 📋 Forms
+## Docs map
 
-Use `<Form>` and `<FormField>` to render forms that integrate cleanly with
-backend validation and reactolith's submission model.
+| Topic | Link |
+|---|---|
+| Install & set up | [Installation](https://reactolith.github.io/reactolith/installation/) |
+| First app | [Quick Start](https://reactolith.github.io/reactolith/quick-start/) |
+| Mental model | [How It Works](https://reactolith.github.io/reactolith/how-it-works/) |
+| Props & slots | [Props](https://reactolith.github.io/reactolith/props/) · [Slots](https://reactolith.github.io/reactolith/slots/) |
+| Forms & validation | [Forms](https://reactolith.github.io/reactolith/forms/) |
+| Scroll | [Scroll Restoration](https://reactolith.github.io/reactolith/scroll-restoration/) |
+| Realtime | [Mercure](https://reactolith.github.io/reactolith/mercure/) |
+| SSR | [Server-Side Rendering](https://reactolith.github.io/reactolith/ssr/) |
+| Tooling | [Web Types](https://reactolith.github.io/reactolith/web-types/) · [API Cheatsheet](https://reactolith.github.io/reactolith/api/) |
 
-```tsx
-import { Form, FormField, useFormSubmitting, useFormField } from "reactolith";
-
-function MyForm({ errors }) {
-  return (
-    <Form action="/users" method="POST" errors={errors}>
-      <FormField name="email">
-        <input name="email" />
-        <FieldError />
-      </FormField>
-      <FormField name="password">
-        <input name="password" type="password" />
-        <FieldError />
-      </FormField>
-      <SubmitButton />
-    </Form>
-  );
-}
-
-function FieldError() {
-  const field = useFormField();
-  if (!field?.invalid) return null;
-  return <span role="alert">{field.errors[0].message}</span>;
-}
-
-function SubmitButton() {
-  const submitting = useFormSubmitting();
-  return (
-    <button type="submit" disabled={submitting}>
-      {submitting ? "…" : "Save"}
-    </button>
-  );
-}
-```
-
-### Backend validation errors
-
-Render the form (and any backend errors) on the server, then ship them to the
-frontend via `json-errors`:
-
-```html
-<my-form
-  action="/users"
-  method="POST"
-  json-errors='[{"name":"email","message":"Already taken"}]'
->
-  <ui-form-field name="email">
-    <ui-input name="email" />
-  </ui-form-field>
-</my-form>
-```
-
-After submission reactolith re-renders the new HTML — including new errors —
-without losing component state.
-
-### Touched behavior
-
-As soon as the user changes a field, that field's errors disappear from the
-summary and the field's own `invalid` flag flips to `false`. This is tracked by
-*error reference*, so when the backend returns a fresh error list those new
-errors show up immediately (without an explicit reset).
-
-You can also pre-mark errors as touched from the backend:
-
-```json
-[
-  { "name": "email", "message": "Invalid", "touched": true }
-]
-```
-
-### Submitting state
-
-`useFormSubmitting()` returns `true` while the form has been submitted but the
-next navigation has not yet finished. Use it for spinners, disabled buttons,
-etc. The state is per-`<Form>`, so multiple forms on a page can each track
-their own.
-
-### Hooks
-
-| Hook                     | Returns                                           |
-|--------------------------|---------------------------------------------------|
-| `useFormSubmitting()`    | `boolean` — whether the surrounding form is busy. |
-| `useFormErrors(name?)`   | Errors for a single field, or all non-touched.    |
-| `useFormErrorsContext()` | Full context including `touchErrors`.             |
-| `useFormField()`         | The surrounding `<FormField>`'s state, or `null`. |
-
-`<Form>` accepts an optional `onSubmit` handler. Calling `event.preventDefault()`
-inside it stops the request entirely (reactolith's Router will not pick it up
-either), which is useful for client-side validation.
+The docs site lives in [`/docs`](./docs) and is itself built with reactolith — every page is plain HTML hydrated into React.
 
 ---
 
-## 🔄 Navigation Without Losing State
-
-When navigating, `reactolith` fetches the **next HTML page** and applies **only the differences** using React’s reconciliation algorithm.
-👉 This means component state is preserved (e.g., toggles, inputs, focus).
-
-```html
-<!-- page1.html -->
-<div id="reactolith-app">
-  <h1>Page 1</h1>
-  <ui-toggle json-pressed="false">Toggle</ui-toggle>
-  <a href="page2.html">Go to page 2</a>
-</div>
-```
-
-```html
-<!-- page2.html -->
-<div id="reactolith-app">
-  <h1>Page 2</h1>
-  <ui-toggle json-pressed="true">Toggle</ui-toggle>
-  <a href="page1.html">Go to page 1</a>
-</div>
-```
-
-Only the `<h1>` text and the `pressed` prop are updated — everything else remains untouched ✅.
-
----
-
-## 🎯 Props
-
-When you write reactolith components in HTML, attributes are mapped to React props using the following rules:
-
-| HTML attribute            | React prop / value           | Notes                                                        |
-|---------------------------|------------------------------|--------------------------------------------------------------|
-| `name="test"`             | `name: "test"`               | Strings pass through unchanged                               |
-| `enabled` (no value)      | `enabled: true`              | Empty / boolean attributes become `true`                     |
-| `data-foo="baa"`          | `dataFoo: "baa"`             | On a custom-component tag, normalized to camelCase           |
-| `data-foo="baa"`          | `data-foo: "baa"`            | On a native element, kept as `data-*` for the DOM            |
-| `class="x"`               | `className: "x"`             | `class` is automatically renamed to `className`              |
-| `json-config='{"x":1}'`   | `config: { x: 1 }`           | Attributes prefixed with `json-` are JSON-parsed             |
-| `as="{my-other}"`         | `as: <my-other />`           | Wrapping a value in `{...}` resolves it to a React component |
-| `key="abc"`               | (used as React key)          | Reserved — not passed as a prop                              |
-| `#anything="…"`           | (ignored)                    | Attributes starting with `#` are dropped                     |
-
-Example:
-
-```html
-<my-component
-  enabled
-  name="test"
-  data-foo="baa"
-  as="{my-other-component}"
-  json-config='{ "foo": "baa" }'
-></my-component>
-```
-
-```tsx
-const props = {
-  enabled: true,
-  name: "test",
-  dataFoo: "baa",                // dash → camelCase
-  as: <MyOtherComponent />,
-  config: { foo: "baa" },         // parsed from JSON
-};
-```
-
-If a `json-*` attribute contains invalid JSON, `reactolith` logs a warning and drops the prop instead of throwing.
-
----
-
-## 📦 Slots
-
-`reactolith` provides a simple slot mechanism: any direct child of a custom component carrying a `slot` attribute is captured as a slot prop with the slot’s **inner content** (not the wrapping element).
-
-```html
-<my-component>
-  <template slot="header"><h1>My header content</h1></template>
-  <div slot="footer">My footer content</div>
-</my-component>
-```
-
-```tsx
-function MyComponent({ header, footer, children }) {
-  return (
-    <article>
-      <header>{header}</header>
-      <div>{children}</div>
-      <footer>{footer}</footer>
-    </article>
-  );
-}
-```
-
-Use `<template slot="…">` when you don’t want the wrapping element to appear in the rendered DOM.
-
----
-
-## 🔄 Scroll Restoration
-
-`reactolith` automatically manages scroll position during navigation, just like a traditional multi-page website:
-
-| Navigation                | Behavior                                  |
-|---------------------------|-------------------------------------------|
-| Link click / Form submit  | Scrolls to top                            |
-| URL with `#hash`          | Scrolls to the hash element               |
-| Browser Back / Forward    | Restores previous scroll position         |
-
-Scroll positions are stored in `sessionStorage`, so they survive page refreshes within the same tab.
-
-### Preserve Scroll Position
-
-Sometimes you don't want to scroll to the top after navigation (e.g., in-page filters, pagination). Add `data-scroll="preserve"` to the link or form:
-
-```html
-<!-- Link preserves scroll position -->
-<a href="/products?page=2" data-scroll="preserve">Next Page</a>
-
-<!-- Form preserves scroll position -->
-<form action="/search" method="GET" data-scroll="preserve">
-  <input type="text" name="q" />
-  <button type="submit">Search</button>
-</form>
-```
-
-### Programmatic Navigation
-
-```typescript
-// Default: scrolls to top
-router.navigate("/page");
-
-// Preserve current scroll position
-router.navigate("/page", { scroll: "preserve" });
-```
-
-### Custom Scroll Container
-
-By default, `reactolith` auto-detects the scroll container by walking up the DOM from the root element and finding the nearest ancestor with `overflow-y: auto|scroll`. If none is found, `window` is used.
-
-You can override this with an explicit selector:
-
-```html
-<div id="reactolith-app" data-scroll-container="#main-content">
-  ...
-</div>
-```
-
----
-
-## 📡 Real-time Updates with Mercure
-
-`reactolith` supports **Server-Sent Events (SSE)** via [Mercure](https://mercure.rocks/) for real-time updates from your backend. When the server publishes an update, the HTML is automatically rendered — just like with router navigation.
-
-Mercure automatically subscribes to the **current URL pathname** as the topic and re-subscribes when the route changes.
-
-### Auto-Configuration (Recommended)
-
-The easiest way to configure Mercure is to add the `data-mercure-hub-url` attribute to your root element:
-
-```html
-<div id="reactolith-app" data-mercure-hub-url="https://example.com/.well-known/mercure">
-  <!-- Your content -->
-</div>
-
-<!-- With credentials (cookies): -->
-<div id="reactolith-app"
-     data-mercure-hub-url="https://example.com/.well-known/mercure"
-     data-mercure-with-credentials>
-  <!-- Your content -->
-</div>
-```
-
-```typescript
-import { App, Mercure } from "reactolith";
-
-const app = new App(component);
-// mercureConfig is automatically set from data-mercure-hub-url attribute
-
-const mercure = new Mercure(app);
-mercure.subscribe(app.mercureConfig!);
-
-// optional: listen to events
-mercure.on("sse:connected", (url) => {
-  console.log("Connected to Mercure hub", url);
-});
-```
-
-### Manual Configuration
-
-Alternatively, you can configure Mercure programmatically:
-
-```typescript
-import { App, Mercure } from "reactolith";
-
-const app = new App(component);
-const mercure = new Mercure(app);
-
-// Subscribe to Mercure hub (uses current pathname as topic by default)
-mercure.subscribe({
-  hubUrl: "https://example.com/.well-known/mercure",
-  withCredentials: true,        // Include cookies for authentication
-  // getTopic: () => "/custom",  // Optional: override topic resolution
-});
-```
-
-When the user navigates to a different route, Mercure automatically reconnects with the new pathname as the topic.
-
-### Auto-Refetch on Empty Messages
-
-When Mercure receives an **empty message** (or whitespace-only), it automatically refetches the current route. This makes it easy to invalidate the current page from the backend without having to render and send the full HTML:
-
-**Backend (simple invalidation):**
-```php
-// Just notify that the page should refresh - no HTML needed
-$hub->publish(new Update('/dashboard', ''));
-```
-
-Instead of:
-```php
-// Old way: render and send full HTML
-$html = $twig->render('dashboard.html.twig', $data);
-$hub->publish(new Update('/dashboard', $html));
-```
-
-This triggers a GET request to the current URL and renders the response.
-
-### Mercure Events
-
-| Event                | Arguments              | Description                                      |
-|----------------------|------------------------|--------------------------------------------------|
-| `sse:connected`      | `url`                  | Connection established                           |
-| `sse:disconnected`   | `url`                  | Connection closed                                |
-| `sse:message`        | `event, html`          | Default `message` event received                 |
-| `sse:named`          | `name, event, data`    | Named SSE event received (see `events` option)   |
-| `render:success`     | `event, html`          | HTML rendered successfully                       |
-| `render:failed`      | `event, html`          | Render failed (no root element)                  |
-| `refetch:started`    | `event`                | Auto-refetch triggered (empty message)           |
-| `refetch:success`    | `event, html`          | Auto-refetch completed successfully              |
-| `refetch:failed`     | `event, error`         | Auto-refetch failed                              |
-| `sse:error`          | `error`                | Connection error                                 |
-
-### Named SSE Events
-
-Mercure servers can publish messages with a custom event name (`event: foo\ndata: …`).
-Pass the names you want to receive via the `events` option, then listen with
-`sse:named`:
-
-```ts
-mercure.subscribe({
-  hubUrl: "/.well-known/mercure",
-  events: ["sidebar", "notification"],
-});
-
-mercure.on("sse:named", (name, _event, data) => {
-  if (name === "notification") { /* … */ }
-});
-```
-
-The default `message` event continues to flow through `sse:message` and the
-HTML render pipeline unchanged.
-
-### Live Data with `useMercureTopic`
-
-For simple live values (like notification counts, user status), use the `useMercureTopic` hook to subscribe to Mercure topics that send JSON data:
-
-```tsx
-import { useMercureTopic } from "reactolith";
-
-// Simple types - inferred from initial value
-function NotificationBadge() {
-  const count = useMercureTopic("/notifications/count", 0);
-
-  if (count === 0) return null;
-  return <span className="badge">{count}</span>;
-}
-
-// Explicit type parameter
-function UserStatus({ userId }: { userId: number }) {
-  const status = useMercureTopic<"online" | "offline" | "away">(
-    `/user/${userId}/status`,
-    "offline",
-  );
-  return <span className={status}>{status}</span>;
-}
-
-// Complex types with interfaces
-interface DashboardStats {
-  visitors: number;
-  sales: number;
-  conversion: number;
-}
-
-function Dashboard() {
-  const stats = useMercureTopic<DashboardStats>("/dashboard/stats", {
-    visitors: 0,
-    sales: 0,
-    conversion: 0,
-  });
-
-  return (
-    <div>
-      <span>Visitors: {stats.visitors}</span>
-      <span>Sales: {stats.sales}</span>
-      <span>Conversion: {stats.conversion}%</span>
-    </div>
-  );
-}
-```
-
-**Backend:**
-```php
-// Push JSON data to topic
-$hub->publish(new Update('/notifications/count', json_encode(42)));
-```
-
-> **Note:** When using `useMercureTopic`, make sure `app.mercureConfig` is set. Either add `data-mercure-hub-url` to your root element (recommended), or set `app.mercureConfig` manually before any component subscribes.
-
-### Custom Live Regions (Partial Updates)
-
-For partial updates (e.g., updating a sidebar across all pages), use the built-in `MercureLive` component:
-
-**Setup:**
-```typescript
-import { App, Mercure, MercureLive } from "reactolith";
-import loadable from "@loadable/component";
-
-const component = loadable(
-  async ({ is }: { is: string }) => {
-    // Don't lazy-load MercureLive – it must be available synchronously.
-    if (is === "mercure-live") return MercureLive;
-    return import(`./components/${is}.tsx`);
-  },
-  {
-    cacheKey: ({ is }) => is,
-    resolveComponent: (mod, { is }) => {
-      if (is === "mercure-live") return mod;
-      return mod.default || mod[is];
-    },
-  },
-);
-
-const app = new App(component);
-const mercure = new Mercure(app);
-
-app.mercureConfig = {
-  hubUrl: "/.well-known/mercure",
-  withCredentials: true,
-};
-mercure.subscribe(app.mercureConfig);
-```
-
-#### Example: Live Sidebar
-
-```tsx
-// components/sidebar.tsx
-export function Sidebar({ children }: { children: React.ReactNode }) {
-  return <aside className="sidebar">{children}</aside>;
-}
-```
-
-**HTML Usage:**
-```html
-<div id="reactolith-app">
-  <nav>...</nav>
-
-  <!-- This region updates live -->
-  <mercure-live topic="/sidebar">
-    <sidebar>
-      <ul>
-        <li>Initial menu item 1</li>
-        <li>Initial menu item 2</li>
-      </ul>
-    </sidebar>
-  </mercure-live>
-
-  <main>...</main>
-</div>
-```
-
-**Backend:**
-```php
-// Re-render the sidebar partial
-$html = $twig->render('_sidebar.html.twig', [
-    'menuItems' => $updatedMenuItems,
-]);
-
-// Push to all clients
-$hub->publish(new Update('/sidebar', $html));
-```
-
-**Template (`_sidebar.html.twig`):**
-```twig
-<sidebar>
-  <ul>
-    {% for item in menuItems %}
-      <li>{{ item.label }}</li>
-    {% endfor %}
-  </ul>
-</sidebar>
-```
-
----
-
-## 🧩 IDE Autocomplete (Web-Types)
-
-`reactolith` includes a CLI tool to generate [web-types](https://github.com/JetBrains/web-types) for your custom components. This enables **autocomplete and validation** in IDEs like WebStorm, PhpStorm, and VS Code (with appropriate plugins).
-
-### Generate web-types.json
-
-```bash
-npx generate-web-types -c src/components/ui -o web-types.json -n my-app
-```
-
-The generator **recursively scans** the components directory, so both flat and nested structures are supported:
-
-```
-src/components/ui/
-  button.tsx              # flat
-  card.tsx                # flat
-  accordion/
-    accordion.tsx         # nested
-    accordion-item.tsx    # nested
-```
-
-All components are discovered automatically — no extra configuration needed.
-
-**Options:**
-
-| Option         | Short | Description                                                        | Default                                       |
-|----------------|-------|--------------------------------------------------------------------|-----------------------------------------------|
-| `--components` | `-c`  | Components directory (repeatable or comma-separated)               | `components/ui`                               |
-| `--tsconfig`   | `-t`  | TypeScript config file                                             | `tsconfig.app.json` (else `tsconfig.json`)    |
-| `--out`        | `-o`  | Output file                                                        | `web-types.json`                              |
-| `--name`       | `-n`  | Library name                                                       | `reactolith-components`                       |
-| `--version`    | `-v`  | Library version                                                    | `1.0.0`                                       |
-| `--prefix`     | `-p`  | Element name prefix (must be empty or end with `-`)                | `""`                                          |
-| `--exclude`    |       | Glob to skip (e.g. `**/*.stories.tsx`). Repeatable                 |                                               |
-| `--help`       | `-h`  | Show help                                                          |                                               |
-
-All flags accept both `--name value` and `--name=value`.
-
-**Examples:**
-
-```bash
-# Minimal — uses defaults for everything else
-npx generate-web-types -c src/components/ui
-
-# With prefix — all elements get a "ui-" prefix (e.g. <ui-button>, <ui-card>)
-npx generate-web-types -c src/components -p ui- -o web-types.json
-
-# Full example with all options
-npx generate-web-types \
-  -c src/components/ui \
-  -o web-types.json \
-  -n my-app \
-  -v 2.0.0 \
-  -p app- \
-  -t tsconfig.app.json
-
-# Custom tsconfig (e.g. monorepo or library setup)
-npx generate-web-types -c packages/ui/src -t packages/ui/tsconfig.json -o packages/ui/web-types.json
-```
-
-### Configure your project
-
-Add the generated file to your `package.json`:
-
-```json
-{
-  "name": "my-app",
-  "web-types": "./web-types.json"
-}
-```
-
-### Result
-
-After restarting your IDE, you'll get:
-- ✅ **Autocomplete** for custom element names (e.g., `<ui-button>`)
-- ✅ **Prop suggestions** with types and descriptions
-- ✅ **Slot hints** for components with children/slots
-- ✅ **Validation** for required props and valid values
-
-**Tip:** Add `npx generate-web-types ...` to your build script to keep web-types in sync:
-
-```json
-{
-  "scripts": {
-    "build": "vite build && npx generate-web-types -c src/components/ui -o web-types.json"
-  }
-}
-```
-
----
-
-## 🖨 Server-Side Rendering
-
-For static-site generators (Astro, Eleventy, …) or progressive enhancement,
-import a server-safe `renderToString` helper from `reactolith/server`:
-
-```ts
-import { JSDOM } from "jsdom";
-import { renderToString } from "reactolith/server";
-import { resolveComponent } from "./resolve-component";
-
-const dom = new JSDOM(`<div id="root">
-  <my-button variant="primary">Hello</my-button>
-</div>`);
-const root = dom.window.document.getElementById("root")!;
-
-const html = renderToString(root, resolveComponent);
-```
-
-The helper wraps the tree in `AppProvider` (or a custom one passed via
-`appProvider`) and pipes it through `react-dom/server.renderToString`. Router
-and Mercure side effects are skipped because both rely on `useEffect`, which
-React does not run during server rendering.
-
----
-
-## 🧪 Public API Cheatsheet
-
-```ts
-import {
-  App,                  // mount the app on a root element
-  Router,               // intercepts links/forms and visits URLs as HTML
-  Mercure,              // SSE client that pipes HTML updates into App.render
-  MercureLive,          // <mercure-live topic="…"> partial-update component
-  ReactolithComponent,  // converts a single DOM element into a React tree
-  ScrollRestoration,    // standalone scroll-restoration helper
-  AppProvider,          // default React provider used by App
-  RouterProvider,       // exposes useRouter() (loading, lastError, navigate)
-  useApp,               // hook → current App instance
-  useRouter,            // hook → { router, loading, lastError, clearError }
-  useMercureTopic,      // hook → live JSON value for a topic
-  useMercureEventSource,// low-level hook (raw SSE messages)
-} from "reactolith";
-```
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome!
-Feel free to open an issue or submit a PR.
-
----
-
-## 🛠 Development Build
-
-If you’re contributing to this library:
+## Development
 
 ```bash
 npm install
-npm run build       # produces dist/index.{mjs,cjs}, dist/index.d.ts and the CLI bundle
+npm run build       # dist/index.{mjs,cjs}, dist/index.d.ts, CLI bundle
 npm test            # vitest run
 npm run typecheck   # tsc --noEmit
 npm run lint        # eslint src tests
 ```
 
-The `prepublishOnly` script runs `npm run build` automatically on `npm publish`, so the published artifacts always come from a fresh build.
+`prepublishOnly` runs `npm run build` so published artifacts always come from a fresh build.
+
+Contributions welcome — open an issue or PR.
