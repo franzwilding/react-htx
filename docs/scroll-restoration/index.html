@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scroll Restoration — Reactolith</title>
+  </head>
+  <body>
+    <div id="reactolith-app" class="hidden">
+      <app-page>
+        <h1>Scroll Restoration</h1>
+        <p>
+          <code>reactolith</code> automatically manages scroll position during
+          navigation, just like a traditional multi-page website:
+        </p>
+
+        <table>
+          <thead>
+            <tr><th>Navigation</th><th>Behavior</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Link click / Form submit</td><td>Scrolls to top</td></tr>
+            <tr><td>URL with <code>#hash</code></td><td>Scrolls to the hash element</td></tr>
+            <tr><td>Browser Back / Forward</td><td>Restores previous scroll position</td></tr>
+          </tbody>
+        </table>
+
+        <p>
+          Scroll positions are stored in <code>sessionStorage</code>, so they
+          survive page refreshes within the same tab.
+        </p>
+
+        <h2>Preserve Scroll Position</h2>
+        <p>
+          Sometimes you don't want to scroll to the top after navigation
+          (e.g., in-page filters, pagination). Add
+          <code>data-scroll="preserve"</code> to the link or form:
+        </p>
+        <ui-code-block lang="html">&lt;!-- Link preserves scroll position --&gt;
+&lt;a href="/products?page=2" data-scroll="preserve"&gt;Next Page&lt;/a&gt;
+
+&lt;!-- Form preserves scroll position --&gt;
+&lt;form action="/search" method="GET" data-scroll="preserve"&gt;
+  &lt;input type="text" name="q" /&gt;
+  &lt;button type="submit"&gt;Search&lt;/button&gt;
+&lt;/form&gt;</ui-code-block>
+
+        <h2>Programmatic Navigation</h2>
+        <ui-code-block lang="ts">// Default: scrolls to top
+router.navigate("/page");
+
+// Preserve current scroll position
+router.navigate("/page", { scroll: "preserve" });</ui-code-block>
+
+        <h2>Custom Scroll Container</h2>
+        <p>
+          By default, <code>reactolith</code> auto-detects the scroll container
+          by walking up the DOM from the root element and finding the nearest
+          ancestor with <code>overflow-y: auto|scroll</code>. If none is found,
+          <code>window</code> is used.
+        </p>
+        <p>You can override this with an explicit selector:</p>
+        <ui-code-block lang="html">&lt;div id="reactolith-app" data-scroll-container="#main-content"&gt;
+  ...
+&lt;/div&gt;</ui-code-block>
+      </app-page>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

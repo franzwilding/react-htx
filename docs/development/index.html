@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Development & Contributing — Reactolith</title>
+  </head>
+  <body>
+    <div id="reactolith-app" class="hidden">
+      <app-page>
+        <h1>Development &amp; Contributing</h1>
+
+        <h2>Contributing</h2>
+        <p>
+          Contributions are welcome! Feel free to
+          <a href="https://github.com/reactolith/reactolith/issues" target="_blank" rel="noreferrer noopener">open an issue</a>
+          or submit a pull request.
+        </p>
+
+        <h2>Development Build</h2>
+        <p>If you're contributing to this library:</p>
+        <ui-code-block lang="bash">npm install
+npm run build       # produces dist/index.{mjs,cjs}, dist/index.d.ts and the CLI bundle
+npm test            # vitest run
+npm run typecheck   # tsc --noEmit
+npm run lint        # eslint src tests</ui-code-block>
+
+        <p>
+          The <code>prepublishOnly</code> script runs <code>npm run build</code>
+          automatically on <code>npm publish</code>, so the published artifacts
+          always come from a fresh build.
+        </p>
+
+        <h2>Project structure</h2>
+        <ui-code-block>reactolith/
+├── src/                 # library source (App, Router, Mercure, …)
+├── tests/               # vitest test suites
+├── docs/                # this documentation site
+├── rollup.config.mjs    # library build config
+└── package.json</ui-code-block>
+
+        <h2>Running the docs locally</h2>
+        <ui-code-block lang="bash">cd docs
+npm install
+npm run dev</ui-code-block>
+        <p>
+          The docs vite project is aliased to <code>../src/index.ts</code>, so
+          edits to the library source show up in the docs immediately
+          (no library rebuild required).
+        </p>
+      </app-page>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

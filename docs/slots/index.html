@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Slots — Reactolith</title>
+  </head>
+  <body>
+    <div id="reactolith-app" class="hidden">
+      <app-page>
+        <h1>Slots</h1>
+        <p>
+          <code>reactolith</code> provides a simple slot mechanism: any direct
+          child of a custom component carrying a <code>slot</code> attribute is
+          captured as a slot prop with the slot's <strong>inner content</strong>
+          (not the wrapping element).
+        </p>
+
+        <ui-code-block lang="html">&lt;my-component&gt;
+  &lt;template slot="header"&gt;&lt;h1&gt;My header content&lt;/h1&gt;&lt;/template&gt;
+  &lt;div slot="footer"&gt;My footer content&lt;/div&gt;
+&lt;/my-component&gt;</ui-code-block>
+
+        <ui-code-block lang="tsx">function MyComponent({ header, footer, children }) {
+  return (
+    &lt;article&gt;
+      &lt;header&gt;{header}&lt;/header&gt;
+      &lt;div&gt;{children}&lt;/div&gt;
+      &lt;footer&gt;{footer}&lt;/footer&gt;
+    &lt;/article&gt;
+  );
+}</ui-code-block>
+
+        <p>
+          Use <code>&lt;template slot="…"&gt;</code> when you don't want the
+          wrapping element to appear in the rendered DOM.
+        </p>
+      </app-page>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

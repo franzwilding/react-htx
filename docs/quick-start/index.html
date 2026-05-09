@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quick Start — Reactolith</title>
+  </head>
+  <body>
+    <div id="reactolith-app" class="hidden">
+      <app-page>
+        <h1>Quick Start</h1>
+        <p>The minimum to get a working reactolith app is:</p>
+
+        <ui-code-block lang="html" filename="index.html">&lt;!-- index.html (rendered by your backend) --&gt;
+&lt;div id="reactolith-app"&gt;
+  &lt;h1&gt;Hello world&lt;/h1&gt;
+  &lt;my-button&gt;Click me&lt;/my-button&gt;
+&lt;/div&gt;</ui-code-block>
+
+        <ui-code-block lang="tsx" filename="src/main.tsx">import { App } from "reactolith";
+import { MyButton } from "./components/my-button";
+
+function resolveComponent({ is }: { is: string }) {
+  // Match each tag name to a real React component.
+  if (is === "my-button") return MyButton;
+  throw new Error(`Unknown component: ${is}`);
+}
+
+new App(resolveComponent);</ui-code-block>
+
+        <p>
+          Any tag name with a hyphen (e.g. <code>&lt;my-button&gt;</code>) is
+          treated as a custom React component and resolved through the function
+          you pass to <code>new App(...)</code>. Everything else
+          (<code>&lt;h1&gt;</code>, <code>&lt;div&gt;</code>,
+          <code>&lt;svg&gt;</code>, &hellip;) is rendered as a native HTML
+          element.
+        </p>
+
+        <h2>Lazy-loading a folder of components</h2>
+        <p>
+          For larger apps &mdash; including drop-in shadcn directories &mdash;
+          <code>createLoader</code> resolves tag names to a folder of files
+          without any per-component setup:
+        </p>
+        <ui-code-block lang="tsx">import { App, createLoader } from "reactolith";
+
+const component = createLoader({
+  modules: import.meta.glob("./components/ui/*.tsx"),
+  prefix: "ui-", // strip "ui-" before resolving
+});
+
+new App(component);</ui-code-block>
+
+        <p>
+          <code>&lt;ui-button&gt;</code> →
+          <code>./components/ui/button.tsx</code> (named export
+          <code>Button</code> or <code>default</code>). Names with multiple
+          kebab segments fall back to a parent file &mdash;
+          <code>&lt;ui-accordion-item&gt;</code> finds
+          <code>accordion.tsx</code> and picks its <code>AccordionItem</code>
+          export.
+        </p>
+
+        <p>
+          To layer custom components on top of shadcn (or any other base set),
+          pass multiple module maps; earlier maps take priority:
+        </p>
+        <ui-code-block lang="ts">const component = createLoader({
+  modules: [
+    import.meta.glob("./components/custom/*.tsx"), // wins on conflict
+    import.meta.glob("./components/ui/*.tsx"),
+  ],
+  prefix: "ui-",
+});</ui-code-block>
+
+        <h3><code>createLoader</code> options</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Option</th>
+              <th>Type</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>modules</code></td><td><code>ModuleMap</code> or <code>ModuleMap[]</code></td><td>Output of <code>import.meta.glob</code>. Earlier maps take priority.</td></tr>
+            <tr><td><code>prefix</code></td><td><code>string</code></td><td>Prefix to strip from <code>is</code> before resolving (e.g. <code>"ui-"</code>).</td></tr>
+            <tr><td><code>fallback</code></td><td><code>ReactNode</code></td><td>Rendered while a component is being lazy-loaded. Default <code>null</code>.</td></tr>
+            <tr><td><code>onMissing</code></td><td><code>(name, is) =&gt; ComponentType | null</code></td><td>Called when no module resolves; return a placeholder to render in its place.</td></tr>
+          </tbody>
+        </table>
+
+        <h2>Custom Root Component &amp; Selector</h2>
+        <ui-code-block lang="tsx" filename="src/main.tsx">import { App, createLoader } from "reactolith";
+import { AppProvider } from "./providers/app-provider";
+
+const component = createLoader({
+  modules: import.meta.glob("./components/**/*.tsx"),
+});
+
+new App(component, AppProvider, "#app");</ui-code-block>
+
+        <ui-code-block lang="tsx" filename="src/providers/app-provider.tsx">import React, { PropsWithChildren } from "react";
+import { App, AppProvider as DefaultAppProvider } from "reactolith";
+import { ThemeProvider } from "./theme-provider";
+
+export const AppProvider: React.FC&lt;PropsWithChildren&lt;{ app: App }&gt;&gt; = ({
+  app,
+  children,
+}) =&gt; (
+  &lt;DefaultAppProvider app={app}&gt;
+    &lt;ThemeProvider&gt;{children}&lt;/ThemeProvider&gt;
+  &lt;/DefaultAppProvider&gt;
+);</ui-code-block>
+
+        <p>
+          Continue with <a href="/how-it-works/">How It Works</a> to learn how
+          reactolith hydrates and updates your app.
+        </p>
+      </app-page>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

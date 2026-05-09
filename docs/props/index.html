@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Props — Reactolith</title>
+  </head>
+  <body>
+    <div id="reactolith-app" class="hidden">
+      <app-page>
+        <h1>Props</h1>
+        <p>
+          When you write reactolith components in HTML, attributes are mapped
+          to React props using the following rules:
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>HTML attribute</th>
+              <th>React prop / value</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>name="test"</code></td><td><code>name: "test"</code></td><td>Strings pass through unchanged</td></tr>
+            <tr><td><code>enabled</code> (no value)</td><td><code>enabled: true</code></td><td>Empty / boolean attributes become <code>true</code></td></tr>
+            <tr><td><code>data-foo="baa"</code></td><td><code>dataFoo: "baa"</code></td><td>On a custom-component tag, normalized to camelCase</td></tr>
+            <tr><td><code>data-foo="baa"</code></td><td><code>data-foo: "baa"</code></td><td>On a native element, kept as <code>data-*</code> for the DOM</td></tr>
+            <tr><td><code>class="x"</code></td><td><code>className: "x"</code></td><td><code>class</code> is automatically renamed to <code>className</code></td></tr>
+            <tr><td><code>json-config='{"x":1}'</code></td><td><code>config: { x: 1 }</code></td><td>Attributes prefixed with <code>json-</code> are JSON-parsed</td></tr>
+            <tr><td><code>as="{my-other}"</code></td><td><code>as: &lt;my-other /&gt;</code></td><td>Wrapping a value in <code>{...}</code> resolves it to a React component</td></tr>
+            <tr><td><code>key="abc"</code></td><td>(used as React key)</td><td>Reserved &mdash; not passed as a prop</td></tr>
+            <tr><td><code>#anything="…"</code></td><td>(ignored)</td><td>Attributes starting with <code>#</code> are dropped</td></tr>
+          </tbody>
+        </table>
+
+        <h2>Example</h2>
+        <ui-code-block lang="html">&lt;my-component
+  enabled
+  name="test"
+  data-foo="baa"
+  as="{my-other-component}"
+  json-config='{ "foo": "baa" }'
+&gt;&lt;/my-component&gt;</ui-code-block>
+
+        <ui-code-block lang="tsx">const props = {
+  enabled: true,
+  name: "test",
+  dataFoo: "baa",                // dash → camelCase
+  as: &lt;MyOtherComponent /&gt;,
+  config: { foo: "baa" },         // parsed from JSON
+};</ui-code-block>
+
+        <p>
+          If a <code>json-*</code> attribute contains invalid JSON,
+          <code>reactolith</code> logs a warning and drops the prop instead of
+          throwing.
+        </p>
+      </app-page>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
