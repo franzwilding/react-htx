@@ -1,5 +1,6 @@
 import { screen, waitFor } from "@testing-library/dom";
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
+import { act } from "react";
 import { App, useMercureTopic } from "../src";
 import React, { ReactNode } from "react";
 
@@ -304,6 +305,87 @@ describe("useMercureTopic", () => {
       expect(eventSourceCalls.length).toBeGreaterThan(0);
     });
     expect(eventSourceCalls[0][0]).toContain("topic=%2Fnotifications");
+  });
+
+  it("updates the value when a valid JSON message arrives", async () => {
+    function TestComponent({ is }: { is: string }) {
+      const count = useMercureTopic<number>("/notifications/count", 0);
+      return (
+        <div data-testid="count" data-is={is}>
+          {count}
+        </div>
+      );
+    }
+
+    document.body.innerHTML = `<div id="reactolith-app">
+      <test-component></test-component>
+    </div>`;
+
+    const app = new App(TestComponent);
+    app.mercureConfig = {
+      hubUrl: "https://example.com/.well-known/mercure",
+    };
+
+    const countElement = await screen.findByTestId("count");
+    expect(countElement.textContent).toBe("0");
+
+    await waitFor(() => {
+      expect(mockEventSource).not.toBeNull();
+    });
+
+    await act(async () => {
+      mockEventSource!.simulateMessage(JSON.stringify(7));
+    });
+
+    await waitFor(() => {
+      expect(countElement.textContent).toBe("7");
+    });
+  });
+
+  it("keeps the previous value and logs when an invalid JSON message arrives", async () => {
+    function TestComponent({ is }: { is: string }) {
+      const count = useMercureTopic<number>("/notifications/count", 5);
+      return (
+        <div data-testid="count" data-is={is}>
+          {count}
+        </div>
+      );
+    }
+
+    document.body.innerHTML = `<div id="reactolith-app">
+      <test-component></test-component>
+    </div>`;
+
+    const app = new App(TestComponent);
+    app.mercureConfig = {
+      hubUrl: "https://example.com/.well-known/mercure",
+    };
+
+    const countElement = await screen.findByTestId("count");
+    expect(countElement.textContent).toBe("5");
+
+    await waitFor(() => {
+      expect(mockEventSource).not.toBeNull();
+    });
+
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    try {
+      await act(async () => {
+        mockEventSource!.simulateMessage("not-json{");
+      });
+
+      expect(consoleError).toHaveBeenCalledWith(
+        "Failed to parse Mercure message:",
+        expect.any(SyntaxError),
+      );
+      // Value should still be the initial one
+      expect(countElement.textContent).toBe("5");
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 
   it("reconnects when mercureConfig changes hub URL", async () => {
