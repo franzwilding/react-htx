@@ -98,12 +98,16 @@ export const Form = forwardRef<HTMLFormElement, PropsWithChildren<FormProps>>(
         }
 
         // Native submission bubbles to the Router. Track the next
-        // navigation cycle to flip submitting back off.
+        // navigation cycle to flip submitting back off — on either a
+        // successful end or a fetch error.
         setSubmitting(true);
-        const off = router.on("nav:ended", () => {
+        const reset = () => {
           setSubmitting(false);
-          off();
-        });
+          offEnded();
+          offError();
+        };
+        const offEnded = router.on("nav:ended", reset);
+        const offError = router.on("nav:error", reset);
       },
       [onSubmit, router],
     );

@@ -23,6 +23,12 @@ export type RenderError = RenderFailedPayload & {
   id: number;
   /** when the error was captured */
   timestamp: number;
+  /**
+   * Populated when the error came from `nav:error` (fetch / network
+   * failure). For `render:failed` errors this is `undefined` — inspect
+   * `response` / `html` instead.
+   */
+  error?: unknown;
 };
 
 type RouterContextType = {
@@ -68,14 +74,40 @@ export function RouterProvider({ children }: { children: React.ReactNode }) {
       });
     };
 
+    // The router emits: "nav:error", input, init, pushState, error.
+    // Reset the loading flag (since `nav:ended` never fires on this
+    // path) and surface the error through the same `lastError` channel.
+    const onNavError = (
+      input: unknown,
+      init: unknown,
+      pushState: unknown,
+      error: unknown,
+    ) => {
+      setLoading(false);
+      errorId.current += 1;
+      setLastError({
+        id: errorId.current,
+        timestamp: Date.now(),
+        input,
+        init,
+        pushState,
+        response: null,
+        html: null,
+        finalUrl: null,
+        error,
+      });
+    };
+
     router.on("nav:started", start);
     router.on("nav:ended", end);
     router.on("render:failed", onRenderFailed);
+    router.on("nav:error", onNavError);
 
     return () => {
       router.off("nav:started", start);
       router.off("nav:ended", end);
       router.off("render:failed", onRenderFailed);
+      router.off("nav:error", onNavError);
     };
   }, [router]);
 
