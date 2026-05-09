@@ -1,5 +1,7 @@
 import { App } from "./App";
 import { ScrollRestoration } from "./ScrollRestoration";
+import { EventEmitter } from "./util/EventEmitter";
+import type { Handler } from "./util/EventEmitter";
 
 export type ScrollOption = "top" | "preserve";
 
@@ -8,7 +10,7 @@ export type FetchLike = (
   init?: RequestInit,
 ) => Promise<Response>;
 
-export type Handler<Args extends readonly unknown[]> = (...args: Args) => void;
+export type { Handler };
 
 export type RouterEventMap = {
   "nav:started": [input: URL | string, init: RequestInit, pushState: boolean];
@@ -80,7 +82,7 @@ export const hasNavBypassModifiers = (e: MouseEvent) =>
   e.shiftKey ||
   e.altKey;
 
-export class Router {
+export class Router extends EventEmitter<RouterEventMap> {
   private readonly app: App;
   private readonly fetch: FetchLike;
   private readonly scrollRestoration?: ScrollRestoration;
@@ -88,12 +90,6 @@ export class Router {
   private readonly boundOnClick: (e: MouseEvent) => void;
   private readonly boundOnSubmit: (e: SubmitEvent) => void;
   private readonly boundOnPopState?: () => void;
-  private listeners: Partial<
-    Record<
-      keyof RouterEventMap,
-      Set<Handler<RouterEventMap[keyof RouterEventMap]>>
-    >
-  > = {};
 
   constructor(
     app: App,
@@ -101,6 +97,7 @@ export class Router {
     fetchImpl: FetchLike = fetch,
     scrollElement: Element | null = null,
   ) {
+    super();
     this.app = app;
     this.doc = doc;
     this.fetch = (input, init) => fetchImpl(input, init);
@@ -133,48 +130,7 @@ export class Router {
       );
     }
     this.scrollRestoration?.destroy();
-    this.listeners = {};
-  }
-
-  private ensureSet<K extends keyof RouterEventMap>(
-    type: K,
-  ): Set<Handler<RouterEventMap[K]>> {
-    const existing = this.listeners[type] as
-      | Set<Handler<RouterEventMap[K]>>
-      | undefined;
-    if (existing) return existing;
-
-    const created = new Set<Handler<RouterEventMap[K]>>();
-    // Upcast to the union that the field allows; no `any`.
-    this.listeners[type] = created as unknown as Set<
-      Handler<RouterEventMap[keyof RouterEventMap]>
-    >;
-    return created;
-  }
-
-  protected emit<K extends keyof RouterEventMap>(
-    type: K,
-    ...args: RouterEventMap[K]
-  ): void {
-    this.listeners[type]?.forEach((h) => h(...args));
-  }
-
-  on<K extends keyof RouterEventMap>(
-    type: K,
-    handler: Handler<RouterEventMap[K]>,
-  ): () => void {
-    const set = this.ensureSet(type);
-    set.add(handler);
-    return () => this.off(type, handler);
-  }
-
-  off<K extends keyof RouterEventMap>(
-    type: K,
-    handler: Handler<RouterEventMap[K]>,
-  ): void {
-    this.listeners[type]?.delete(
-      handler as Handler<RouterEventMap[keyof RouterEventMap]>,
-    );
+    this.clearListeners();
   }
 
   public async visit(
