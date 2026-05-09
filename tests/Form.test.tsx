@@ -191,6 +191,56 @@ describe("Form submitting state", () => {
     expect(submittingHistory.some((v) => v)).toBe(true);
   });
 
+  it("resets submitting back to false when the submission fetch rejects", async () => {
+    const fetchMock = vi.fn(() => Promise.reject(new Error("offline")));
+    global.fetch = fetchMock as never;
+
+    function Page({ is }: { is: string }) {
+      if (is !== "my-page") return null;
+      return (
+        <Form action="/submit" method="POST">
+          <input name="x" defaultValue="y" readOnly />
+          <SubmitWatcher />
+        </Form>
+      );
+    }
+
+    function SubmitWatcher() {
+      const submitting = useFormSubmitting();
+      return (
+        <button
+          data-testid="submit"
+          type="submit"
+          data-submitting={submitting ? "1" : "0"}
+        >
+          submit
+        </button>
+      );
+    }
+
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app"><my-page></my-page></div>`;
+    mountApp(Page);
+
+    const button = await screen.findByTestId("submit");
+    expect(button).toHaveAttribute("data-submitting", "0");
+
+    const form = button.closest("form")!;
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    // Even though the fetch rejected, the form must NOT be stuck in a
+    // submitting state forever — `nav:error` should have flipped the flag.
+    await waitFor(() => {
+      expect(screen.getByTestId("submit")).toHaveAttribute(
+        "data-submitting",
+        "0",
+      );
+    });
+  });
+
   it("calls user-provided onSubmit before submission proceeds", async () => {
     const fetchMock = makeFetch(
       `<div id="reactolith-app" data-testid="reactolith-app"><my-page></my-page></div>`,

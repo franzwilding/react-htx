@@ -202,6 +202,89 @@ describe("Router event system", () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
+  it("emits nav:error and resets loading + surfaces error when fetch rejects", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Foo</my-component>
+    </div>`;
+
+    const fetchError = new Error("network down");
+    const fetchMock = vi.fn(() => Promise.reject(fetchError));
+    global.fetch = fetchMock as any;
+
+    const app = new App(testComponent);
+    const startHandler = vi.fn();
+    const endHandler = vi.fn();
+    const errorHandler = vi.fn();
+
+    app.router.on("nav:started", startHandler);
+    app.router.on("nav:ended", endHandler);
+    app.router.on("nav:error", errorHandler);
+
+    await act(async () => {});
+
+    const root = await screen.findByTestId("reactolith-app");
+    await waitFor(() => {
+      expect(root.querySelector("pre")).not.toBeNull();
+    });
+
+    await act(async () => {
+      await expect(app.router.navigate("/api/data")).rejects.toBe(fetchError);
+    });
+
+    expect(startHandler).toHaveBeenCalledTimes(1);
+    expect(endHandler).not.toHaveBeenCalled();
+    expect(errorHandler).toHaveBeenCalledTimes(1);
+    expect(errorHandler).toHaveBeenCalledWith(
+      "/api/data",
+      { method: "GET" },
+      true,
+      fetchError,
+    );
+
+    // RouterProvider must reset its loading flag and surface the error
+    // via `lastError`, even though `nav:ended` never fired.
+    await waitFor(() => {
+      expect(root.querySelector("pre")).toHaveAttribute("data-error", "true");
+    });
+    expect(root.querySelector("pre")).toHaveAttribute("data-loading", "false");
+  });
+
+  it("does not bubble unhandled rejections from navigations on fetch error", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Foo</my-component>
+    </div>`;
+
+    const fetchMock = vi.fn(() => Promise.reject(new Error("offline")));
+    global.fetch = fetchMock as any;
+
+    const unhandled = vi.fn();
+    window.addEventListener("unhandledrejection", unhandled);
+
+    try {
+      const app = new App(testComponent);
+      await act(async () => {});
+
+      const root = await screen.findByTestId("reactolith-app");
+      await waitFor(() => {
+        expect(root.querySelector("pre")).not.toBeNull();
+      });
+
+      // Simulate a popstate-style internal navigation (which the
+      // router's bound handler triggers via `void this.visit(...)`).
+      // The bound handler must swallow the rejection so consumers
+      // never see an `unhandledrejection`.
+      const win = document.defaultView!;
+      win.dispatchEvent(new win.PopStateEvent("popstate"));
+
+      // Wait long enough for the rejection's microtask to settle.
+      await new Promise((r) => setTimeout(r, 50));
+
+      expect(unhandled).not.toHaveBeenCalled();
+    } finally {
+      window.removeEventListener("unhandledrejection", unhandled);
+    }
+  });
+
   it("handles redirects correctly", async () => {
     document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
       <my-component>Foo</my-component>

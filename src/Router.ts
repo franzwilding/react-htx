@@ -38,6 +38,12 @@ export type RouterEventMap = {
     html: string,
     finalUrl: string,
   ];
+  "nav:error": [
+    input: URL | string,
+    init: RequestInit,
+    pushState: boolean,
+    error: unknown,
+  ];
 };
 
 export const isRelativeHref = (href: string | null): href is string => {
@@ -102,8 +108,15 @@ export class Router extends EventEmitter<RouterEventMap> {
     this.doc = doc;
     this.fetch = (input, init) => fetchImpl(input, init);
 
-    this.boundOnClick = (e) => this.onClick(e);
-    this.boundOnSubmit = (e) => this.onSubmit(e);
+    // Swallow rejections from the DOM event handlers; visit() now throws
+    // on fetch failures, but consumers learn about those via the
+    // `nav:error` event rather than an unhandled rejection.
+    this.boundOnClick = (e) => {
+      void this.onClick(e).catch(() => {});
+    };
+    this.boundOnSubmit = (e) => {
+      void this.onSubmit(e).catch(() => {});
+    };
 
     if (doc.defaultView) {
       const win = doc.defaultView;
@@ -111,7 +124,11 @@ export class Router extends EventEmitter<RouterEventMap> {
 
       this.boundOnPopState = () => {
         const loc = win.location;
-        void this.visit(loc.pathname + loc.search, { method: "GET" }, false);
+        void this.visit(
+          loc.pathname + loc.search,
+          { method: "GET" },
+          false,
+        ).catch(() => {});
       };
       win.addEventListener("popstate", this.boundOnPopState);
     }
@@ -148,8 +165,21 @@ export class Router extends EventEmitter<RouterEventMap> {
     this.scrollRestoration?.save();
 
     this.emit("nav:started", input, init, pushState);
-    const response = await this.fetch(input, init);
-    const html = await response.text();
+
+    let response: Response;
+    let html: string;
+    try {
+      response = await this.fetch(input, init);
+      html = await response.text();
+    } catch (error) {
+      // Fetch (or response.text()) failed before we ever got a usable
+      // response. Emit a terminal `nav:error` so listeners that registered
+      // on `nav:started` (Form submitting flag, RouterProvider loading
+      // flag, …) can reset their state, then re-throw so callers awaiting
+      // visit() still observe the rejection.
+      this.emit("nav:error", input, init, pushState, error);
+      throw error;
+    }
 
     const original = typeof input === "string" ? input : input.toString();
     const finalUrl = response.redirected ? response.url : original;
