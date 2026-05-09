@@ -83,19 +83,14 @@ export class Router {
     this.boundOnSubmit = (e) => this.onSubmit(e);
 
     if (doc.defaultView) {
-      this.scrollRestoration = new ScrollRestoration(
-        doc.defaultView,
-        scrollElement,
-      );
+      const win = doc.defaultView;
+      this.scrollRestoration = new ScrollRestoration(win, scrollElement);
 
-      this.boundOnPopState = async () => {
-        await this.visit(
-          location.pathname + location.search,
-          { method: "GET" },
-          false,
-        );
+      this.boundOnPopState = () => {
+        const loc = win.location;
+        void this.visit(loc.pathname + loc.search, { method: "GET" }, false);
       };
-      doc.defaultView.addEventListener("popstate", this.boundOnPopState);
+      win.addEventListener("popstate", this.boundOnPopState);
     }
 
     doc.addEventListener("click", this.boundOnClick);
@@ -106,7 +101,10 @@ export class Router {
     this.doc.removeEventListener("click", this.boundOnClick);
     this.doc.removeEventListener("submit", this.boundOnSubmit);
     if (this.boundOnPopState && this.doc.defaultView) {
-      this.doc.defaultView.removeEventListener("popstate", this.boundOnPopState);
+      this.doc.defaultView.removeEventListener(
+        "popstate",
+        this.boundOnPopState,
+      );
     }
     this.scrollRestoration?.destroy();
     this.listeners = {};
@@ -177,7 +175,7 @@ export class Router {
 
     if (result && pushState) {
       const state = this.scrollRestoration?.push() ?? {};
-      history.pushState(state, "", finalUrl);
+      this.doc.defaultView?.history.pushState(state, "", finalUrl);
     } else if (result && !pushState) {
       this.scrollRestoration?.pop();
     }
@@ -253,12 +251,9 @@ export class Router {
     }
 
     const scroll = form.dataset.scroll as ScrollOption | undefined;
-    await this.visit(
-      url || location.pathname + location.search,
-      { method, body },
-      true,
-      scroll,
-    );
+    const win = this.doc.defaultView;
+    const fallbackUrl = win ? win.location.pathname + win.location.search : "";
+    await this.visit(url || fallbackUrl, { method, body }, true, scroll);
   }
 
   public async navigate(

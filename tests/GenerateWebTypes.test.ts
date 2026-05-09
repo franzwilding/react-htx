@@ -119,7 +119,9 @@ describe("generateWebTypes", () => {
     expect(button.attributes).toBeDefined();
     expect(Array.isArray(button.attributes)).toBe(true);
 
-    const variant = button.attributes.find((attr: any) => attr.name === "variant");
+    const variant = button.attributes.find(
+      (attr: any) => attr.name === "variant",
+    );
     expect(variant).toBeDefined();
     expect(variant.required).toBe(false);
   });
@@ -135,7 +137,9 @@ describe("generateWebTypes", () => {
     const elements = content.contributions.html.elements;
 
     const button = elements.find((el: any) => el.name === "button");
-    const disabled = button.attributes.find((attr: any) => attr.name === "disabled");
+    const disabled = button.attributes.find(
+      (attr: any) => attr.name === "disabled",
+    );
 
     expect(disabled).toBeDefined();
     expect(disabled.value.kind).toBe("no-value");
@@ -153,7 +157,9 @@ describe("generateWebTypes", () => {
     const elements = content.contributions.html.elements;
 
     const button = elements.find((el: any) => el.name === "button");
-    const variant = button.attributes.find((attr: any) => attr.name === "variant");
+    const variant = button.attributes.find(
+      (attr: any) => attr.name === "variant",
+    );
 
     expect(variant).toBeDefined();
     expect(variant.values).toBeDefined();
@@ -240,7 +246,9 @@ describe("generateWebTypes", () => {
     const elements = content.contributions.html.elements;
 
     const button = elements.find((el: any) => el.name === "button");
-    const onClick = button.attributes.find((attr: any) => attr.name === "on-click");
+    const onClick = button.attributes.find(
+      (attr: any) => attr.name === "on-click",
+    );
 
     expect(onClick).toBeDefined();
   });
@@ -271,7 +279,9 @@ describe("generateWebTypes", () => {
     const elements = content.contributions.html.elements;
 
     const button = elements.find((el: any) => el.name === "button");
-    const variant = button.attributes.find((attr: any) => attr.name === "variant");
+    const variant = button.attributes.find(
+      (attr: any) => attr.name === "variant",
+    );
 
     expect(variant.description).toBeDefined();
     expect(variant.description).toContain("variant");

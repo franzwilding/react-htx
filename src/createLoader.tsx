@@ -1,9 +1,4 @@
-import React, {
-  ComponentType,
-  ElementType,
-  ReactNode,
-  Suspense,
-} from "react";
+import React, { ComponentType, ElementType, ReactNode, Suspense } from "react";
 
 export type ModuleLoader = () => Promise<Record<string, unknown>>;
 export type ModuleMap = Record<string, ModuleLoader>;

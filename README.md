@@ -17,6 +17,8 @@ It even includes a **built-in router** that intercepts link clicks and form subm
 - 📋 **Form support** – Modify forms dynamically (e.g., add buttons on checkbox click) **without losing state or focus**
 - 🪶 **Lightweight** – Just a few lines of setup, no heavy dependencies
 - 📡 **Real-time updates** – Works with Mercure Server-Sent-Events to push updates from the backend to the frontend
+- 🧠 **Scroll restoration** – Browser-like scroll behavior preserved between SPA-style navigations
+- 🧩 **IDE Autocomplete** – Generate JetBrains/VS Code web-types for your custom elements
 
 ---
 
@@ -26,82 +28,111 @@ It even includes a **built-in router** that intercepts link clicks and form subm
 npm install reactolith
 ```
 
-Since react and react-dom are peer dependencies, make sure to also install them:
+Since `react` and `react-dom` are peer dependencies, make sure to also install them:
+
 ```bash
 npm install react react-dom
 ```
 
----
-
-### How It Works
-
-1. **Initial Load**: Symfony renders HTML with Twig, `reactolith` hydrates it into React components
-2. **Navigation**: Clicking links fetches new HTML via AJAX, React reconciles the differences
-3. **Real-time**: Mercure pushes HTML updates from server, UI updates automatically
-4. **State Preserved**: React component state survives both navigation and real-time updates
+> **Requirements**: Node 18+, React 18 or 19.
 
 ---
 
-## 💡 Usage
+## 🏎 Quick Start
 
-Your backend returns simple HTML:
+The minimum to get a working reactolith app is:
 
 ```html
-<html lang="en">
-  <body>
-    <div id="reactolith-app">
-      <h1>Hello world</h1>
-      <ui-button type="primary">This will be a shadcn button</ui-button>
-    </div>
-  </body>
-</html>
-```
-
-Your frontend mounts the reactolith app:
-```ts
-// app.ts
-import { App, createLoader } from 'reactolith'
-
-// Vite's import.meta.glob discovers every component file lazily.
-const component = createLoader({
-  modules: import.meta.glob('./components/ui/*.tsx'),
-  prefix: 'ui-',
-})
-
-// Uses the HTML element with id="reactolith-app" as root
-new App(component)
-```
-
-`createLoader` resolves `<ui-button>` → `./components/ui/button.tsx` and picks the
-matching export (`Button`, `default`, etc.). Names with multiple kebab segments
-also fall back to a parent file — `<ui-accordion-item>` finds `accordion.tsx`
-exporting `AccordionItem`. See [Loading Components](#-loading-components) below
-for more.
-
-### 🎨 Example with Custom Root Component & Selector
-```ts
-// app.ts
-import { App, createLoader } from 'reactolith'
-import { AppProvider } from './providers/app-provider.tsx'
-
-const component = createLoader({
-  modules: import.meta.glob('./components/**/*.tsx'),
-})
-
-new App(component, AppProvider, '#app')
+<!-- index.html (rendered by your backend) -->
+<div id="reactolith-app">
+  <h1>Hello world</h1>
+  <my-button>Click me</my-button>
+</div>
 ```
 
 ```tsx
-// providers/app-provider.tsx
-import React, { ElementType } from "react"
-import { App, RootComponent } from "reactolith"
-import { RouterProvider } from "react-aria-components"
-import { ThemeProvider } from "./theme-provider"
+// src/main.tsx
+import { App } from "reactolith";
+import { MyButton } from "./components/my-button";
+
+function resolveComponent({ is }: { is: string }) {
+  // Match each tag name to a real React component.
+  if (is === "my-button") return MyButton;
+  throw new Error(`Unknown component: ${is}`);
+}
+
+new App(resolveComponent);
+```
+
+Any tag name with a hyphen (e.g. `<my-button>`) is treated as a custom React component and resolved through the function you pass to `new App(...)`. Everything else (`<h1>`, `<div>`, `<svg>`, …) is rendered as a native HTML element.
+
+### Lazy-loading a folder of components
+
+For larger apps — including drop-in shadcn directories — `createLoader` resolves
+tag names to a folder of files without any per-component setup:
+
+```tsx
+import { App, createLoader } from "reactolith";
+
+const component = createLoader({
+  modules: import.meta.glob("./components/ui/*.tsx"),
+  prefix: "ui-", // strip "ui-" before resolving
+});
+
+new App(component);
+```
+
+`<ui-button>` → `./components/ui/button.tsx` (named export `Button` or
+`default`). Names with multiple kebab segments fall back to a parent file —
+`<ui-accordion-item>` finds `accordion.tsx` and picks its `AccordionItem` export.
+
+To layer custom components on top of shadcn (or any other base set), pass
+multiple module maps; earlier maps take priority:
+
+```ts
+const component = createLoader({
+  modules: [
+    import.meta.glob("./components/custom/*.tsx"), // wins on conflict
+    import.meta.glob("./components/ui/*.tsx"),
+  ],
+  prefix: "ui-",
+});
+```
+
+`createLoader` options:
+
+| Option       | Type                                  | Description                                                                  |
+|--------------|---------------------------------------|------------------------------------------------------------------------------|
+| `modules`    | `ModuleMap` or `ModuleMap[]`          | Output of `import.meta.glob`. Earlier maps take priority.                    |
+| `prefix`     | `string`                              | Prefix to strip from `is` before resolving (e.g. `"ui-"`).                   |
+| `fallback`   | `ReactNode`                           | Rendered while a component is being lazy-loaded. Default `null`.             |
+| `onMissing`  | `(name, is) => ComponentType \| null` | Called when no module resolves; return a placeholder to render in its place. |
+
+### Custom Root Component & Selector
+
+```tsx
+// src/main.tsx
+import { App, createLoader } from "reactolith";
+import { AppProvider } from "./providers/app-provider";
+
+const component = createLoader({
+  modules: import.meta.glob("./components/**/*.tsx"),
+});
+
+new App(component, AppProvider, "#app");
+```
+
+```tsx
+// src/providers/app-provider.tsx
+import React, { ElementType } from "react";
+import { App, RootComponent } from "reactolith";
+import { RouterProvider } from "react-aria-components";
+import { ThemeProvider } from "./theme-provider";
 
 export const AppProvider: React.FC<{
-  app: App
-  element: HTMLElement
-  component: ElementType
+  app: App;
+  element: HTMLElement;
+  component: ElementType;
 }> = ({ app, element, component }) => (
   <React.StrictMode>
     <RouterProvider navigate={app.router.navigate}>
@@ -110,66 +141,17 @@ export const AppProvider: React.FC<{
       </ThemeProvider>
     </RouterProvider>
   </React.StrictMode>
-)
+);
 ```
 
 ---
 
-## 📥 Loading Components
+## 🧠 How It Works
 
-`createLoader` is the recommended way to wire up your component folder. It
-covers the two common cases — a directory of shadcn components, or a folder of
-custom components — without any per-component configuration.
-
-```ts
-import { App, createLoader } from 'reactolith'
-
-const component = createLoader({
-  modules: import.meta.glob('./components/ui/*.tsx'),
-  prefix: 'ui-', // strip "ui-" before resolving
-})
-
-new App(component)
-```
-
-### Resolution rules
-
-For a tag like `<ui-accordion-item>`, the loader:
-
-1. Strips the `ui-` prefix.
-2. Looks for a file whose basename matches the kebab name (`accordion-item.tsx`).
-3. If no match, removes trailing kebab segments and tries again
-   (`accordion.tsx`).
-4. From the resolved module, picks the export with a matching PascalCase name
-   (`AccordionItem`), or the `default` export, or a case-insensitive match.
-
-This covers shadcn's typical layout (one file with several related exports) and
-single-component files with default exports.
-
-### Mixing shadcn with custom overrides
-
-Pass multiple module maps to layer custom implementations on top of shadcn:
-
-```ts
-const component = createLoader({
-  modules: [
-    import.meta.glob('./components/custom/*.tsx'), // takes priority
-    import.meta.glob('./components/ui/*.tsx'),
-  ],
-  prefix: 'ui-',
-})
-```
-
-When both folders contain `button.tsx`, the custom one wins.
-
-### Options
-
-| Option       | Type                                | Description                                                                  |
-|--------------|-------------------------------------|------------------------------------------------------------------------------|
-| `modules`    | `ModuleMap` or `ModuleMap[]`        | Output of `import.meta.glob`. Earlier maps take priority.                    |
-| `prefix`     | `string`                            | Prefix to strip from `is` before resolving (e.g. `"ui-"`).                   |
-| `fallback`   | `ReactNode`                         | Rendered while a component is being lazy-loaded. Default `null`.             |
-| `onMissing`  | `(name, is) => ComponentType`       | Called when no module resolves; return a placeholder to render in its place. |
+1. **Initial Load**: Your backend renders HTML with Twig/ERB/Blade/etc., `reactolith` hydrates it into React components.
+2. **Navigation**: Clicking links fetches new HTML via AJAX, React reconciles the differences in place.
+3. **Real-time**: Mercure pushes HTML updates from server, the UI updates automatically.
+4. **State Preserved**: React component state survives both navigation and real-time updates.
 
 ---
 
@@ -179,7 +161,7 @@ Use `<Form>` and `<FormField>` to render forms that integrate cleanly with
 backend validation and reactolith's submission model.
 
 ```tsx
-import { Form, FormField, useFormSubmitting, useFormField } from 'reactolith'
+import { Form, FormField, useFormSubmitting, useFormField } from "reactolith";
 
 function MyForm({ errors }) {
   return (
@@ -194,18 +176,22 @@ function MyForm({ errors }) {
       </FormField>
       <SubmitButton />
     </Form>
-  )
+  );
 }
 
 function FieldError() {
-  const field = useFormField()
-  if (!field?.invalid) return null
-  return <span role="alert">{field.errors[0].message}</span>
+  const field = useFormField();
+  if (!field?.invalid) return null;
+  return <span role="alert">{field.errors[0].message}</span>;
 }
 
 function SubmitButton() {
-  const submitting = useFormSubmitting()
-  return <button type="submit" disabled={submitting}>{submitting ? '…' : 'Save'}</button>
+  const submitting = useFormSubmitting();
+  return (
+    <button type="submit" disabled={submitting}>
+      {submitting ? "…" : "Save"}
+    </button>
+  );
 }
 ```
 
@@ -293,52 +279,72 @@ Only the `<h1>` text and the `pressed` prop are updated — everything else rema
 
 ---
 
-## Props
+## 🎯 Props
 
-If you pass props to your reactolith components like this: 
+When you write reactolith components in HTML, attributes are mapped to React props using the following rules:
+
+| HTML attribute            | React prop / value           | Notes                                                        |
+|---------------------------|------------------------------|--------------------------------------------------------------|
+| `name="test"`             | `name: "test"`               | Strings pass through unchanged                               |
+| `enabled` (no value)      | `enabled: true`              | Empty / boolean attributes become `true`                     |
+| `data-foo="baa"`          | `dataFoo: "baa"`             | On a custom-component tag, normalized to camelCase           |
+| `data-foo="baa"`          | `data-foo: "baa"`            | On a native element, kept as `data-*` for the DOM            |
+| `class="x"`               | `className: "x"`             | `class` is automatically renamed to `className`              |
+| `json-config='{"x":1}'`   | `config: { x: 1 }`           | Attributes prefixed with `json-` are JSON-parsed             |
+| `as="{my-other}"`         | `as: <my-other />`           | Wrapping a value in `{...}` resolves it to a React component |
+| `key="abc"`               | (used as React key)          | Reserved — not passed as a prop                              |
+| `#anything="…"`           | (ignored)                    | Attributes starting with `#` are dropped                     |
+
+Example:
+
 ```html
-<my-component enabled name="test" data-foo="baa" as="{my-other-component}" json-config='{ "foo": "baa" }'
+<my-component
+  enabled
+  name="test"
+  data-foo="baa"
+  as="{my-other-component}"
+  json-config='{ "foo": "baa" }'
+></my-component>
 ```
 
-your components will get this props: 
 ```tsx
 const props = {
-    enabled: true,
-    name: 'test',
-    foot: 'baa',
-    as: <MyOtherComponent />,
-    config: { foo: 'baa' },
-}
+  enabled: true,
+  name: "test",
+  dataFoo: "baa",                // dash → camelCase
+  as: <MyOtherComponent />,
+  config: { foo: "baa" },         // parsed from JSON
+};
 ```
+
+If a `json-*` attribute contains invalid JSON, `reactolith` logs a warning and drops the prop instead of throwing.
 
 ---
 
-## Slots
+## 📦 Slots
 
-reactolith also provides a simple slot mechanism: Every child if a reactolith-component with a slot attribute will be 
-transformed to a slot property, holding the children of the element:
+`reactolith` provides a simple slot mechanism: any direct child of a custom component carrying a `slot` attribute is captured as a slot prop with the slot’s **inner content** (not the wrapping element).
 
 ```html
 <my-component>
-    <template slot="header"><h1>My header content</h1></template>
-    <div slot="footer">My footer content</div>
+  <template slot="header"><h1>My header content</h1></template>
+  <div slot="footer">My footer content</div>
 </my-component>
 ```
 
-your components will get this props:
-
 ```tsx
-function MyComponent({ header, footer } : { header : ReactNode, footer : ReactNode }) {
+function MyComponent({ header, footer, children }) {
+  return (
     <article>
-        <header>{header}</header>
-        <div>My content</div>
-        <footer>{footer}</footer>
-        <aside>
-            <footer>{footer}</footer>
-        </aside>
+      <header>{header}</header>
+      <div>{children}</div>
+      <footer>{footer}</footer>
     </article>
+  );
 }
 ```
+
+Use `<template slot="…">` when you don’t want the wrapping element to appear in the rendered DOM.
 
 ---
 
@@ -346,11 +352,11 @@ function MyComponent({ header, footer } : { header : ReactNode, footer : ReactNo
 
 `reactolith` automatically manages scroll position during navigation, just like a traditional multi-page website:
 
-| Navigation | Behavior |
-|---|---|
-| Link click / Form submit | Scrolls to top |
-| URL with `#hash` | Scrolls to the hash element |
-| Browser Back / Forward | Restores previous scroll position |
+| Navigation                | Behavior                                  |
+|---------------------------|-------------------------------------------|
+| Link click / Form submit  | Scrolls to top                            |
+| URL with `#hash`          | Scrolls to the hash element               |
+| Browser Back / Forward    | Restores previous scroll position         |
 
 Scroll positions are stored in `sessionStorage`, so they survive page refreshes within the same tab.
 
@@ -425,9 +431,9 @@ const app = new App(component);
 const mercure = new Mercure(app);
 mercure.subscribe(app.mercureConfig!);
 
-// optional listen to events
+// optional: listen to events
 mercure.on("sse:connected", (url) => {
-  console.log("Connected to Mercure hub");
+  console.log("Connected to Mercure hub", url);
 });
 ```
 
@@ -441,10 +447,11 @@ import { App, Mercure } from "reactolith";
 const app = new App(component);
 const mercure = new Mercure(app);
 
-// Subscribe to Mercure hub (uses current pathname as topic)
+// Subscribe to Mercure hub (uses current pathname as topic by default)
 mercure.subscribe({
   hubUrl: "https://example.com/.well-known/mercure",
-  withCredentials: true,  // Include cookies for authentication
+  withCredentials: true,        // Include cookies for authentication
+  // getTopic: () => "/custom",  // Optional: override topic resolution
 });
 ```
 
@@ -471,28 +478,28 @@ This triggers a GET request to the current URL and renders the response.
 
 ### Mercure Events
 
-| Event | Arguments | Description |
-|-------|-----------|-------------|
-| `sse:connected` | `url` | Connection established |
-| `sse:disconnected` | `url` | Connection closed |
-| `sse:message` | `event, html` | Message received |
-| `render:success` | `event, html` | HTML rendered successfully |
-| `render:failed` | `event, html` | Render failed (no root element) |
-| `refetch:started` | `event` | Auto-refetch triggered (empty message) |
-| `refetch:success` | `event, html` | Auto-refetch completed successfully |
-| `refetch:failed` | `event, error` | Auto-refetch failed |
-| `sse:error` | `error` | Connection error |
+| Event                | Arguments         | Description                                      |
+|----------------------|-------------------|--------------------------------------------------|
+| `sse:connected`      | `url`             | Connection established                           |
+| `sse:disconnected`   | `url`             | Connection closed                                |
+| `sse:message`        | `event, html`     | Message received                                 |
+| `render:success`     | `event, html`     | HTML rendered successfully                       |
+| `render:failed`      | `event, html`     | Render failed (no root element)                  |
+| `refetch:started`    | `event`           | Auto-refetch triggered (empty message)           |
+| `refetch:success`    | `event, html`     | Auto-refetch completed successfully              |
+| `refetch:failed`     | `event, error`    | Auto-refetch failed                              |
+| `sse:error`          | `error`           | Connection error                                 |
 
-### Live Data with useMercureTopic
+### Live Data with `useMercureTopic`
 
 For simple live values (like notification counts, user status), use the `useMercureTopic` hook to subscribe to Mercure topics that send JSON data:
 
 ```tsx
-import { useMercureTopic } from 'reactolith';
+import { useMercureTopic } from "reactolith";
 
 // Simple types - inferred from initial value
 function NotificationBadge() {
-  const count = useMercureTopic('/notifications/count', 0);
+  const count = useMercureTopic("/notifications/count", 0);
 
   if (count === 0) return null;
   return <span className="badge">{count}</span>;
@@ -500,9 +507,9 @@ function NotificationBadge() {
 
 // Explicit type parameter
 function UserStatus({ userId }: { userId: number }) {
-  const status = useMercureTopic<'online' | 'offline' | 'away'>(
+  const status = useMercureTopic<"online" | "offline" | "away">(
     `/user/${userId}/status`,
-    'offline'
+    "offline",
   );
   return <span className={status}>{status}</span>;
 }
@@ -515,7 +522,7 @@ interface DashboardStats {
 }
 
 function Dashboard() {
-  const stats = useMercureTopic<DashboardStats>('/dashboard/stats', {
+  const stats = useMercureTopic<DashboardStats>("/dashboard/stats", {
     visitors: 0,
     sales: 0,
     conversion: 0,
@@ -534,58 +541,38 @@ function Dashboard() {
 **Backend:**
 ```php
 // Push JSON data to topic
-$hub->publish(new Update(
-    '/notifications/count',
-    json_encode(42)
-));
+$hub->publish(new Update('/notifications/count', json_encode(42)));
 ```
 
-**Note:** When using `useMercureTopic`, make sure `app.mercureConfig` is set. You can either:
-- Use the auto-configuration by adding `data-mercure-hub-url` to your root element (recommended), or
-- Set it manually:
-```typescript
-const app = new App(component);
-app.mercureConfig = {
-  hubUrl: "/.well-known/mercure",
-  withCredentials: true,
-};
-```
+> **Note:** When using `useMercureTopic`, make sure `app.mercureConfig` is set. Either add `data-mercure-hub-url` to your root element (recommended), or set `app.mercureConfig` manually before any component subscribes.
 
 ### Custom Live Regions (Partial Updates)
 
-For partial updates (e.g., updating a sidebar across all pages), you can create your own live region component. The `mercureConfig` is accessible via `useApp()`:
+For partial updates (e.g., updating a sidebar across all pages), use the built-in `MercureLive` component:
 
 **Setup:**
 ```typescript
-import { App, Mercure, MercureLive } from 'reactolith';
-import loadable from '@loadable/component';
+import { App, Mercure, MercureLive } from "reactolith";
+import loadable from "@loadable/component";
 
 const component = loadable(
-    async ({ is }: { is: string }) => {
-        // The mapping is up to you, reactolith only provides the MercureLive Component (don't lazy load it!)
-        if (is === 'mercure-live') {
-            return MercureLive;
-        }
-
-        // Your default implementaiton
-        return import(`./components/${is}.tsx`);
+  async ({ is }: { is: string }) => {
+    // Don't lazy-load MercureLive – it must be available synchronously.
+    if (is === "mercure-live") return MercureLive;
+    return import(`./components/${is}.tsx`);
+  },
+  {
+    cacheKey: ({ is }) => is,
+    resolveComponent: (mod, { is }) => {
+      if (is === "mercure-live") return mod;
+      return mod.default || mod[is];
     },
-    {
-        cacheKey: ({ is }) => is,
-        resolveComponent: (mod, { is }) => {
-            if (is === 'mercure-live') {
-                return mod;
-            }
-            return mod.default || mod[is];
-        }
-    }
+  },
 );
-
 
 const app = new App(component);
 const mercure = new Mercure(app);
 
-// Store config for components to access
 app.mercureConfig = {
   hubUrl: "/.well-known/mercure",
   withCredentials: true,
@@ -593,16 +580,12 @@ app.mercureConfig = {
 mercure.subscribe(app.mercureConfig);
 ```
 
-### Beispiel: Live Sidebar
+#### Example: Live Sidebar
 
 ```tsx
 // components/sidebar.tsx
 export function Sidebar({ children }: { children: React.ReactNode }) {
-  return (
-    <aside className="sidebar">
-      {children}
-    </aside>
-  );
+  return <aside className="sidebar">{children}</aside>;
 }
 ```
 
@@ -611,7 +594,7 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
 <div id="reactolith-app">
   <nav>...</nav>
 
-  <!-- Diese Region wird live aktualisiert -->
+  <!-- This region updates live -->
   <mercure-live topic="/sidebar">
     <sidebar>
       <ul>
@@ -627,21 +610,21 @@ export function Sidebar({ children }: { children: React.ReactNode }) {
 
 **Backend:**
 ```php
-// Render die Sidebar neu
+// Re-render the sidebar partial
 $html = $twig->render('_sidebar.html.twig', [
-    'menuItems' => $updatedMenuItems
+    'menuItems' => $updatedMenuItems,
 ]);
 
-// Push zu allen Clients
+// Push to all clients
 $hub->publish(new Update('/sidebar', $html));
 ```
 
-**Template (_sidebar.html.twig):**
+**Template (`_sidebar.html.twig`):**
 ```twig
 <sidebar>
   <ul>
     {% for item in menuItems %}
-    <li>{{ item.label }}</li>
+      <li>{{ item.label }}</li>
     {% endfor %}
   </ul>
 </sidebar>
@@ -673,15 +656,16 @@ src/components/ui/
 All components are discovered automatically — no extra configuration needed.
 
 **Options:**
-| Option | Short | Description | Default |
-|--------|-------|-------------|---------|
-| `--components` | `-c` | Components directory (scanned recursively) | `components/ui` |
-| `--tsconfig` | `-t` | TypeScript config file | `tsconfig.app.json` (or `tsconfig.json`) |
-| `--out` | `-o` | Output file | `web-types.json` |
-| `--name` | `-n` | Library name | `reactolith-components` |
-| `--version` | `-v` | Library version | `1.0.0` |
-| `--prefix` | `-p` | Element name prefix | `""` |
-| `--help` | `-h` | Show help | |
+
+| Option         | Short | Description                                | Default                                       |
+|----------------|-------|--------------------------------------------|-----------------------------------------------|
+| `--components` | `-c`  | Components directory (scanned recursively) | `components/ui`                               |
+| `--tsconfig`   | `-t`  | TypeScript config file                     | `tsconfig.app.json` (else `tsconfig.json`)    |
+| `--out`        | `-o`  | Output file                                | `web-types.json`                              |
+| `--name`       | `-n`  | Library name                               | `reactolith-components`                       |
+| `--version`    | `-v`  | Library version                            | `1.0.0`                                       |
+| `--prefix`     | `-p`  | Element name prefix                        | `""`                                          |
+| `--help`       | `-h`  | Show help                                  |                                               |
 
 **Examples:**
 
@@ -736,17 +720,44 @@ After restarting your IDE, you'll get:
 
 ---
 
+## 🧪 Public API Cheatsheet
+
+```ts
+import {
+  App,                  // mount the app on a root element
+  Router,               // intercepts links/forms and visits URLs as HTML
+  Mercure,              // SSE client that pipes HTML updates into App.render
+  MercureLive,          // <mercure-live topic="…"> partial-update component
+  ReactolithComponent,  // converts a single DOM element into a React tree
+  ScrollRestoration,    // standalone scroll-restoration helper
+  AppProvider,          // default React provider used by App
+  RouterProvider,       // exposes useRouter() (loading, lastError, navigate)
+  useApp,               // hook → current App instance
+  useRouter,            // hook → { router, loading, lastError, clearError }
+  useMercureTopic,      // hook → live JSON value for a topic
+  useMercureEventSource,// low-level hook (raw SSE messages)
+} from "reactolith";
+```
+
+---
+
 ## 🤝 Contributing
 
 Contributions are welcome!
 Feel free to open an issue or submit a PR.
 
---- 
+---
 
 ## 🛠 Development Build
+
 If you’re contributing to this library:
 
 ```bash
 npm install
-npm run build
+npm run build       # produces dist/index.{mjs,cjs}, dist/index.d.ts and the CLI bundle
+npm test            # vitest run
+npm run typecheck   # tsc --noEmit
+npm run lint        # eslint src tests
 ```
+
+The `prepublishOnly` script runs `npm run build` automatically on `npm publish`, so the published artifacts always come from a fresh build.

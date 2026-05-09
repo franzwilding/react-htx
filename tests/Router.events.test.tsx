@@ -38,7 +38,8 @@ describe("Router event system", () => {
       <a href="/api/data">Link</a>
     </div>`;
 
-    const fetchMock = createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
+    const fetchMock =
+      createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
       <my-component>Bar</my-component>
     </div>`);
     global.fetch = fetchMock as any;
@@ -76,7 +77,8 @@ describe("Router event system", () => {
       <my-component>Foo</my-component>
     </div>`;
 
-    const fetchMock = createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
+    const fetchMock =
+      createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
       <my-component>Bar</my-component>
     </div>`);
     global.fetch = fetchMock as any;
@@ -137,7 +139,8 @@ describe("Router event system", () => {
       <my-component>Foo</my-component>
     </div>`;
 
-    const fetchMock = createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
+    const fetchMock =
+      createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
       <my-component>Bar</my-component>
     </div>`);
     global.fetch = fetchMock as any;
@@ -170,7 +173,8 @@ describe("Router event system", () => {
       <my-component>Foo</my-component>
     </div>`;
 
-    const fetchMock = createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
+    const fetchMock =
+      createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
       <my-component>Bar</my-component>
     </div>`);
     global.fetch = fetchMock as any;

@@ -43,8 +43,7 @@ export class ScrollRestoration {
     }
 
     // Initialise the current entry's restoration id
-    this.currentId =
-      win.history.state?.restorationId ?? this.generateId();
+    this.currentId = win.history.state?.restorationId ?? this.generateId();
     win.history.replaceState(
       { ...win.history.state, restorationId: this.currentId },
       "",
@@ -84,8 +83,7 @@ export class ScrollRestoration {
 
   /** Sync `currentId` with the entry the browser just navigated to (popstate). */
   pop(): void {
-    this.currentId =
-      this.win.history.state?.restorationId ?? this.currentId;
+    this.currentId = this.win.history.state?.restorationId ?? this.currentId;
   }
 
   /**

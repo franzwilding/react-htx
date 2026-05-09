@@ -13,11 +13,7 @@ export { useMercureEventSource } from "./useMercureEventSource";
 export { MercureLive } from "./MercureLive";
 export type { MercureLiveProps } from "./MercureLive";
 export { createLoader } from "./createLoader";
-export type {
-  LoaderOptions,
-  ModuleLoader,
-  ModuleMap,
-} from "./createLoader";
+export type { LoaderOptions, ModuleLoader, ModuleMap } from "./createLoader";
 export {
   Form,
   FormField,

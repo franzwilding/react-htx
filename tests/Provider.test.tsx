@@ -51,7 +51,6 @@ describe("AppProvider", () => {
     expect(capturedApp).toBe(app);
     expect(root.querySelector("pre")).toHaveTextContent("App");
   });
-
 });
 
 describe("RouterProvider", () => {
@@ -100,7 +99,10 @@ describe("RouterProvider", () => {
       expect(root.querySelector("pre")).not.toBeNull();
     });
 
-    expect(root.querySelector("pre")).toHaveAttribute("data-has-error", "false");
+    expect(root.querySelector("pre")).toHaveAttribute(
+      "data-has-error",
+      "false",
+    );
   });
 
   it("provides clearError function", async () => {

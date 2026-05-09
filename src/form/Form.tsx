@@ -69,9 +69,7 @@ export const Form = forwardRef<HTMLFormElement, PropsWithChildren<FormProps>>(
 
     const touchErrors = useCallback(
       (name: string) => {
-        const matching = errors.filter(
-          (e) => e.name === name || e.id === name,
-        );
+        const matching = errors.filter((e) => e.name === name || e.id === name);
         if (!matching.length) return;
         setTouchedErrors((prev) => {
           let changed = false;

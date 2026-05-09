@@ -85,9 +85,7 @@ describe("createLoader", () => {
         {
           "/src/components/custom/button.tsx": () =>
             Promise.resolve({
-              default: () => (
-                <span data-testid="custom-button">custom</span>
-              ),
+              default: () => <span data-testid="custom-button">custom</span>,
             }),
         },
         {
@@ -114,9 +112,7 @@ describe("createLoader", () => {
         "/src/components/card.tsx": () =>
           Promise.resolve({
             Card: () => <section data-testid="card">card</section>,
-            CardHeader: () => (
-              <header data-testid="card-header">header</header>
-            ),
+            CardHeader: () => <header data-testid="card-header">header</header>,
           }),
       },
     });
@@ -148,7 +144,9 @@ describe("createLoader", () => {
     await waitFor(() => {
       expect(screen.getByTestId("missing")).toBeInTheDocument();
     });
-    expect(screen.getByTestId("missing")).toHaveTextContent("missing:ui-unknown");
+    expect(screen.getByTestId("missing")).toHaveTextContent(
+      "missing:ui-unknown",
+    );
   });
 
   it("renders the fallback while loading and resolves afterwards", async () => {

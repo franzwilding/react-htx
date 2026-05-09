@@ -1,5 +1,5 @@
 import { screen, waitFor } from "@testing-library/dom";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { App } from "../src";
 import { ReactNode } from "react";
 
@@ -77,7 +77,9 @@ describe("ReactolithComponent HTML to React transformation", () => {
       const root = await screen.findByTestId("reactolith-app");
 
       await waitFor(() => {
-        expect(root.querySelector('pre[data-is="custom-button"]')).not.toBeNull();
+        expect(
+          root.querySelector('pre[data-is="custom-button"]'),
+        ).not.toBeNull();
       });
     });
 
@@ -117,13 +119,7 @@ describe("ReactolithComponent HTML to React transformation", () => {
         <my-list json-items='["a", "b", "c"]'>List</my-list>
       </div>`;
 
-      function listComponent({
-        is,
-        items,
-      }: {
-        is: string;
-        items: string[];
-      }) {
+      function listComponent({ is, items }: { is: string; items: string[] }) {
         return (
           <ul data-is={is}>
             {items.map((item, i) => (
@@ -172,7 +168,9 @@ describe("ReactolithComponent HTML to React transformation", () => {
       const root = await screen.findByTestId("reactolith-app");
 
       await waitFor(() => {
-        expect(root.querySelector('[data-placeholder="Enter text"]')).not.toBeNull();
+        expect(
+          root.querySelector('[data-placeholder="Enter text"]'),
+        ).not.toBeNull();
       });
 
       expect(root.querySelector('[data-maxlength="100"]')).not.toBeNull();
@@ -289,7 +287,9 @@ describe("ReactolithComponent HTML to React transformation", () => {
       });
 
       expect(root.querySelectorAll(".footer button").length).toBe(2);
-      expect(root.querySelector(".content p")).toHaveTextContent("Modal content");
+      expect(root.querySelector(".content p")).toHaveTextContent(
+        "Modal content",
+      );
     });
   });
 
@@ -480,6 +480,24 @@ describe("ReactolithComponent HTML to React transformation", () => {
       await waitFor(() => {
         expect(root.querySelector("pre")).not.toBeNull();
       });
+    });
+
+    it("ignores invalid JSON in json-* attributes without throwing", async () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+        <my-thing json-config='{ not valid json }'>Content</my-thing>
+      </div>`;
+
+      new App(testComponent);
+
+      const root = await screen.findByTestId("reactolith-app");
+
+      await waitFor(() => {
+        expect(root.querySelector('[data-is="my-thing"]')).not.toBeNull();
+      });
+
+      expect(warn).toHaveBeenCalled();
+      warn.mockRestore();
     });
   });
 });

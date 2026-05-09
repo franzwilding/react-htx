@@ -52,18 +52,40 @@ class MockEventSource {
 
 // Helper component factory
 function createTestComponent() {
-  return ({ is, children, topic, open }: { is: string; children?: React.ReactNode; topic?: string; open?: boolean }) => {
+  return ({
+    is,
+    children,
+    topic,
+    open,
+  }: {
+    is: string;
+    children?: React.ReactNode;
+    topic?: string;
+    open?: boolean;
+  }) => {
     if (is === "mercure-live" && topic) {
       return <MercureLive topic={topic}>{children}</MercureLive>;
     }
     if (is === "test-component") {
-      return <div data-testid="test-component" data-is={is}>{children}</div>;
+      return (
+        <div data-testid="test-component" data-is={is}>
+          {children}
+        </div>
+      );
     }
     if (is === "child-component") {
-      return <span data-testid="child" data-is={is}>{children}</span>;
+      return (
+        <span data-testid="child" data-is={is}>
+          {children}
+        </span>
+      );
     }
     if (is === "ui-panel") {
-      return <div data-testid="ui-panel" data-is={is} data-open={open?.toString()}>{children}</div>;
+      return (
+        <div data-testid="ui-panel" data-is={is} data-open={open?.toString()}>
+          {children}
+        </div>
+      );
     }
     return <div data-is={is}>{children}</div>;
   };
@@ -115,23 +137,27 @@ describe("MercureLive", () => {
   });
 
   it("subscribes to correct topic with correct URL", async () => {
-    const div = document.createElement('div');
-    div.id = 'reactolith-app';
-    div.setAttribute('data-mercure-hub-url', 'https://example.com/.well-known/mercure');
-    div.setAttribute('data-mercure-with-credentials', '');
+    const div = document.createElement("div");
+    div.id = "reactolith-app";
+    div.setAttribute(
+      "data-mercure-hub-url",
+      "https://example.com/.well-known/mercure",
+    );
+    div.setAttribute("data-mercure-with-credentials", "");
     div.innerHTML = `<mercure-live topic="/sidebar">
         <test-component>Test</test-component>
       </mercure-live>`;
-    document.body.innerHTML = '';
+    document.body.innerHTML = "";
     document.body.appendChild(div);
 
     const app = new App(createTestComponent());
 
     await waitFor(() => {
       // Find the call for this specific test with the correct withCredentials value
-      const relevantCall = eventSourceCalls.find(call =>
-        call[0].includes('topic=%2Fsidebar') &&
-        call[1]?.withCredentials === true
+      const relevantCall = eventSourceCalls.find(
+        (call) =>
+          call[0].includes("topic=%2Fsidebar") &&
+          call[1]?.withCredentials === true,
       );
 
       expect(relevantCall).toBeDefined();
@@ -204,7 +230,9 @@ describe("MercureLive", () => {
     });
 
     // Simulate receiving an HTML update
-    mockEventSource?.simulateMessage("<test-component>Updated</test-component>");
+    mockEventSource?.simulateMessage(
+      "<test-component>Updated</test-component>",
+    );
 
     // Wait for content to update
     await waitFor(() => {
@@ -277,7 +305,9 @@ describe("MercureLive", () => {
   });
 
   it("does nothing when mercureConfig is not set", async () => {
-    const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const consoleWarnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => {});
 
     document.body.innerHTML = `<div id="reactolith-app">
       <mercure-live topic="/test">
@@ -305,7 +335,9 @@ describe("MercureLive", () => {
   });
 
   it("handles invalid HTML gracefully", async () => {
-    const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const consoleWarnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => {});
 
     document.body.innerHTML = `<div id="reactolith-app">
       <mercure-live topic="/test">
@@ -347,7 +379,9 @@ describe("MercureLive", () => {
   });
 
   it("handles parse errors gracefully", async () => {
-    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
 
     document.body.innerHTML = `<div id="reactolith-app">
       <mercure-live topic="/test">
@@ -380,7 +414,9 @@ describe("MercureLive", () => {
     } as any;
 
     // Simulate receiving a message
-    mockEventSource?.simulateMessage("<test-component>Updated</test-component>");
+    mockEventSource?.simulateMessage(
+      "<test-component>Updated</test-component>",
+    );
 
     // Should log an error
     await waitFor(() => {
@@ -419,7 +455,7 @@ describe("MercureLive", () => {
   });
 
   it("handles nested MercureLive components", async () => {
-    let eventSources: MockEventSource[] = [];
+    const eventSources: MockEventSource[] = [];
 
     // Track all EventSource instances using a class that extends our base
     const TrackingEventSource: any = class extends MockEventSource {
@@ -444,7 +480,7 @@ describe("MercureLive", () => {
     const app = new App(createTestComponent());
 
     // Wait for initial render
-    let element = await screen.findByTestId("test-component");
+    const element = await screen.findByTestId("test-component");
     expect(element.textContent).toBe("Outer initial");
 
     // Wait for first EventSource to be created (for /outer topic)
@@ -460,27 +496,32 @@ describe("MercureLive", () => {
         <mercure-live topic="/inner">
           <test-component>Inner initial</test-component>
         </mercure-live>
-      </test-component>`
+      </test-component>`,
     );
 
     // Wait for the nested EventSource to be created (for /inner topic)
-    await waitFor(() => {
-      expect(eventSources.length).toBe(2);
-      expect(eventSources[1].url).toContain("topic=%2Finner");
-    }, { timeout: 2000 });
+    await waitFor(
+      () => {
+        expect(eventSources.length).toBe(2);
+        expect(eventSources[1].url).toContain("topic=%2Finner");
+      },
+      { timeout: 2000 },
+    );
 
     // Verify both components are rendered
     const components = screen.getAllByTestId("test-component");
     expect(components.length).toBeGreaterThanOrEqual(2);
 
     // Now push an update to the inner topic
-    eventSources[1].simulateMessage("<test-component>Inner updated</test-component>");
+    eventSources[1].simulateMessage(
+      "<test-component>Inner updated</test-component>",
+    );
 
     // Verify inner content updated
     await waitFor(() => {
       const innerComponents = screen.getAllByTestId("test-component");
-      const hasInnerUpdated = innerComponents.some(
-        comp => comp.textContent?.includes("Inner updated")
+      const hasInnerUpdated = innerComponents.some((comp) =>
+        comp.textContent?.includes("Inner updated"),
       );
       expect(hasInnerUpdated).toBe(true);
     });
@@ -511,7 +552,7 @@ describe("MercureLive", () => {
           <ui-panel open="false">Panel content</ui-panel>
         </mercure-live>
       </div></body></html>`,
-      "text/html"
+      "text/html",
     );
 
     // Trigger app.render to simulate navigation

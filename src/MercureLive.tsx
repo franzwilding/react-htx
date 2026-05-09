@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, ReactNode } from "react";
-import { useApp } from "./provider/AppProvider";
+import { useApp } from "./provider/AppContext";
 import { ReactolithComponent } from "./ReactolithComponent";
 import { useMercureEventSource } from "./useMercureEventSource";
 
