@@ -57,10 +57,12 @@ describe("isSameOriginNavigation", () => {
   });
 
   it("accepts same-origin absolute URLs", () => {
-    expect(isSameOriginNavigation("http://localhost:3000/", document)).toBe(true);
-    expect(isSameOriginNavigation("http://localhost:3000/about", document)).toBe(
+    expect(isSameOriginNavigation("http://localhost:3000/", document)).toBe(
       true,
     );
+    expect(
+      isSameOriginNavigation("http://localhost:3000/about", document),
+    ).toBe(true);
     expect(
       isSameOriginNavigation("http://localhost:3000/path?q=1#frag", document),
     ).toBe(true);
