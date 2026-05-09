@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/dom";
 import React, { act } from "react";
 import { createRoot, Root } from "react-dom/client";
@@ -147,6 +147,83 @@ describe("createLoader", () => {
     expect(screen.getByTestId("missing")).toHaveTextContent(
       "missing:ui-unknown",
     );
+  });
+
+  it("retries a failed lazy load on the next render", async () => {
+    let attempts = 0;
+    const loader = () => {
+      attempts += 1;
+      if (attempts === 1) {
+        return Promise.reject(new Error("network down"));
+      }
+      return Promise.resolve({
+        Flaky: () => <div data-testid="flaky-resolved">flaky</div>,
+      });
+    };
+
+    const Loader = createLoader({
+      modules: {
+        "/src/components/ui/flaky.tsx": loader,
+      },
+      prefix: "ui-",
+    });
+
+    type BoundaryState = { error: Error | null };
+    type BoundaryProps = { children: React.ReactNode };
+    class Boundary extends React.Component<BoundaryProps, BoundaryState> {
+      state: BoundaryState = { error: null };
+      static getDerivedStateFromError(error: Error): BoundaryState {
+        return { error };
+      }
+      reset = () => this.setState({ error: null });
+      render() {
+        if (this.state.error) {
+          return (
+            <button data-testid="retry" onClick={this.reset}>
+              {this.state.error.message}
+            </button>
+          );
+        }
+        return this.props.children;
+      }
+    }
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    try {
+      await act(async () => {
+        root.render(
+          <Boundary>
+            <Loader is="ui-flaky" />
+          </Boundary>,
+        );
+      });
+
+      const retry = await waitFor(() => screen.getByTestId("retry"));
+      expect(retry).toHaveTextContent("network down");
+      expect(attempts).toBe(1);
+
+      await act(async () => {
+        retry.click();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("flaky-resolved")).toBeInTheDocument();
+      });
+      expect(attempts).toBe(2);
+    } finally {
+      consoleError.mockRestore();
+      await act(async () => {
+        root.unmount();
+      });
+      container.remove();
+    }
   });
 
   it("renders the fallback while loading and resolves afterwards", async () => {
