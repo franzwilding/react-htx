@@ -4,13 +4,14 @@ import React, {
   PropsWithChildren,
   forwardRef,
   useCallback,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
   FormError,
   FormErrorsContext,
-  FormErrorsContextValue,
   FormSubmittingContext,
 } from "./FormContext";
 import { useRouter } from "../provider/RouterProvider";
@@ -32,64 +33,56 @@ export type FormProps = Omit<
   onSubmit?: FormEventHandler<HTMLFormElement>;
 };
 
+const hasSetCustomValidity = (
+  el: unknown,
+): el is { setCustomValidity: (msg: string) => void } =>
+  !!el &&
+  typeof el === "object" &&
+  "setCustomValidity" in el &&
+  typeof (el as { setCustomValidity: unknown }).setCustomValidity ===
+    "function";
+
 export const Form = forwardRef<HTMLFormElement, PropsWithChildren<FormProps>>(
   ({ errors: propErrors, onSubmit, children, ...rest }, forwardedRef) => {
     const errors = useMemo<FormError[]>(() => propErrors ?? [], [propErrors]);
-
-    // Touched is tracked by error *reference*. When new errors arrive
-    // (a fresh array from the backend), the old references drop out of
-    // the active error list naturally — so we never need an effect to
-    // reset state, which avoids race conditions with user interactions.
-    const [touchedErrors, setTouchedErrors] = useState<Set<FormError>>(
-      () => new Set(),
-    );
     const [submitting, setSubmitting] = useState(false);
     const { router } = useRouter();
+    const internalRef = useRef<HTMLFormElement | null>(null);
 
-    const isTouched = useCallback(
-      (e: FormError) => !!e.touched || touchedErrors.has(e),
-      [touchedErrors],
-    );
-
-    const getErrors = useCallback(
-      (name: string, includeTouched = false) =>
-        errors.filter(
-          (e) =>
-            (e.name === name || e.id === name) &&
-            (includeTouched || !isTouched(e)),
-        ),
-      [errors, isTouched],
-    );
-
-    const getAllErrors = useCallback(
-      (includeTouched = false) =>
-        includeTouched ? errors : errors.filter((e) => !isTouched(e)),
-      [errors, isTouched],
-    );
-
-    const touchErrors = useCallback(
-      (name: string) => {
-        const matching = errors.filter((e) => e.name === name || e.id === name);
-        if (!matching.length) return;
-        setTouchedErrors((prev) => {
-          let changed = false;
-          const next = new Set(prev);
-          for (const e of matching) {
-            if (!next.has(e)) {
-              next.add(e);
-              changed = true;
-            }
-          }
-          return changed ? next : prev;
-        });
+    const setRef = useCallback(
+      (el: HTMLFormElement | null) => {
+        internalRef.current = el;
+        if (typeof forwardedRef === "function") {
+          forwardedRef(el);
+        } else if (forwardedRef) {
+          forwardedRef.current = el;
+        }
       },
-      [errors],
+      [forwardedRef],
     );
 
-    const ctx = useMemo<FormErrorsContextValue>(
-      () => ({ errors, getErrors, getAllErrors, touchErrors }),
-      [errors, getErrors, getAllErrors, touchErrors],
-    );
+    // Wire backend errors to native constraint validation. Once set,
+    // the browser flips `:user-invalid` on the field as soon as the
+    // user interacts with it, so consumers can style invalid fields
+    // with plain CSS instead of tracking touched state in React.
+    useEffect(() => {
+      const form = internalRef.current;
+      if (!form) return;
+      const taken = new Set<string>();
+      for (const error of errors) {
+        if (!error.name || taken.has(error.name)) continue;
+        const el = form.elements.namedItem(error.name);
+        if (hasSetCustomValidity(el)) {
+          el.setCustomValidity(error.message);
+          taken.add(error.name);
+        }
+      }
+      return () => {
+        for (const el of Array.from(form.elements)) {
+          if (hasSetCustomValidity(el)) el.setCustomValidity("");
+        }
+      };
+    }, [errors]);
 
     const handleSubmit = useCallback(
       (event: FormEvent<HTMLFormElement>) => {
@@ -115,26 +108,24 @@ export const Form = forwardRef<HTMLFormElement, PropsWithChildren<FormProps>>(
       [onSubmit, router],
     );
 
-    // Mark a field's errors as touched as soon as the user changes it.
-    // We listen at the form level (form elements receive bubbled
-    // input/change events reliably across DOM trees).
+    // Clear a field's custom validity as soon as the user edits it.
+    // Without this, setCustomValidity would persist until new errors
+    // arrive from the server and the field would stay `:invalid`.
     const handleFormInput: FormEventHandler<HTMLFormElement> = useCallback(
       (event) => {
-        const target = event.target as HTMLElement | null;
-        const name = target?.getAttribute("name");
-        if (name) touchErrors(name);
+        const target = event.target;
+        if (hasSetCustomValidity(target)) target.setCustomValidity("");
       },
-      [touchErrors],
+      [],
     );
 
     return (
       <FormSubmittingContext.Provider value={submitting}>
-        <FormErrorsContext.Provider value={ctx}>
+        <FormErrorsContext.Provider value={errors}>
           <form
-            ref={forwardedRef}
+            ref={setRef}
             onSubmit={handleSubmit}
             onInput={handleFormInput}
-            onChange={handleFormInput}
             {...rest}
           >
             {children}
