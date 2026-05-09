@@ -113,4 +113,10 @@ export class App {
   public unmount(): void {
     this.root.unmount();
   }
+
+  /** Tear down event listeners and unmount the React tree. */
+  public destroy(): void {
+    this.router.destroy();
+    this.root.unmount();
+  }
 }
