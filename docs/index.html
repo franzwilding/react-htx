@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reactolith — Use HTML to compose your React app</title>
+    <meta
+      name="description"
+      content="Reactolith lets you write React components directly in HTML and render them from any backend (Symfony, Rails, Laravel, Django, …)."
+    />
+  </head>
+  <body>
+    <div id="reactolith-app" class="hidden">
+      <app-page>
+        <div class="mb-2 flex items-center gap-2">
+          <ui-badge variant="secondary">Proof of Concept</ui-badge>
+          <ui-badge variant="outline">v1.1.3</ui-badge>
+        </div>
+
+        <h1>⚡️ reactolith</h1>
+        <p class="text-lg text-muted-foreground">
+          Use HTML on the server to compose your React application.
+        </p>
+
+        <p>
+          <code>reactolith</code> lets you
+          <strong>write React components directly in HTML</strong> &mdash;
+          making it possible to render and hydrate a React app using
+          server-generated HTML from any backend (e.g. Symfony/Twig, Rails,
+          Laravel, Django, &hellip;).
+        </p>
+        <p>
+          ✨ Instead of manually wiring React components everywhere, just
+          return HTML from your backend and <code>reactolith</code> will
+          transform it into a live, interactive React application.
+        </p>
+        <p>
+          It even includes a <strong>built-in router</strong> that intercepts
+          link clicks and form submissions, fetches the next page via AJAX, and
+          updates only what changed &mdash; <strong>keeping React state intact
+          between navigations</strong>.
+        </p>
+
+        <div class="my-6 flex flex-wrap gap-3">
+          <a href="/installation/">
+            <ui-button>Get started</ui-button>
+          </a>
+          <a href="/quick-start/">
+            <ui-button variant="outline">Quick start</ui-button>
+          </a>
+          <a
+            href="https://github.com/reactolith/reactolith"
+            target="_blank"
+            rel="noreferrer noopener"
+          >
+            <ui-button variant="ghost">GitHub →</ui-button>
+          </a>
+        </div>
+
+        <h2>🚀 Features</h2>
+        <ul>
+          <li>🔌 <strong>Backend-agnostic</strong> &mdash; works with any backend (Symfony, Rails, Laravel, &hellip;)</li>
+          <li>🛠 <strong>Use existing backend helpers</strong> (Twig path functions, permission checks, &hellip;)</li>
+          <li>🔄 <strong>State preserved across pages</strong> &mdash; no resets on navigation</li>
+          <li>📋 <strong>Form support</strong> &mdash; modify forms dynamically (add buttons on checkbox click) without losing state or focus</li>
+          <li>🪶 <strong>Lightweight</strong> &mdash; just a few lines of setup, no heavy dependencies</li>
+          <li>📡 <strong>Real-time updates</strong> &mdash; works with Mercure SSE to push backend changes to the frontend</li>
+          <li>🧠 <strong>Scroll restoration</strong> &mdash; browser-like scroll behavior preserved between SPA-style navigations</li>
+          <li>🧩 <strong>IDE Autocomplete</strong> &mdash; generate JetBrains/VS Code web-types for your custom elements</li>
+        </ul>
+
+        <h2>A 30-second tour</h2>
+        <p>The minimum to get a working reactolith app is:</p>
+        <ui-code-block lang="html" filename="index.html">&lt;!-- index.html (rendered by your backend) --&gt;
+&lt;div id="reactolith-app"&gt;
+  &lt;h1&gt;Hello world&lt;/h1&gt;
+  &lt;my-button&gt;Click me&lt;/my-button&gt;
+&lt;/div&gt;</ui-code-block>
+
+        <ui-code-block lang="tsx" filename="src/main.tsx">import { App } from "reactolith";
+import { MyButton } from "./components/my-button";
+
+new App(({ is }) =&gt; (is === "my-button" ? MyButton : null));</ui-code-block>
+
+        <p>
+          Any tag name with a hyphen (e.g. <code>&lt;my-button&gt;</code>) is
+          treated as a custom React component &mdash; the rest of the HTML
+          renders as native elements.
+        </p>
+
+        <h2>Where to next?</h2>
+        <p>
+          Continue with <a href="/installation/">Installation</a>, then walk
+          through <a href="/quick-start/">Quick Start</a> and
+          <a href="/how-it-works/">How It Works</a>. Or jump straight to a
+          topic from the sidebar.
+        </p>
+
+        <hr />
+
+        <p class="text-sm text-muted-foreground">
+          This documentation site is built <em>with</em> reactolith — every
+          page is plain HTML, every <code>&lt;app-…&gt;</code> and
+          <code>&lt;ui-…&gt;</code> tag is a React component, and navigation
+          between pages preserves the sidebar's React state. View the source
+          at <a href="https://github.com/reactolith/reactolith/tree/main/docs" target="_blank" rel="noreferrer noopener"><code>/docs</code></a>.
+        </p>
+      </app-page>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>API Cheatsheet — Reactolith</title>
+  </head>
+  <body>
+    <div id="reactolith-app" class="hidden">
+      <app-page>
+        <h1>Public API Cheatsheet</h1>
+        <p>The complete public surface of <code>reactolith</code>:</p>
+        <ui-code-block lang="ts">import {
+  App,                  // mount the app on a root element
+  Router,               // intercepts links/forms and visits URLs as HTML
+  Mercure,              // SSE client that pipes HTML updates into App.render
+  MercureLive,          // &lt;mercure-live topic="…"&gt; partial-update component
+  ReactolithComponent,  // converts a single DOM element into a React tree
+  ScrollRestoration,    // standalone scroll-restoration helper
+  AppProvider,          // default React provider used by App
+  RouterProvider,       // exposes useRouter() (loading, lastError, navigate)
+  useApp,               // hook → current App instance
+  useRouter,            // hook → { router, loading, lastError, clearError }
+  useMercureTopic,      // hook → live JSON value for a topic
+  useMercureEventSource,// low-level hook (raw SSE messages)
+  createLoader,         // resolve tag names against import.meta.glob() maps
+} from "reactolith";</ui-code-block>
+
+        <h2>Form helpers</h2>
+        <ui-code-block lang="ts">import {
+  Form,
+  FormField,
+  FormErrorsContext,
+  FormFieldContext,
+  FormSubmittingContext,
+  useFormErrors,
+  useFormErrorsContext,
+  useFormField,
+  useFormSubmitting,
+} from "reactolith";</ui-code-block>
+
+        <h2>Server entry point</h2>
+        <ui-code-block lang="ts">import { renderToString } from "reactolith/server";</ui-code-block>
+
+        <h2>CLI</h2>
+        <ui-code-block lang="bash">npx generate-web-types --components src/components/ui --out web-types.json</ui-code-block>
+      </app-page>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

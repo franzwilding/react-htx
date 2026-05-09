@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Web Types (IDE Autocomplete) — Reactolith</title>
+  </head>
+  <body>
+    <div id="reactolith-app" class="hidden">
+      <app-page>
+        <h1>IDE Autocomplete (web-types)</h1>
+        <p>
+          <code>reactolith</code> includes a CLI tool to generate
+          <a href="https://github.com/JetBrains/web-types" target="_blank" rel="noreferrer noopener">web-types</a>
+          for your custom components. This enables
+          <strong>autocomplete and validation</strong> in IDEs like WebStorm,
+          PhpStorm, and VS Code (with appropriate plugins).
+        </p>
+
+        <h2>Generate web-types.json</h2>
+        <ui-code-block lang="bash">npx generate-web-types -c src/components/ui -o web-types.json -n my-app</ui-code-block>
+
+        <p>
+          The generator <strong>recursively scans</strong> the components
+          directory, so both flat and nested structures are supported:
+        </p>
+        <ui-code-block>src/components/ui/
+  button.tsx              # flat
+  card.tsx                # flat
+  accordion/
+    accordion.tsx         # nested
+    accordion-item.tsx    # nested</ui-code-block>
+
+        <p>
+          All components are discovered automatically &mdash; no extra
+          configuration needed.
+        </p>
+
+        <h2>Options</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Option</th>
+              <th>Short</th>
+              <th>Description</th>
+              <th>Default</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>--components</code></td><td><code>-c</code></td><td>Components directory (repeatable or comma-separated)</td><td><code>components/ui</code></td></tr>
+            <tr><td><code>--tsconfig</code></td><td><code>-t</code></td><td>TypeScript config file</td><td><code>tsconfig.app.json</code> (else <code>tsconfig.json</code>)</td></tr>
+            <tr><td><code>--out</code></td><td><code>-o</code></td><td>Output file</td><td><code>web-types.json</code></td></tr>
+            <tr><td><code>--name</code></td><td><code>-n</code></td><td>Library name</td><td><code>reactolith-components</code></td></tr>
+            <tr><td><code>--version</code></td><td><code>-v</code></td><td>Library version</td><td><code>1.0.0</code></td></tr>
+            <tr><td><code>--prefix</code></td><td><code>-p</code></td><td>Element name prefix (must be empty or end with <code>-</code>)</td><td><code>""</code></td></tr>
+            <tr><td><code>--exclude</code></td><td></td><td>Glob to skip (e.g. <code>**/*.stories.tsx</code>). Repeatable.</td><td></td></tr>
+            <tr><td><code>--help</code></td><td><code>-h</code></td><td>Show help</td><td></td></tr>
+          </tbody>
+        </table>
+        <p>All flags accept both <code>--name value</code> and <code>--name=value</code>.</p>
+
+        <h2>Examples</h2>
+        <ui-code-block lang="bash"># Minimal — uses defaults for everything else
+npx generate-web-types -c src/components/ui
+
+# With prefix — all elements get a "ui-" prefix (e.g. &lt;ui-button&gt;, &lt;ui-card&gt;)
+npx generate-web-types -c src/components -p ui- -o web-types.json
+
+# Full example with all options
+npx generate-web-types \
+  -c src/components/ui \
+  -o web-types.json \
+  -n my-app \
+  -v 2.0.0 \
+  -p app- \
+  -t tsconfig.app.json
+
+# Custom tsconfig (e.g. monorepo or library setup)
+npx generate-web-types -c packages/ui/src -t packages/ui/tsconfig.json -o packages/ui/web-types.json</ui-code-block>
+
+        <h2>Configure your project</h2>
+        <p>Add the generated file to your <code>package.json</code>:</p>
+        <ui-code-block lang="json">{
+  "name": "my-app",
+  "web-types": "./web-types.json"
+}</ui-code-block>
+
+        <h2>Result</h2>
+        <p>After restarting your IDE, you'll get:</p>
+        <ul>
+          <li>Autocomplete for custom element names (e.g. <code>&lt;ui-button&gt;</code>)</li>
+          <li>Prop suggestions with types and descriptions</li>
+          <li>Slot hints for components with children/slots</li>
+          <li>Validation for required props and valid values</li>
+        </ul>
+
+        <p>
+          <strong>Tip:</strong> Add <code>npx generate-web-types ...</code> to
+          your build script to keep web-types in sync:
+        </p>
+        <ui-code-block lang="json">{
+  "scripts": {
+    "build": "vite build &amp;&amp; npx generate-web-types -c src/components/ui -o web-types.json"
+  }
+}</ui-code-block>
+      </app-page>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

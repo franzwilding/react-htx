@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>How It Works — Reactolith</title>
+  </head>
+  <body>
+    <div id="reactolith-app" class="hidden">
+      <app-page>
+        <h1>How It Works</h1>
+
+        <ol>
+          <li>
+            <strong>Initial Load:</strong> Your backend renders HTML with
+            Twig/ERB/Blade/etc., <code>reactolith</code> hydrates it into React
+            components.
+          </li>
+          <li>
+            <strong>Navigation:</strong> Clicking links fetches new HTML via
+            AJAX, React reconciles the differences in place.
+          </li>
+          <li>
+            <strong>Real-time:</strong> Mercure pushes HTML updates from the
+            server, the UI updates automatically.
+          </li>
+          <li>
+            <strong>State Preserved:</strong> React component state survives
+            both navigation and real-time updates.
+          </li>
+        </ol>
+
+        <h2>Avoiding FOUC</h2>
+        <p>
+          To hide the unhydrated tree until React mounts, give your root
+          element the class <code>hidden</code> (and define
+          <code>.hidden { display: none }</code> in your CSS). After the first
+          React commit, reactolith removes that class to reveal the app:
+        </p>
+        <ui-code-block lang="html">&lt;div id="reactolith-app" class="hidden"&gt;
+  &lt;h1&gt;Hello world&lt;/h1&gt;
+&lt;/div&gt;</ui-code-block>
+
+        <p>This is configurable via <code>AppOptions</code>:</p>
+        <ui-code-block lang="ts">new App(component, AppProvider, "#reactolith-app", undefined, document, fetch, {
+  hideUntilHydrated: true,   // default: true; pass false to opt out
+  hiddenClass: "invisible",  // default: "hidden"
+});</ui-code-block>
+
+        <p>
+          Custom <code>appProvider</code> implementations should call
+          <code>app.notifyHydrated()</code> from a <code>useEffect</code> so
+          the hidden class is removed and <code>app.onHydrated(...)</code>
+          listeners fire.
+        </p>
+
+        <h2>Navigation Without Losing State</h2>
+        <p>
+          When navigating, <code>reactolith</code> fetches the
+          <strong>next HTML page</strong> and applies <strong>only the
+          differences</strong> using React's reconciliation algorithm.
+        </p>
+        <p>
+          👉 This means component state is preserved (e.g. toggles, inputs,
+          focus).
+        </p>
+
+        <ui-code-block lang="html" filename="page1.html">&lt;!-- page1.html --&gt;
+&lt;div id="reactolith-app"&gt;
+  &lt;h1&gt;Page 1&lt;/h1&gt;
+  &lt;ui-toggle json-pressed="false"&gt;Toggle&lt;/ui-toggle&gt;
+  &lt;a href="page2.html"&gt;Go to page 2&lt;/a&gt;
+&lt;/div&gt;</ui-code-block>
+
+        <ui-code-block lang="html" filename="page2.html">&lt;!-- page2.html --&gt;
+&lt;div id="reactolith-app"&gt;
+  &lt;h1&gt;Page 2&lt;/h1&gt;
+  &lt;ui-toggle json-pressed="true"&gt;Toggle&lt;/ui-toggle&gt;
+  &lt;a href="page1.html"&gt;Go to page 1&lt;/a&gt;
+&lt;/div&gt;</ui-code-block>
+
+        <p>
+          Only the <code>&lt;h1&gt;</code> text and the <code>pressed</code>
+          prop are updated &mdash; everything else remains untouched ✅.
+        </p>
+      </app-page>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

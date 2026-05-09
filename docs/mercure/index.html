@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Real-time Updates with Mercure — Reactolith</title>
+  </head>
+  <body>
+    <div id="reactolith-app" class="hidden">
+      <app-page>
+        <h1>Real-time Updates with Mercure</h1>
+        <p>
+          <code>reactolith</code> supports
+          <strong>Server-Sent Events (SSE)</strong> via
+          <a href="https://mercure.rocks/" target="_blank" rel="noreferrer noopener">Mercure</a>
+          for real-time updates from your backend. When the server publishes
+          an update, the HTML is automatically rendered &mdash; just like with
+          router navigation.
+        </p>
+        <p>
+          Mercure automatically subscribes to the <strong>current URL
+          pathname</strong> as the topic and re-subscribes when the route
+          changes.
+        </p>
+
+        <h2>Auto-Configuration (Recommended)</h2>
+        <p>
+          The easiest way to configure Mercure is to add the
+          <code>data-mercure-hub-url</code> attribute to your root element:
+        </p>
+        <ui-code-block lang="html">&lt;div id="reactolith-app" data-mercure-hub-url="https://example.com/.well-known/mercure"&gt;
+  &lt;!-- Your content --&gt;
+&lt;/div&gt;
+
+&lt;!-- With credentials (cookies): --&gt;
+&lt;div id="reactolith-app"
+     data-mercure-hub-url="https://example.com/.well-known/mercure"
+     data-mercure-with-credentials&gt;
+  &lt;!-- Your content --&gt;
+&lt;/div&gt;</ui-code-block>
+
+        <ui-code-block lang="ts">import { App, Mercure } from "reactolith";
+
+const app = new App(component);
+// mercureConfig is automatically set from data-mercure-hub-url attribute
+
+const mercure = new Mercure(app);
+mercure.subscribe(app.mercureConfig!);
+
+// optional: listen to events
+mercure.on("sse:connected", (url) =&gt; {
+  console.log("Connected to Mercure hub", url);
+});</ui-code-block>
+
+        <h2>Manual Configuration</h2>
+        <p>Alternatively, you can configure Mercure programmatically:</p>
+        <ui-code-block lang="ts">import { App, Mercure } from "reactolith";
+
+const app = new App(component);
+const mercure = new Mercure(app);
+
+// Subscribe to Mercure hub (uses current pathname as topic by default)
+mercure.subscribe({
+  hubUrl: "https://example.com/.well-known/mercure",
+  withCredentials: true,        // Include cookies for authentication
+  // getTopic: () =&gt; "/custom",  // Optional: override topic resolution
+});</ui-code-block>
+
+        <p>
+          When the user navigates to a different route, Mercure automatically
+          reconnects with the new pathname as the topic.
+        </p>
+
+        <h2>Auto-Refetch on Empty Messages</h2>
+        <p>
+          When Mercure receives an <strong>empty message</strong> (or
+          whitespace-only), it automatically refetches the current route. This
+          makes it easy to invalidate the current page from the backend without
+          having to render and send the full HTML:
+        </p>
+
+        <p><strong>Backend (simple invalidation):</strong></p>
+        <ui-code-block lang="php">// Just notify that the page should refresh - no HTML needed
+$hub-&gt;publish(new Update('/dashboard', ''));</ui-code-block>
+
+        <p>Instead of:</p>
+        <ui-code-block lang="php">// Old way: render and send full HTML
+$html = $twig-&gt;render('dashboard.html.twig', $data);
+$hub-&gt;publish(new Update('/dashboard', $html));</ui-code-block>
+
+        <p>This triggers a GET request to the current URL and renders the response.</p>
+
+        <h2>Mercure Events</h2>
+        <table>
+          <thead>
+            <tr><th>Event</th><th>Arguments</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>sse:connected</code></td><td><code>url</code></td><td>Connection established</td></tr>
+            <tr><td><code>sse:disconnected</code></td><td><code>url</code></td><td>Connection closed</td></tr>
+            <tr><td><code>sse:message</code></td><td><code>event, html</code></td><td>Default <code>message</code> event received</td></tr>
+            <tr><td><code>sse:named</code></td><td><code>name, event, data</code></td><td>Named SSE event received (see <code>events</code> option)</td></tr>
+            <tr><td><code>render:success</code></td><td><code>event, html</code></td><td>HTML rendered successfully</td></tr>
+            <tr><td><code>render:failed</code></td><td><code>event, html</code></td><td>Render failed (no root element)</td></tr>
+            <tr><td><code>refetch:started</code></td><td><code>event</code></td><td>Auto-refetch triggered (empty message)</td></tr>
+            <tr><td><code>refetch:success</code></td><td><code>event, html</code></td><td>Auto-refetch completed successfully</td></tr>
+            <tr><td><code>refetch:failed</code></td><td><code>event, error</code></td><td>Auto-refetch failed</td></tr>
+            <tr><td><code>sse:error</code></td><td><code>error</code></td><td>Connection error</td></tr>
+          </tbody>
+        </table>
+
+        <h2>Named SSE Events</h2>
+        <p>
+          Mercure servers can publish messages with a custom event name
+          (<code>event: foo\ndata: …</code>). Pass the names you want to
+          receive via the <code>events</code> option, then listen with
+          <code>sse:named</code>:
+        </p>
+        <ui-code-block lang="ts">mercure.subscribe({
+  hubUrl: "/.well-known/mercure",
+  events: ["sidebar", "notification"],
+});
+
+mercure.on("sse:named", (name, _event, data) =&gt; {
+  if (name === "notification") { /* … */ }
+});</ui-code-block>
+
+        <p>
+          The default <code>message</code> event continues to flow through
+          <code>sse:message</code> and the HTML render pipeline unchanged.
+        </p>
+
+        <h2>Live Data with <code>useMercureTopic</code></h2>
+        <p>
+          For simple live values (like notification counts, user status), use
+          the <code>useMercureTopic</code> hook to subscribe to Mercure topics
+          that send JSON data:
+        </p>
+        <ui-code-block lang="tsx">import { useMercureTopic } from "reactolith";
+
+// Simple types - inferred from initial value
+function NotificationBadge() {
+  const count = useMercureTopic("/notifications/count", 0);
+  if (count === 0) return null;
+  return &lt;span className="badge"&gt;{count}&lt;/span&gt;;
+}
+
+// Explicit type parameter
+function UserStatus({ userId }: { userId: number }) {
+  const status = useMercureTopic&lt;"online" | "offline" | "away"&gt;(
+    `/user/${userId}/status`,
+    "offline",
+  );
+  return &lt;span className={status}&gt;{status}&lt;/span&gt;;
+}
+
+// Complex types with interfaces
+interface DashboardStats {
+  visitors: number;
+  sales: number;
+  conversion: number;
+}
+
+function Dashboard() {
+  const stats = useMercureTopic&lt;DashboardStats&gt;("/dashboard/stats", {
+    visitors: 0,
+    sales: 0,
+    conversion: 0,
+  });
+
+  return (
+    &lt;div&gt;
+      &lt;span&gt;Visitors: {stats.visitors}&lt;/span&gt;
+      &lt;span&gt;Sales: {stats.sales}&lt;/span&gt;
+      &lt;span&gt;Conversion: {stats.conversion}%&lt;/span&gt;
+    &lt;/div&gt;
+  );
+}</ui-code-block>
+
+        <p><strong>Backend:</strong></p>
+        <ui-code-block lang="php">// Push JSON data to topic
+$hub-&gt;publish(new Update('/notifications/count', json_encode(42)));</ui-code-block>
+
+        <blockquote>
+          <strong>Note:</strong> When using <code>useMercureTopic</code>, make
+          sure <code>app.mercureConfig</code> is set. Either add
+          <code>data-mercure-hub-url</code> to your root element (recommended),
+          or set <code>app.mercureConfig</code> manually before any component
+          subscribes.
+        </blockquote>
+
+        <h2>Custom Live Regions (Partial Updates)</h2>
+        <p>
+          For partial updates (e.g., updating a sidebar across all pages), use
+          the built-in <code>MercureLive</code> component:
+        </p>
+
+        <p><strong>Setup:</strong></p>
+        <ui-code-block lang="ts">import { App, Mercure, MercureLive } from "reactolith";
+import loadable from "@loadable/component";
+
+const component = loadable(
+  async ({ is }: { is: string }) =&gt; {
+    // Don't lazy-load MercureLive – it must be available synchronously.
+    if (is === "mercure-live") return MercureLive;
+    return import(`./components/${is}.tsx`);
+  },
+  {
+    cacheKey: ({ is }) =&gt; is,
+    resolveComponent: (mod, { is }) =&gt; {
+      if (is === "mercure-live") return mod;
+      return mod.default || mod[is];
+    },
+  },
+);
+
+const app = new App(component);
+const mercure = new Mercure(app);
+
+app.mercureConfig = {
+  hubUrl: "/.well-known/mercure",
+  withCredentials: true,
+};
+mercure.subscribe(app.mercureConfig);</ui-code-block>
+
+        <h3>Example: Live Sidebar</h3>
+        <ui-code-block lang="tsx" filename="components/sidebar.tsx">export function Sidebar({ children }: { children: React.ReactNode }) {
+  return &lt;aside className="sidebar"&gt;{children}&lt;/aside&gt;;
+}</ui-code-block>
+
+        <p><strong>HTML Usage:</strong></p>
+        <ui-code-block lang="html">&lt;div id="reactolith-app"&gt;
+  &lt;nav&gt;...&lt;/nav&gt;
+
+  &lt;!-- This region updates live --&gt;
+  &lt;mercure-live topic="/sidebar"&gt;
+    &lt;sidebar&gt;
+      &lt;ul&gt;
+        &lt;li&gt;Initial menu item 1&lt;/li&gt;
+        &lt;li&gt;Initial menu item 2&lt;/li&gt;
+      &lt;/ul&gt;
+    &lt;/sidebar&gt;
+  &lt;/mercure-live&gt;
+
+  &lt;main&gt;...&lt;/main&gt;
+&lt;/div&gt;</ui-code-block>
+
+        <p><strong>Backend:</strong></p>
+        <ui-code-block lang="php">// Re-render the sidebar partial
+$html = $twig-&gt;render('_sidebar.html.twig', [
+    'menuItems' =&gt; $updatedMenuItems,
+]);
+
+// Push to all clients
+$hub-&gt;publish(new Update('/sidebar', $html));</ui-code-block>
+
+        <p><strong>Template (<code>_sidebar.html.twig</code>):</strong></p>
+        <ui-code-block lang="twig">&lt;sidebar&gt;
+  &lt;ul&gt;
+    {% for item in menuItems %}
+      &lt;li&gt;{{ item.label }}&lt;/li&gt;
+    {% endfor %}
+  &lt;/ul&gt;
+&lt;/sidebar&gt;</ui-code-block>
+      </app-page>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

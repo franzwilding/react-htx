@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Installation — Reactolith</title>
+    <meta
+      name="description"
+      content="Install reactolith and its peer dependencies."
+    />
+  </head>
+  <body>
+    <div id="reactolith-app" class="hidden">
+      <app-page>
+        <h1>Installation</h1>
+        <p>
+          <code>reactolith</code> is published on npm. Install it alongside
+          React and React DOM.
+        </p>
+
+        <h2>Install the package</h2>
+        <ui-code-block lang="bash">npm install reactolith</ui-code-block>
+
+        <h2>Install peer dependencies</h2>
+        <p>
+          <code>react</code> and <code>react-dom</code> are
+          <strong>peer dependencies</strong> &mdash; install them in your
+          project too.
+        </p>
+        <ui-code-block lang="bash">npm install react react-dom</ui-code-block>
+
+        <h2>Requirements</h2>
+        <ul>
+          <li><strong>Node</strong> 18 or newer</li>
+          <li><strong>React</strong> 18 or 19</li>
+          <li>A bundler that supports <code>import.meta.glob</code> (Vite, Rspack, &hellip;) is recommended for the loader workflow</li>
+        </ul>
+
+        <h2>Verify the install</h2>
+        <ui-code-block lang="ts">import { App } from "reactolith";
+
+console.log(typeof App); // "function"</ui-code-block>
+
+        <p>
+          Continue with the
+          <a href="/quick-start/">Quick Start</a> to mount your first app.
+        </p>
+      </app-page>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

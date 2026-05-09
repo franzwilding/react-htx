@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Server-Side Rendering — Reactolith</title>
+  </head>
+  <body>
+    <div id="reactolith-app" class="hidden">
+      <app-page>
+        <h1>Server-Side Rendering</h1>
+        <p>
+          For static-site generators (Astro, Eleventy, &hellip;) or progressive
+          enhancement, import a server-safe <code>renderToString</code> helper
+          from <code>reactolith/server</code>:
+        </p>
+
+        <ui-code-block lang="ts">import { JSDOM } from "jsdom";
+import { renderToString } from "reactolith/server";
+import { resolveComponent } from "./resolve-component";
+
+const dom = new JSDOM(`&lt;div id="root"&gt;
+  &lt;my-button variant="primary"&gt;Hello&lt;/my-button&gt;
+&lt;/div&gt;`);
+const root = dom.window.document.getElementById("root")!;
+
+const html = renderToString(root, resolveComponent);</ui-code-block>
+
+        <p>
+          The helper wraps the tree in <code>AppProvider</code> (or a custom one
+          passed via <code>appProvider</code>) and pipes it through
+          <code>react-dom/server.renderToString</code>. Router and Mercure side
+          effects are skipped because both rely on <code>useEffect</code>,
+          which React does not run during server rendering.
+        </p>
+      </app-page>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
