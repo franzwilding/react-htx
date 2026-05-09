@@ -153,6 +153,31 @@ export const AppProvider: React.FC<{
 3. **Real-time**: Mercure pushes HTML updates from server, the UI updates automatically.
 4. **State Preserved**: React component state survives both navigation and real-time updates.
 
+### Avoiding FOUC
+
+To hide the unhydrated tree until React mounts, give your root element the
+class `hidden` (and define `.hidden { display: none }` in your CSS). After the
+first React commit, reactolith removes that class to reveal the app:
+
+```html
+<div id="reactolith-app" class="hidden">
+  <h1>Hello world</h1>
+</div>
+```
+
+This is configurable via `AppOptions`:
+
+```ts
+new App(component, AppProvider, "#reactolith-app", undefined, document, fetch, {
+  hideUntilHydrated: true,   // default: true; pass false to opt out
+  hiddenClass: "invisible",  // default: "hidden"
+});
+```
+
+Custom `appProvider` implementations should call `app.notifyHydrated()` from a
+`useEffect` so the hidden class is removed and `app.onHydrated(...)` listeners
+fire.
+
 ---
 
 ## 📋 Forms
@@ -478,17 +503,38 @@ This triggers a GET request to the current URL and renders the response.
 
 ### Mercure Events
 
-| Event                | Arguments         | Description                                      |
-|----------------------|-------------------|--------------------------------------------------|
-| `sse:connected`      | `url`             | Connection established                           |
-| `sse:disconnected`   | `url`             | Connection closed                                |
-| `sse:message`        | `event, html`     | Message received                                 |
-| `render:success`     | `event, html`     | HTML rendered successfully                       |
-| `render:failed`      | `event, html`     | Render failed (no root element)                  |
-| `refetch:started`    | `event`           | Auto-refetch triggered (empty message)           |
-| `refetch:success`    | `event, html`     | Auto-refetch completed successfully              |
-| `refetch:failed`     | `event, error`    | Auto-refetch failed                              |
-| `sse:error`          | `error`           | Connection error                                 |
+| Event                | Arguments              | Description                                      |
+|----------------------|------------------------|--------------------------------------------------|
+| `sse:connected`      | `url`                  | Connection established                           |
+| `sse:disconnected`   | `url`                  | Connection closed                                |
+| `sse:message`        | `event, html`          | Default `message` event received                 |
+| `sse:named`          | `name, event, data`    | Named SSE event received (see `events` option)   |
+| `render:success`     | `event, html`          | HTML rendered successfully                       |
+| `render:failed`      | `event, html`          | Render failed (no root element)                  |
+| `refetch:started`    | `event`                | Auto-refetch triggered (empty message)           |
+| `refetch:success`    | `event, html`          | Auto-refetch completed successfully              |
+| `refetch:failed`     | `event, error`         | Auto-refetch failed                              |
+| `sse:error`          | `error`                | Connection error                                 |
+
+### Named SSE Events
+
+Mercure servers can publish messages with a custom event name (`event: foo\ndata: …`).
+Pass the names you want to receive via the `events` option, then listen with
+`sse:named`:
+
+```ts
+mercure.subscribe({
+  hubUrl: "/.well-known/mercure",
+  events: ["sidebar", "notification"],
+});
+
+mercure.on("sse:named", (name, _event, data) => {
+  if (name === "notification") { /* … */ }
+});
+```
+
+The default `message` event continues to flow through `sse:message` and the
+HTML render pipeline unchanged.
 
 ### Live Data with `useMercureTopic`
 
@@ -657,15 +703,18 @@ All components are discovered automatically — no extra configuration needed.
 
 **Options:**
 
-| Option         | Short | Description                                | Default                                       |
-|----------------|-------|--------------------------------------------|-----------------------------------------------|
-| `--components` | `-c`  | Components directory (scanned recursively) | `components/ui`                               |
-| `--tsconfig`   | `-t`  | TypeScript config file                     | `tsconfig.app.json` (else `tsconfig.json`)    |
-| `--out`        | `-o`  | Output file                                | `web-types.json`                              |
-| `--name`       | `-n`  | Library name                               | `reactolith-components`                       |
-| `--version`    | `-v`  | Library version                            | `1.0.0`                                       |
-| `--prefix`     | `-p`  | Element name prefix                        | `""`                                          |
-| `--help`       | `-h`  | Show help                                  |                                               |
+| Option         | Short | Description                                                        | Default                                       |
+|----------------|-------|--------------------------------------------------------------------|-----------------------------------------------|
+| `--components` | `-c`  | Components directory (repeatable or comma-separated)               | `components/ui`                               |
+| `--tsconfig`   | `-t`  | TypeScript config file                                             | `tsconfig.app.json` (else `tsconfig.json`)    |
+| `--out`        | `-o`  | Output file                                                        | `web-types.json`                              |
+| `--name`       | `-n`  | Library name                                                       | `reactolith-components`                       |
+| `--version`    | `-v`  | Library version                                                    | `1.0.0`                                       |
+| `--prefix`     | `-p`  | Element name prefix (must be empty or end with `-`)                | `""`                                          |
+| `--exclude`    |       | Glob to skip (e.g. `**/*.stories.tsx`). Repeatable                 |                                               |
+| `--help`       | `-h`  | Show help                                                          |                                               |
+
+All flags accept both `--name value` and `--name=value`.
 
 **Examples:**
 
@@ -717,6 +766,31 @@ After restarting your IDE, you'll get:
   }
 }
 ```
+
+---
+
+## 🖨 Server-Side Rendering
+
+For static-site generators (Astro, Eleventy, …) or progressive enhancement,
+import a server-safe `renderToString` helper from `reactolith/server`:
+
+```ts
+import { JSDOM } from "jsdom";
+import { renderToString } from "reactolith/server";
+import { resolveComponent } from "./resolve-component";
+
+const dom = new JSDOM(`<div id="root">
+  <my-button variant="primary">Hello</my-button>
+</div>`);
+const root = dom.window.document.getElementById("root")!;
+
+const html = renderToString(root, resolveComponent);
+```
+
+The helper wraps the tree in `AppProvider` (or a custom one passed via
+`appProvider`) and pipes it through `react-dom/server.renderToString`. Router
+and Mercure side effects are skipped because both rely on `useEffect`, which
+React does not run during server rendering.
 
 ---
 

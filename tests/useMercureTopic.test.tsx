@@ -274,4 +274,72 @@ describe("useMercureTopic", () => {
     // EventSource should not be created
     expect(eventSourceCalls.length).toBe(0);
   });
+
+  it("re-subscribes when mercureConfig is assigned after mount", async () => {
+    function TestComponent({ is }: { is: string }) {
+      const count = useMercureTopic("/notifications", 0);
+      return (
+        <div data-testid="count" data-is={is}>
+          {count}
+        </div>
+      );
+    }
+
+    document.body.innerHTML = `<div id="reactolith-app">
+      <test-component></test-component>
+    </div>`;
+
+    const app = new App(TestComponent);
+    // No mercureConfig at mount time
+    await screen.findByTestId("count");
+    expect(eventSourceCalls.length).toBe(0);
+
+    // Assign config later — hook should pick it up and connect
+    app.mercureConfig = {
+      hubUrl: "https://example.com/.well-known/mercure",
+      withCredentials: false,
+    };
+
+    await waitFor(() => {
+      expect(eventSourceCalls.length).toBeGreaterThan(0);
+    });
+    expect(eventSourceCalls[0][0]).toContain("topic=%2Fnotifications");
+  });
+
+  it("reconnects when mercureConfig changes hub URL", async () => {
+    function TestComponent({ is }: { is: string }) {
+      const count = useMercureTopic("/notifications", 0);
+      return (
+        <div data-testid="count" data-is={is}>
+          {count}
+        </div>
+      );
+    }
+
+    document.body.innerHTML = `<div id="reactolith-app">
+      <test-component></test-component>
+    </div>`;
+
+    const app = new App(TestComponent);
+    app.mercureConfig = {
+      hubUrl: "https://hub-a.example.com/.well-known/mercure",
+    };
+
+    await screen.findByTestId("count");
+    await waitFor(() => {
+      expect(eventSourceCalls.length).toBeGreaterThan(0);
+    });
+    const callsBefore = eventSourceCalls.length;
+
+    app.mercureConfig = {
+      hubUrl: "https://hub-b.example.com/.well-known/mercure",
+    };
+
+    await waitFor(() => {
+      expect(eventSourceCalls.length).toBeGreaterThan(callsBefore);
+    });
+    expect(eventSourceCalls[eventSourceCalls.length - 1][0]).toContain(
+      "hub-b.example.com",
+    );
+  });
 });

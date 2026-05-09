@@ -113,7 +113,44 @@ describe("Router link handling", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("ignores absolute URLs", async () => {
+  it("intercepts same-origin absolute URLs", async () => {
+    // jsdom default origin is http://localhost
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Foo</my-component>
+      <a href="http://localhost:3000/about">Same origin</a>
+    </div>`;
+
+    const fetchMock = createFetchMock(`<div id="reactolith-app">
+      <my-component>Bar</my-component>
+    </div>`);
+    global.fetch = fetchMock as any;
+
+    const app = new App(testComponent);
+
+    await act(async () => {});
+
+    const root = await screen.findByTestId("reactolith-app");
+    await waitFor(() => {
+      expect(root.querySelector("pre")).not.toBeNull();
+    });
+
+    const link = root.querySelector("a")!;
+    const clickEvent = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+    });
+    Object.defineProperty(clickEvent, "target", { value: link });
+    await app.router.onClick(clickEvent);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("http://localhost:3000/about", {
+        method: "GET",
+      });
+    });
+  });
+
+  it("ignores cross-origin absolute URLs", async () => {
     document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
       <my-component>Foo</my-component>
       <a href="https://example.com">External</a>
