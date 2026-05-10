@@ -144,9 +144,10 @@ describe("Router link handling", () => {
     await app.router.onClick(clickEvent);
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("http://localhost:3000/about", {
-        method: "GET",
-      });
+      expect(fetchMock).toHaveBeenCalledWith(
+        "http://localhost:3000/about",
+        expect.objectContaining({ method: "GET" }),
+      );
     });
   });
 
@@ -358,7 +359,10 @@ describe("Router link handling", () => {
     await app.router.onClick(clickEvent);
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("/page", { method: "GET" });
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/page",
+        expect.objectContaining({ method: "GET" }),
+      );
     });
   });
 
@@ -394,7 +398,10 @@ describe("Router link handling", () => {
     await app.router.onClick(clickEvent);
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("/page", { method: "GET" });
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/page",
+        expect.objectContaining({ method: "GET" }),
+      );
     });
   });
 
@@ -421,7 +428,10 @@ describe("Router link handling", () => {
     await app.router.navigate("/new-page");
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("/new-page", { method: "GET" });
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/new-page",
+        expect.objectContaining({ method: "GET" }),
+      );
     });
   });
 });

@@ -44,7 +44,21 @@ export type RouterEventMap = {
     pushState: boolean,
     error: unknown,
   ];
+  "nav:cancelled": [input: URL | string, init: RequestInit, pushState: boolean];
 };
+
+export type VisitResult =
+  | {
+      cancelled?: false;
+      result: boolean;
+      response: Response;
+      html: string;
+      finalUrl: string;
+    }
+  | {
+      cancelled: true;
+      result: false;
+    };
 
 export const isRelativeHref = (href: string | null): href is string => {
   if (!href) return false;
@@ -96,6 +110,7 @@ export class Router extends EventEmitter<RouterEventMap> {
   private readonly boundOnClick: (e: MouseEvent) => void;
   private readonly boundOnSubmit: (e: SubmitEvent) => void;
   private readonly boundOnPopState?: () => void;
+  private inflight: AbortController | null = null;
 
   constructor(
     app: App,
@@ -146,6 +161,8 @@ export class Router extends EventEmitter<RouterEventMap> {
         this.boundOnPopState,
       );
     }
+    this.inflight?.abort();
+    this.inflight = null;
     this.scrollRestoration?.destroy();
     this.clearListeners();
   }
@@ -155,12 +172,15 @@ export class Router extends EventEmitter<RouterEventMap> {
     init: RequestInit = { method: "GET" },
     pushState: boolean = true,
     scroll?: ScrollOption,
-  ): Promise<{
-    result: boolean;
-    response: Response;
-    html: string;
-    finalUrl: string;
-  }> {
+  ): Promise<VisitResult> {
+    // Cancel any in-flight visit. Its fetch will reject with AbortError,
+    // which we catch below and translate into a terminal `nav:cancelled`
+    // event. This guarantees that two rapid visit() calls don't race —
+    // the second one always wins, regardless of resolution order.
+    this.inflight?.abort();
+    const controller = new AbortController();
+    this.inflight = controller;
+
     // Save scroll position for the entry we are leaving
     this.scrollRestoration?.save();
 
@@ -169,9 +189,20 @@ export class Router extends EventEmitter<RouterEventMap> {
     let response: Response;
     let html: string;
     try {
-      response = await this.fetch(input, init);
+      response = await this.fetch(input, {
+        ...init,
+        signal: controller.signal,
+      });
       html = await response.text();
     } catch (error) {
+      if (controller.signal.aborted) {
+        // Superseded by a newer visit(). Emit a terminal `nav:cancelled`
+        // so listeners (Form submitting flag, etc.) can reset, but do
+        // NOT emit `nav:error` and do NOT throw — the navigation was
+        // intentionally abandoned.
+        this.emit("nav:cancelled", input, init, pushState);
+        return { cancelled: true, result: false };
+      }
       // Fetch (or response.text()) failed before we ever got a usable
       // response. Emit a terminal `nav:error` so listeners that registered
       // on `nav:started` (Form submitting flag, RouterProvider loading
@@ -180,6 +211,16 @@ export class Router extends EventEmitter<RouterEventMap> {
       this.emit("nav:error", input, init, pushState, error);
       throw error;
     }
+
+    // Aborted between fetch resolution and render — treat as cancelled
+    // so the superseded visit doesn't clobber the page that the newer
+    // visit is about to render.
+    if (controller.signal.aborted) {
+      this.emit("nav:cancelled", input, init, pushState);
+      return { cancelled: true, result: false };
+    }
+
+    if (this.inflight === controller) this.inflight = null;
 
     const original = typeof input === "string" ? input : input.toString();
     const finalUrl = response.redirected ? response.url : original;
