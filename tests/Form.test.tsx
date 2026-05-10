@@ -103,6 +103,48 @@ describe("Form errors via context", () => {
     expect(screen.getByTestId("summary")).toHaveTextContent("Too short");
   });
 
+  it("applies backend errors to every radio in a same-named group", async () => {
+    const errors: FormError[] = [{ name: "role", message: "Pick a role" }];
+
+    function Page({ is }: { is: string }) {
+      if (is !== "my-page") return null;
+      return (
+        <Form errors={errors} action="/submit" method="POST">
+          <input
+            data-testid="role-admin"
+            type="radio"
+            name="role"
+            value="admin"
+          />
+          <input
+            data-testid="role-user"
+            type="radio"
+            name="role"
+            value="user"
+          />
+        </Form>
+      );
+    }
+
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app"><my-page></my-page></div>`;
+    mountApp(Page);
+
+    const admin = (await screen.findByTestId("role-admin")) as HTMLInputElement;
+    const user = (await screen.findByTestId("role-user")) as HTMLInputElement;
+
+    await waitFor(() => {
+      expect(admin.validity.customError).toBe(true);
+    });
+    expect(admin.validationMessage).toBe("Pick a role");
+    expect(user.validity.customError).toBe(true);
+    expect(user.validationMessage).toBe("Pick a role");
+
+    fireEvent.input(admin, { target: { checked: true } });
+
+    expect(admin.validity.customError).toBe(false);
+    expect(admin.validationMessage).toBe("");
+  });
+
   it("wires errors to native constraint validation and clears them on input", async () => {
     const errors: FormError[] = [{ name: "email", message: "Invalid email" }];
 
