@@ -27,10 +27,7 @@ export function isSupportedLang(lang: string | undefined): boolean {
 export function getHighlighter(): Promise<HighlighterCore> {
   if (highlighterPromise) return highlighterPromise;
   highlighterPromise = createHighlighterCore({
-    themes: [
-      import("shiki/themes/github-light.mjs"),
-      import("shiki/themes/github-dark.mjs"),
-    ],
+    themes: [import("shiki/themes/github-dark.mjs")],
     langs: [
       import("shiki/langs/html.mjs"),
       import("shiki/langs/tsx.mjs"),
