@@ -3,6 +3,7 @@ import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { App } from "../src";
 import { ReactNode, act } from "react";
 import { useRouter } from "../src/provider/RouterProvider";
+import { ScrollRestoration } from "../src/ScrollRestoration";
 
 function testComponent({ is, children }: { is: string; children: ReactNode }) {
   const { loading } = useRouter();
@@ -452,5 +453,97 @@ describe("Router scroll restoration", () => {
     await waitFor(() => {
       expect(scrollToSpy).toHaveBeenCalledWith(0, 0);
     });
+  });
+
+  it("popstate followed by a failed visit does not corrupt scroll-state ids", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Foo</my-component>
+    </div>`;
+
+    const fetchMock = vi
+      .fn()
+      // 1) Forward push to /b succeeds
+      .mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: true,
+          redirected: false,
+          url: "/b",
+          text: () => Promise.resolve(responseHtml),
+        }),
+      )
+      // 2) Popstate-triggered visit back to /a fails (network error)
+      .mockImplementationOnce(() => Promise.reject(new Error("network down")))
+      // 3) Subsequent successful back-navigation to /a
+      .mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: true,
+          redirected: false,
+          url: "/a",
+          text: () => Promise.resolve(responseHtml),
+        }),
+      );
+    global.fetch = fetchMock as any;
+
+    const popSpy = vi.spyOn(ScrollRestoration.prototype, "pop");
+
+    const app = new App(testComponent);
+    await act(async () => {});
+
+    // Simulate scroll position on /a *before* leaving it.
+    Object.defineProperty(window, "scrollX", {
+      value: 0,
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(window, "scrollY", {
+      value: 250,
+      writable: true,
+      configurable: true,
+    });
+
+    const aId = history.state.restorationId;
+
+    // Forward push: ScrollRestoration saves y=250 against aId, advances
+    // currentId to a fresh bId.
+    await app.router.navigate("/b");
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    expect(popSpy).not.toHaveBeenCalled();
+    scrollToSpy.mockClear();
+
+    // Browser pops back to /a — the previous history entry's state still
+    // carries aId.
+    history.replaceState({ restorationId: aId }, "");
+
+    // Simulate the user having scrolled to top on /b before the failed
+    // back-navigation. This makes the assertion below sensitive to the
+    // bug: if pop() were wrongly called on failure, currentId would
+    // already be aId by the time the *successful* retry runs save(),
+    // which would overwrite aId's saved y=250 with the current y=0.
+    Object.defineProperty(window, "scrollY", {
+      value: 0,
+      writable: true,
+      configurable: true,
+    });
+
+    await expect(
+      app.router.visit("/a", { method: "GET" }, false),
+    ).rejects.toThrow("network down");
+
+    // Failure path must not have triggered scroll restoration.
+    expect(popSpy).not.toHaveBeenCalled();
+    expect(scrollToSpy).not.toHaveBeenCalled();
+
+    // Successful retry: pop() runs exactly once, currentId resyncs with
+    // history.state.restorationId === aId, and the original scroll
+    // position is restored.
+    await app.router.visit("/a", { method: "GET" }, false);
+
+    await waitFor(() => {
+      expect(scrollToSpy).toHaveBeenCalledWith(0, 250);
+    });
+    expect(popSpy).toHaveBeenCalledTimes(1);
+
+    popSpy.mockRestore();
   });
 });
