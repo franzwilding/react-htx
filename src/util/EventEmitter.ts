@@ -27,7 +27,11 @@ export class EventEmitter<TEvents extends EventMap> {
   }
 
   protected emit<K extends keyof TEvents>(type: K, ...args: TEvents[K]): void {
-    this.listeners[type]?.forEach((h) => (h as Handler<TEvents[K]>)(...args));
+    const set = this.listeners[type];
+    if (!set) return;
+    for (const h of Array.from(set)) {
+      (h as Handler<TEvents[K]>)(...args);
+    }
   }
 
   protected clearListeners(): void {
