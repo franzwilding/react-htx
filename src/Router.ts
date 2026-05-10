@@ -305,9 +305,16 @@ export class Router extends EventEmitter<RouterEventMap> {
       formData.forEach((value, key) => {
         if (typeof value === "string") params.append(key, value);
       });
+      // Per RFC 3986, the query must precede the fragment. Split off any
+      // trailing `#fragment` before merging form params, then re-attach.
+      const hashIdx = url.indexOf("#");
+      const fragment = hashIdx >= 0 ? url.slice(hashIdx) : "";
+      let base = hashIdx >= 0 ? url.slice(0, hashIdx) : url;
+      // Normalize a bare trailing `?` so we don't emit `?&x=1`.
+      if (base.endsWith("?")) base = base.slice(0, -1);
       const q = params.toString();
-      const sep = url.includes("?") ? (q ? "&" : "") : q ? "?" : "";
-      url = `${url}${sep}${q}`;
+      const sep = base.includes("?") ? (q ? "&" : "") : q ? "?" : "";
+      url = `${base}${sep}${q}${fragment}`;
     } else {
       body = formData;
     }
