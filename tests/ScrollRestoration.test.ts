@@ -372,6 +372,45 @@ describe("ScrollRestoration", () => {
     });
   });
 
+  describe("replace()", () => {
+    it("returns a state object with a fresh restorationId", () => {
+      const sr = new ScrollRestoration(window);
+      const initialId = history.state.restorationId;
+      const state = sr.replace();
+      expect(state).toHaveProperty("restorationId");
+      expect(typeof state.restorationId).toBe("string");
+      expect(state.restorationId).not.toBe(initialId);
+    });
+
+    it("drops the saved scroll position of the replaced entry", () => {
+      const sr = new ScrollRestoration(window);
+      const initialId = history.state.restorationId;
+
+      Object.defineProperty(window, "scrollX", {
+        value: 0,
+        writable: true,
+        configurable: true,
+      });
+      Object.defineProperty(window, "scrollY", {
+        value: 400,
+        writable: true,
+        configurable: true,
+      });
+
+      sr.save();
+      sr.replace();
+
+      // Pretend the user navigated forward then back to the now-replaced
+      // entry. Because the entry was replaced, the saved position must
+      // not bleed through.
+      history.replaceState({ restorationId: initialId }, "");
+      sr.pop();
+      sr.scroll(false, undefined, "/replaced");
+
+      expect(scrollToSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe("push/pop lifecycle", () => {
     it("push() returns a state object with restorationId", () => {
       const sr = new ScrollRestoration(window);
