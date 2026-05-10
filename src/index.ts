@@ -1,5 +1,6 @@
 export { App } from "./App";
 export type { MercureConfig, AppOptions } from "./App";
+export type { AppEventMap, JsonParseFailureDetail } from "./App";
 export { Router } from "./Router";
 export type { ScrollOption, VisitResult } from "./Router";
 export { ScrollRestoration, detectScrollContainer } from "./ScrollRestoration";

@@ -1,4 +1,6 @@
-import React, { ElementType, JSX, ReactNode, Ref } from "react";
+import React, { ElementType, JSX, ReactNode, Ref, useContext } from "react";
+import { AppContext } from "./provider/AppContext";
+import type { App } from "./App";
 
 const ELEMENT_NODE = 1;
 const TEXT_NODE = 3;
@@ -37,6 +39,7 @@ function getProps(
   element: Element,
   component: ElementType,
   isReactComponent: boolean = true,
+  app?: App,
 ): { [key: string]: unknown } {
   const props: { [key: string]: unknown } = {};
   Array.from(element.attributes).forEach((attr) => {
@@ -56,13 +59,24 @@ function getProps(
     }
 
     if (attr.name.startsWith("json-")) {
+      const propName = normalizePropName(attr.name);
       try {
-        props[normalizePropName(attr.name)] = JSON.parse(attr.value);
+        props[propName] = JSON.parse(attr.value);
       } catch (err) {
+        // Set the prop explicitly to undefined so consumers can distinguish
+        // "the backend didn't send it" from "it was sent but malformed" by
+        // listening on the App-level "json-parse:failed" event.
+        props[propName] = undefined;
+        const error = err instanceof Error ? err : new Error(String(err));
         console.warn(
           `reactolith: failed to parse JSON for "${attr.name}" on <${element.tagName.toLowerCase()}>:`,
           err,
         );
+        app?.emitJsonParseFailed?.(error, {
+          attrName: attr.name,
+          value: attr.value,
+          element,
+        });
       }
     } else if (!isReactComponent && attr.name.startsWith("data-")) {
       props[attr.name] = attr.value;
@@ -167,6 +181,7 @@ export function ReactolithComponent({
   ref,
   ...props
 }: ReactolithProps) {
+  const app = useContext(AppContext);
   if (!element) return null;
 
   const tagName = element.tagName.toLowerCase();
@@ -179,7 +194,7 @@ export function ReactolithComponent({
     : (tagName as keyof JSX.IntrinsicElements);
 
   const allProps = {
-    ...getProps(element, Component, isReactComponent),
+    ...getProps(element, Component, isReactComponent, app),
     ...getSlots(element, Component),
     key: getKey(element),
     ...(isReactComponent ? { is: tagName } : {}),
