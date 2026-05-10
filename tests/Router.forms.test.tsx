@@ -135,6 +135,141 @@ describe("Router form submission", () => {
     });
   });
 
+  it("places GET query string before fragment in action", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Foo</my-component>
+      <form action="/page#section" method="GET">
+        <input type="text" name="x" default-value="1" read-only />
+        <button type="submit">Go</button>
+      </form>
+    </div>`;
+
+    const fetchMock =
+      createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Results</my-component>
+    </div>`);
+    global.fetch = fetchMock as any;
+
+    new App(testComponent);
+    await act(async () => {});
+
+    const root = await screen.findByTestId("reactolith-app");
+    await waitFor(() => {
+      expect(root.querySelector("pre")).not.toBeNull();
+    });
+
+    const form = root.querySelector("form")!;
+    await fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/page?x=1#section",
+        expect.objectContaining({ method: "GET", body: null }),
+      );
+    });
+  });
+
+  it("merges GET form data with existing query and fragment", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Foo</my-component>
+      <form action="/page?a=1#section" method="GET">
+        <input type="text" name="x" default-value="2" read-only />
+        <button type="submit">Go</button>
+      </form>
+    </div>`;
+
+    const fetchMock =
+      createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Results</my-component>
+    </div>`);
+    global.fetch = fetchMock as any;
+
+    new App(testComponent);
+    await act(async () => {});
+
+    const root = await screen.findByTestId("reactolith-app");
+    await waitFor(() => {
+      expect(root.querySelector("pre")).not.toBeNull();
+    });
+
+    const form = root.querySelector("form")!;
+    await fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/page?a=1&x=2#section",
+        expect.objectContaining({ method: "GET", body: null }),
+      );
+    });
+  });
+
+  it("normalizes a bare `?` action when appending GET params", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Foo</my-component>
+      <form action="?" method="GET">
+        <input type="text" name="x" default-value="1" read-only />
+        <button type="submit">Go</button>
+      </form>
+    </div>`;
+
+    const fetchMock =
+      createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Results</my-component>
+    </div>`);
+    global.fetch = fetchMock as any;
+
+    new App(testComponent);
+    await act(async () => {});
+
+    const root = await screen.findByTestId("reactolith-app");
+    await waitFor(() => {
+      expect(root.querySelector("pre")).not.toBeNull();
+    });
+
+    const form = root.querySelector("form")!;
+    await fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "?x=1",
+        expect.objectContaining({ method: "GET", body: null }),
+      );
+    });
+  });
+
+  it("preserves a fragment when GET form has no params", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Foo</my-component>
+      <form action="/page#section" method="GET">
+        <button type="submit">Go</button>
+      </form>
+    </div>`;
+
+    const fetchMock =
+      createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Results</my-component>
+    </div>`);
+    global.fetch = fetchMock as any;
+
+    new App(testComponent);
+    await act(async () => {});
+
+    const root = await screen.findByTestId("reactolith-app");
+    await waitFor(() => {
+      expect(root.querySelector("pre")).not.toBeNull();
+    });
+
+    const form = root.querySelector("form")!;
+    await fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/page#section",
+        expect.objectContaining({ method: "GET", body: null }),
+      );
+    });
+  });
+
   it("includes submitter button value in form data", async () => {
     document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
       <my-component>Foo</my-component>
