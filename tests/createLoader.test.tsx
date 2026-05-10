@@ -325,6 +325,116 @@ describe("createLoader", () => {
     }
   });
 
+  it("ignores non-component object exports when resolving", async () => {
+    // A module that exports a co-located plain config object whose name
+    // happens to match the requested tag. Without the `$$typeof` brand check
+    // the loader used to return this object as a component, which then crashed
+    // deep inside React.createElement — see issue #59.
+    const Loader = createLoader({
+      modules: {
+        "/src/components/my-config.tsx": () =>
+          Promise.resolve({
+            MyConfig: { foo: 1, bar: "baz" },
+          }),
+      },
+    });
+
+    type BoundaryState = { error: Error | null };
+    type BoundaryProps = { children: React.ReactNode };
+    class Boundary extends React.Component<BoundaryProps, BoundaryState> {
+      state: BoundaryState = { error: null };
+      static getDerivedStateFromError(error: Error): BoundaryState {
+        return { error };
+      }
+      render() {
+        if (this.state.error) {
+          return <span data-testid="boundary">{this.state.error.message}</span>;
+        }
+        return this.props.children;
+      }
+    }
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    try {
+      await act(async () => {
+        root.render(
+          <Boundary>
+            <Loader is="my-config" />
+          </Boundary>,
+        );
+      });
+
+      const boundary = await waitFor(() => screen.getByTestId("boundary"));
+      expect(boundary.textContent).toContain("Could not resolve component");
+      expect(boundary.textContent).toContain("my-config");
+    } finally {
+      consoleError.mockRestore();
+      await act(async () => {
+        root.unmount();
+      });
+      container.remove();
+    }
+  });
+
+  it("resolves forwardRef components", async () => {
+    const ForwardedButton = React.forwardRef<
+      HTMLButtonElement,
+      { children?: React.ReactNode }
+    >(({ children }, ref) => (
+      <button ref={ref} data-testid="forwarded-button">
+        {children}
+      </button>
+    ));
+    ForwardedButton.displayName = "ForwardedButton";
+
+    const Loader = createLoader({
+      modules: {
+        "/src/components/ui/button.tsx": () =>
+          Promise.resolve({
+            Button: ForwardedButton,
+          }),
+      },
+      prefix: "ui-",
+    });
+
+    await renderLoader(Loader, "ui-button", "Click me");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("forwarded-button")).toBeInTheDocument();
+    });
+    expect(screen.getByTestId("forwarded-button")).toHaveTextContent(
+      "Click me",
+    );
+  });
+
+  it("resolves memo components", async () => {
+    const MemoCard = React.memo(({ label }: { label?: string }) => (
+      <div data-testid="memo-card">{label}</div>
+    ));
+    MemoCard.displayName = "MemoCard";
+
+    const Loader = createLoader({
+      modules: {
+        "/src/components/card.tsx": () =>
+          Promise.resolve({
+            Card: MemoCard,
+          }),
+      },
+    });
+
+    await renderLoader(Loader, "card");
+    // re-render with a label prop
+    const container = screen.getByTestId("memo-card");
+    expect(container).toBeInTheDocument();
+  });
+
   it("renders the fallback while loading and resolves afterwards", async () => {
     let resolveFn: ((m: Record<string, unknown>) => void) | null = null;
     const slow = () =>

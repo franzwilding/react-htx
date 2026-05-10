@@ -55,27 +55,32 @@ function findModulePath(
   return null;
 }
 
+// Recognises React-renderable values: plain function components, classes, and
+// special component types (forwardRef, memo, lazy, …) which are objects branded
+// with a `$$typeof` symbol. Plain data objects co-located in component files
+// must not be treated as components — see issue #59.
+function isComponent(value: unknown): value is ComponentType<unknown> {
+  if (typeof value === "function") return true;
+  if (!value || typeof value !== "object") return false;
+  const brand = (value as { $$typeof?: unknown }).$$typeof;
+  return typeof brand === "symbol";
+}
+
 function findExport(
   mod: Record<string, unknown>,
   name: string,
 ): ComponentType<unknown> | null {
   const pascal = kebabToPascal(name);
   const candidate = mod[pascal];
-  if (typeof candidate === "function" || typeof candidate === "object") {
-    return candidate as ComponentType<unknown>;
-  }
+  if (isComponent(candidate)) return candidate;
   const def = (mod as { default?: unknown }).default;
-  if (typeof def === "function" || (def && typeof def === "object")) {
-    return def as ComponentType<unknown>;
-  }
+  if (isComponent(def)) return def;
   // Case-insensitive fallback: matches "field-label" → "FieldLabel"
   const normalized = name.replace(/-/g, "").toLowerCase();
   for (const key of Object.keys(mod)) {
     if (key.toLowerCase() === normalized) {
       const value = mod[key];
-      if (typeof value === "function" || (value && typeof value === "object")) {
-        return value as ComponentType<unknown>;
-      }
+      if (isComponent(value)) return value;
     }
   }
   return null;
