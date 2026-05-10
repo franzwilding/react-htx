@@ -709,6 +709,92 @@ describe("Mercure SSE integration", () => {
     });
   });
 
+  it("does not emit refetch:failed when a refetch is superseded by a newer empty message", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Initial</my-component>
+    </div>`;
+
+    // First fetch: deferred so it stays in-flight while the second arrives.
+    // Once the second visit() aborts the first, the slow promise rejects with
+    // AbortError; the router translates that into { cancelled: true, result: false }.
+    let resolveSlow!: (value: any) => void;
+    let rejectSlow!: (reason?: unknown) => void;
+    const slowPromise = new Promise<any>((res, rej) => {
+      resolveSlow = res;
+      rejectSlow = rej;
+    });
+
+    const mockFetch = vi
+      .fn()
+      .mockImplementationOnce((_input: unknown, init: RequestInit) => {
+        init?.signal?.addEventListener("abort", () => {
+          rejectSlow(new DOMException("Aborted", "AbortError"));
+        });
+        return slowPromise;
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        redirected: false,
+        text: async () => `<div id="reactolith-app">
+          <my-component>Refetched content</my-component>
+        </div>`,
+      });
+
+    const app = new App(
+      testComponent,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      mockFetch as any,
+    );
+    appInstances.push(app);
+    const mercure = new Mercure(app);
+
+    const refetchStartedHandler = vi.fn();
+    const refetchSuccessHandler = vi.fn();
+    const refetchFailedHandler = vi.fn();
+
+    mercure.on("refetch:started", refetchStartedHandler);
+    mercure.on("refetch:success", refetchSuccessHandler);
+    mercure.on("refetch:failed", refetchFailedHandler);
+
+    mercure.subscribe({
+      hubUrl: "https://example.com/.well-known/mercure",
+    });
+
+    mockEventSource!.simulateOpen();
+
+    // First empty message: starts a refetch that will hang on the slow fetch.
+    mockEventSource!.simulateMessage("");
+    await waitFor(() => {
+      expect(refetchStartedHandler).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    // Second empty message: triggers another refetch that aborts the first.
+    mockEventSource!.simulateMessage("");
+    await waitFor(() => {
+      expect(refetchStartedHandler).toHaveBeenCalledTimes(2);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    // Resolve the slow first fetch *after* it has been aborted. Without the
+    // cancelled-aware branch in Mercure.onmessage, this would mistakenly emit
+    // refetch:failed for the superseded refetch.
+    resolveSlow({
+      ok: true,
+      redirected: false,
+      text: async () => "<div></div>",
+    });
+
+    await waitFor(() => {
+      expect(refetchSuccessHandler).toHaveBeenCalledTimes(1);
+    });
+
+    expect(refetchFailedHandler).not.toHaveBeenCalled();
+  });
+
   it("does not refetch when receiving normal HTML content", async () => {
     document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
       <my-component>Initial</my-component>
