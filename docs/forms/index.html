@@ -99,6 +99,65 @@ function SubmitButton() {
           track their own.
         </p>
 
+        <h2><code>useFormSubmitting()</code> vs React 19's <code>useFormStatus()</code></h2>
+        <p>
+          React 19 ships a built-in
+          <a href="https://react.dev/reference/react-dom/hooks/useFormStatus" target="_blank" rel="noreferrer noopener"><code>useFormStatus()</code></a>
+          hook in <code>react-dom</code>. Because reactolith requires React 19
+          as a peer dependency, that hook is always available alongside ours.
+          They look interchangeable but they track <strong>different</strong>
+          submissions and do <em>not</em> overlap today:
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Hook</th>
+              <th>Tracks</th>
+              <th>Use when</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>useFormSubmitting()</code> (reactolith)</td>
+              <td>
+                Submissions that bubble through reactolith's
+                <code>Router</code> &mdash; i.e. plain
+                <code>&lt;Form action="…" method="POST"&gt;</code> with no
+                React action prop, where the response HTML re-hydrates the
+                page.
+              </td>
+              <td>
+                You're using reactolith's HTML-driven submission model (the
+                default for this library).
+              </td>
+            </tr>
+            <tr>
+              <td><code>useFormStatus()</code> (React 19)</td>
+              <td>
+                Submissions kicked off by a React
+                <a href="https://react.dev/reference/react-dom/components/form#form" target="_blank" rel="noreferrer noopener">form action</a>
+                &mdash; i.e. <code>&lt;form action={fn}&gt;</code> where
+                <code>fn</code> is a function (server action or client
+                function), not a URL string.
+              </td>
+              <td>
+                You're calling a React function as the action and want
+                React's built-in pending state in a child component.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          In a reactolith app the action is normally a URL, so
+          <code>useFormStatus()</code> would always report
+          <code>{ pending: false }</code>. Reach for
+          <code>useFormSubmitting()</code> instead. If you mix in a React 19
+          form action somewhere (e.g. a small client-side mutation that
+          doesn't navigate), <code>useFormStatus()</code> is the right tool
+          for that subtree &mdash; the two hooks are complementary, not
+          competitors.
+        </p>
+
         <h2>Hooks</h2>
         <table>
           <thead>
