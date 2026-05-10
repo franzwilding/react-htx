@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reactolith vs Inertia.js — a backend-driven React alternative without the JSON layer</title>
+    <meta
+      name="description"
+      content="Looking for an alternative to Inertia.js? Reactolith is a backend-driven React library that ships HTML instead of JSON page props and morphs the React tree in place across navigation, so component state survives."
+    />
+    <link rel="canonical" href="https://reactolith.github.io/reactolith/comparisons/inertia/" />
+  </head>
+  <body>
+    <div id="reactolith-app" class="hidden">
+      <app-page>
+        <h1>Reactolith vs Inertia.js</h1>
+        <p class="text-lg text-muted-foreground">
+          Both let your backend drive a React frontend without a JSON API in
+          the traditional sense. They take very different routes to get
+          there.
+        </p>
+
+        <h2>The one-line difference</h2>
+        <ul>
+          <li>
+            <strong>Inertia.js</strong> sends <strong>JSON page props</strong>
+            and re-renders a single page-level React component on every
+            visit.
+          </li>
+          <li>
+            <strong>reactolith</strong> sends
+            <strong>HTML</strong> and <strong>morphs the existing React
+            tree</strong> in place &mdash; the way Hotwire Turbo morphs the
+            DOM &mdash; so component state survives across navigation.
+          </li>
+        </ul>
+
+        <h2>What Inertia.js is good at</h2>
+        <p>
+          Inertia.js is a brilliant piece of design. It gives you almost the
+          entire SPA developer experience &mdash; client-side routing, page
+          components, partial reloads, lazy props &mdash; while letting your
+          Rails/Laravel/Symfony controller stay the source of truth for what
+          a page <em>contains</em>. If your team is comfortable with the
+          page-as-component model and you mostly build form-driven CRUD apps,
+          Inertia is a great fit and you should probably keep using it.
+        </p>
+
+        <h2>What Inertia.js gives up</h2>
+        <p>
+          The JSON page-prop boundary has two consequences that some teams
+          find painful:
+        </p>
+        <ol>
+          <li>
+            <strong>The page component is replaced on every visit.</strong>
+            That is the whole mental model. There is no
+            <code>morph</code>: state inside the previous page component does
+            not survive to the next one. A persistent layout
+            (<code>renderLayout</code>) helps for the chrome, but anything
+            <em>inside</em> the page &mdash; an open dialog, a half-typed
+            form, a video element, an embedded chart with its own internal
+            state &mdash; resets unless you hoist it into the persistent
+            layout.
+          </li>
+          <li>
+            <strong>You ship a parallel data contract.</strong> Every
+            controller has to return Inertia page props in a shape the React
+            page expects. That is still nicer than building a generic
+            <code>/api/v2</code>, but it&rsquo;s a contract you have to
+            maintain, version, type, and keep in sync with the UI. URL
+            helpers, signed URLs, flash messages, permission checks &mdash;
+            anything your framework already renders into HTML &mdash; have to
+            be re-projected as JSON fields.
+          </li>
+        </ol>
+
+        <h2>How reactolith does it differently</h2>
+        <p>
+          reactolith is modelled on
+          <a
+            href="https://turbo.hotwired.dev/"
+            target="_blank"
+            rel="noreferrer noopener"
+            >Hotwire Turbo</a
+          >, not on Inertia. The wire format is HTML, end to end:
+        </p>
+        <ol>
+          <li>
+            On a link click or form submit, reactolith fetches the next page
+            as HTML &mdash; the <em>same HTML</em> the server would render
+            for a full page load.
+          </li>
+          <li>
+            It hands that HTML to React&rsquo;s reconciler, which diffs it
+            against the live tree and updates only what changed.
+          </li>
+          <li>
+            Component state, focus, scroll position, open dialogs, mounted
+            iframes &mdash; everything not touched by the diff stays exactly
+            as it was.
+          </li>
+        </ol>
+        <p>
+          Because the wire format is HTML, the
+          <em>controller</em> stays the contract. There&rsquo;s no
+          page-prop type to keep in sync; if the template changes, the React
+          tree just morphs to match.
+        </p>
+
+        <h2>Side-by-side</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>&nbsp;</th>
+              <th>reactolith</th>
+              <th>Inertia.js</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Wire format</td>
+              <td>HTML (server templates)</td>
+              <td>JSON page props</td>
+            </tr>
+            <tr>
+              <td>Frontend libraries</td>
+              <td>React</td>
+              <td>React, Vue, Svelte</td>
+            </tr>
+            <tr>
+              <td>Navigation model</td>
+              <td>Morph React tree in place</td>
+              <td>Replace page-level component</td>
+            </tr>
+            <tr>
+              <td>Component state across nav</td>
+              <td>Preserved (only the diff is applied)</td>
+              <td>Reset, unless lifted into a persistent layout</td>
+            </tr>
+            <tr>
+              <td>Backend layer to add</td>
+              <td>None &mdash; your existing controllers &amp; templates</td>
+              <td>An Inertia adapter that returns page props</td>
+            </tr>
+            <tr>
+              <td>URL helpers / flash / signed URLs</td>
+              <td>Used directly in templates</td>
+              <td>Re-projected as JSON fields</td>
+            </tr>
+            <tr>
+              <td>Forms with server-driven changes</td>
+              <td>Server can add/remove fields; React state &amp; focus persist</td>
+              <td>Re-render the page with new props</td>
+            </tr>
+            <tr>
+              <td>Real-time updates</td>
+              <td>Mercure SSE pipes HTML through the same render path</td>
+              <td>External (e.g. Echo / Pusher) wired manually</td>
+            </tr>
+            <tr>
+              <td>SSR</td>
+              <td>You&rsquo;re already doing it &mdash; the server renders HTML</td>
+              <td>Optional Node SSR service</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2>When to pick which</h2>
+        <p><strong>Pick Inertia.js if</strong></p>
+        <ul>
+          <li>You want a React/Vue/Svelte choice and a mature ecosystem with first-party adapters for Laravel and Rails.</li>
+          <li>The page-as-component model fits your app cleanly &mdash; most pages are independent, state doesn&rsquo;t need to survive across them.</li>
+          <li>You&rsquo;re comfortable maintaining a JSON page-prop contract between controllers and React.</li>
+        </ul>
+        <p><strong>Pick reactolith if</strong></p>
+        <ul>
+          <li>You specifically want React, and you want Hotwire Turbo&rsquo;s morph behaviour for it.</li>
+          <li>You don&rsquo;t want to add a JSON page-prop layer &mdash; the templates your backend already renders should be the contract.</li>
+          <li>You want long-lived UI &mdash; persistent sidebars, stateful tables, embedded media, dialogs &mdash; that survives every navigation and form submit untouched.</li>
+          <li>You like the
+            <a
+              href="https://signalvnoise.com/svn3/the-majestic-monolith/"
+              target="_blank"
+              rel="noreferrer noopener"
+              >Majestic Monolith</a
+            >
+            architecture and want React on top of it without splitting the app
+            in two.
+          </li>
+        </ul>
+
+        <h2>Migrating from Inertia.js</h2>
+        <p>
+          A rough migration path:
+        </p>
+        <ol>
+          <li>
+            Replace your Inertia page components with regular React components, and stop returning Inertia page props from the controller. Return the page&rsquo;s HTML template instead &mdash; the same one you&rsquo;d render for a full page load.
+          </li>
+          <li>
+            Wherever a page used a custom Inertia component, expose it as a
+            kebab-cased tag (<code>&lt;ui-data-table&gt;</code>,
+            <code>&lt;app-billing-form&gt;</code>) and let
+            <code>createLoader</code> resolve it from your components folder.
+          </li>
+          <li>
+            Drop the JSON page-prop boundary: anything you projected into JSON for the page (flash messages, permission flags, URL helpers, signed URLs) goes back into the template directly.
+          </li>
+          <li>
+            Mount with <code>new App(component, AppProvider, "#reactolith-app")</code> &mdash; navigation, form interception and state preservation are on by default.
+          </li>
+        </ol>
+
+        <h2>Read next</h2>
+        <ul>
+          <li><a href="/comparisons/turbo/">reactolith vs Hotwire Turbo</a></li>
+          <li><a href="/how-it-works/">How reactolith hydrates and morphs the tree</a></li>
+          <li><a href="/quick-start/">Quick start</a></li>
+        </ul>
+      </app-page>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

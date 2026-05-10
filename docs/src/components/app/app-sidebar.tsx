@@ -32,6 +32,14 @@ const NAV: NavGroup[] = [
     ],
   },
   {
+    label: "Comparisons",
+    items: [
+      { label: "Overview", href: "/comparisons/" },
+      { label: "vs Inertia.js", href: "/comparisons/inertia/" },
+      { label: "vs Hotwire Turbo", href: "/comparisons/turbo/" },
+    ],
+  },
+  {
     label: "Tooling",
     items: [
       { label: "Web Types (IDE)", href: "/web-types/" },

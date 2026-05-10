@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reactolith vs Inertia.js, Hotwire Turbo &amp; friends — Comparisons</title>
+    <meta
+      name="description"
+      content="How reactolith compares to Inertia.js, Hotwire Turbo, htmx and a hand-rolled SPA. Side-by-side breakdowns to help you pick the right backend-driven React stack."
+    />
+    <link rel="canonical" href="https://reactolith.github.io/reactolith/comparisons/" />
+  </head>
+  <body>
+    <div id="reactolith-app" class="hidden">
+      <app-page>
+        <h1>Comparisons</h1>
+        <p class="text-lg text-muted-foreground">
+          How reactolith stacks up against the other ways to drive a React
+          frontend from a server-rendered backend.
+        </p>
+
+        <p>
+          reactolith lives in the same neighbourhood as
+          <a
+            href="https://inertiajs.com/"
+            target="_blank"
+            rel="noreferrer noopener"
+            >Inertia.js</a
+          >,
+          <a
+            href="https://turbo.hotwired.dev/"
+            target="_blank"
+            rel="noreferrer noopener"
+            >Hotwire Turbo</a
+          >
+          and
+          <a
+            href="https://htmx.org/"
+            target="_blank"
+            rel="noreferrer noopener"
+            >htmx</a
+          >. They all share the same instinct: keep the backend in charge of
+          routing, templates, permissions and URLs, and stop maintaining a
+          parallel SPA + JSON API. Where they differ is in
+          <strong>what crosses the wire</strong>, and
+          <strong>what happens to the existing client tree on every visit</strong>.
+        </p>
+
+        <h2>Side-by-side</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>&nbsp;</th>
+              <th>reactolith</th>
+              <th>Inertia.js</th>
+              <th>Hotwire Turbo</th>
+              <th>htmx</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Wire format</td>
+              <td>HTML</td>
+              <td>JSON page props</td>
+              <td>HTML</td>
+              <td>HTML fragments</td>
+            </tr>
+            <tr>
+              <td>UI library</td>
+              <td>React</td>
+              <td>React, Vue, Svelte</td>
+              <td>None (vanilla + Stimulus)</td>
+              <td>None (vanilla)</td>
+            </tr>
+            <tr>
+              <td>Page navigation</td>
+              <td>Morph React tree in place</td>
+              <td>Replace page-level component</td>
+              <td>Morph DOM in place</td>
+              <td>Swap a fragment</td>
+            </tr>
+            <tr>
+              <td>Component state across nav</td>
+              <td>Preserved</td>
+              <td>Reset (page component is swapped)</td>
+              <td>Preserved (DOM-level)</td>
+              <td>Preserved outside the swapped fragment</td>
+            </tr>
+            <tr>
+              <td>Need a new backend layer?</td>
+              <td>No &mdash; existing controllers + templates</td>
+              <td>Yes &mdash; an Inertia adapter that returns page props</td>
+              <td>No</td>
+              <td>No</td>
+            </tr>
+            <tr>
+              <td>Real-time updates</td>
+              <td>Mercure SSE → same render path</td>
+              <td>Manual / external</td>
+              <td>Turbo Streams over WebSocket/SSE</td>
+              <td>SSE / WebSocket extensions</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2>Pick a deeper dive</h2>
+        <ul>
+          <li>
+            <a href="/comparisons/inertia/"
+              ><strong>reactolith vs Inertia.js</strong></a
+            >
+            &mdash; the React/Vue/Svelte adapter for &ldquo;classic&rdquo;
+            backends. Where it shines, what it gives up by replacing the page
+            component, and what reactolith does differently.
+          </li>
+          <li>
+            <a href="/comparisons/turbo/"
+              ><strong>reactolith vs Hotwire Turbo</strong></a
+            >
+            &mdash; same backend-driven philosophy, but reactolith brings the
+            morph idea to a React component tree instead of plain DOM.
+          </li>
+        </ul>
+
+        <h2>Why this neighbourhood matters</h2>
+        <p>
+          The Inertia / Turbo / htmx / reactolith family exists for one
+          reason: most teams don&rsquo;t want to be running two apps. A Rails
+          / Symfony / Laravel / Django app
+          <em>and</em> a React SPA glued to it via a JSON API is a lot of
+          duplicated work &mdash; routing twice, validation twice, auth
+          twice, URL helpers twice, deployments twice. DHH made the
+          architectural case for collapsing all of that back into one
+          codebase in
+          <a
+            href="https://signalvnoise.com/svn3/the-majestic-monolith/"
+            target="_blank"
+            rel="noreferrer noopener"
+            >&ldquo;The Majestic Monolith&rdquo;</a
+          >.
+        </p>
+        <p>
+          Turbo and htmx make that monolith viable for vanilla DOM. Inertia
+          makes it viable for React/Vue/Svelte at the cost of a JSON
+          page-prop boundary. <strong>reactolith makes it viable for React
+          without that boundary</strong> &mdash; the wire format stays HTML,
+          and the React tree morphs in place across every navigation.
+        </p>
+      </app-page>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

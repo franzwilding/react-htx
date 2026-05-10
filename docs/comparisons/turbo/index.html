@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reactolith vs Hotwire Turbo — backend-driven morphing for a React component tree</title>
+    <meta
+      name="description"
+      content="Reactolith is what you get when you take Hotwire Turbo's mental model — backend HTML, morphed in place — and apply it to a React component tree. Side-by-side comparison with Turbo Drive, Frames and Streams."
+    />
+    <link rel="canonical" href="https://reactolith.github.io/reactolith/comparisons/turbo/" />
+  </head>
+  <body>
+    <div id="reactolith-app" class="hidden">
+      <app-page>
+        <h1>Reactolith vs Hotwire Turbo</h1>
+        <p class="text-lg text-muted-foreground">
+          Same philosophy &mdash; backend renders HTML, the page is morphed
+          in place, state survives. Different runtime: Turbo morphs the DOM,
+          reactolith morphs a React component tree.
+        </p>
+
+        <h2>The shared idea</h2>
+        <p>
+          Both libraries start from the same architectural commitment: your
+          backend keeps producing full HTML pages, the way it always has.
+          Routing stays on the server. Templates stay on the server. The
+          client&rsquo;s job is to make the experience feel app-like
+          &mdash; intercept link clicks and form submits, fetch the next
+          page in the background, and update the page <em>in place</em> so
+          you don&rsquo;t lose scroll, focus, video playback, open
+          dialogs, or anything else that lives in the DOM.
+        </p>
+        <p>
+          That&rsquo;s
+          <a
+            href="https://turbo.hotwired.dev/handbook/drive"
+            target="_blank"
+            rel="noreferrer noopener"
+            >Turbo Drive</a
+          >. And it&rsquo;s exactly what reactolith does &mdash; just for a
+          React component tree.
+        </p>
+
+        <h2>Why I wrote reactolith anyway</h2>
+        <p>
+          I love Turbo. I wanted Turbo on a project where the UI was already
+          built in React &mdash; design system components, stateful widgets,
+          the lot. Turbo&rsquo;s morphing is DOM-level: when it diffs the
+          incoming HTML against the page, it has no idea your
+          <code>&lt;dialog data-controller=&quot;modal&quot;&gt;</code> is
+          actually a React-managed component with its own state. You either
+          re-implement those widgets in vanilla + Stimulus, or you fight the
+          morph.
+        </p>
+        <p>
+          reactolith is the version of Turbo where the morph happens through
+          React&rsquo;s reconciler. The server still ships HTML; reactolith
+          parses it, treats every kebab-cased tag (<code>&lt;ui-button&gt;</code>,
+          <code>&lt;app-sidebar&gt;</code>) as a React component, and lets
+          React reconcile the difference. State, refs and effects survive
+          exactly the way they do during a normal React re-render &mdash;
+          because that&rsquo;s what it is.
+        </p>
+
+        <h2>Side-by-side</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>&nbsp;</th>
+              <th>reactolith</th>
+              <th>Hotwire Turbo</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Wire format</td>
+              <td>HTML</td>
+              <td>HTML</td>
+            </tr>
+            <tr>
+              <td>Frontend runtime</td>
+              <td>React</td>
+              <td>Vanilla DOM (+ Stimulus for behaviours)</td>
+            </tr>
+            <tr>
+              <td>How is the page morphed?</td>
+              <td>React reconciler diffs the new tree against the live one</td>
+              <td>Idiomorph / DOM diff</td>
+            </tr>
+            <tr>
+              <td>Custom components</td>
+              <td>React components, resolved from kebab-case tags</td>
+              <td>Custom Elements / Stimulus controllers</td>
+            </tr>
+            <tr>
+              <td>Partial updates</td>
+              <td>Whole page is morphed in place; only changed nodes update</td>
+              <td><code>&lt;turbo-frame&gt;</code> for scoped swaps; <code>&lt;turbo-stream&gt;</code> for actions</td>
+            </tr>
+            <tr>
+              <td>Real-time</td>
+              <td>Mercure SSE pipes HTML through the same render path</td>
+              <td>Turbo Streams over Action Cable / SSE</td>
+            </tr>
+            <tr>
+              <td>Form interception</td>
+              <td>Built in; the server can add/remove fields without losing focus</td>
+              <td>Built in via Turbo Drive</td>
+            </tr>
+            <tr>
+              <td>Scroll restoration</td>
+              <td>Built in</td>
+              <td>Built in</td>
+            </tr>
+            <tr>
+              <td>Backend ecosystem</td>
+              <td>Anything that prints HTML &mdash; Symfony, Rails, Laravel, Django, Phoenix, &hellip;</td>
+              <td>Strongest with Rails; works with any backend</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2>Turbo concepts and their reactolith equivalents</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Turbo</th>
+              <th>reactolith</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Turbo Drive (link/form interception, page morph)</td>
+              <td>Built-in router &mdash; same behaviour, applied to a React tree</td>
+            </tr>
+            <tr>
+              <td><code>&lt;turbo-frame&gt;</code> for scoped swaps</td>
+              <td>Not needed in the same way: the whole page morphs in place, and React state inside untouched components survives by default</td>
+            </tr>
+            <tr>
+              <td><code>&lt;turbo-stream&gt;</code> over Action Cable</td>
+              <td>Mercure SSE pushes HTML through the normal render path</td>
+            </tr>
+            <tr>
+              <td>Stimulus controllers for behaviours</td>
+              <td>Plain React components &mdash; hooks, context, refs &mdash; no separate behaviour layer</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h2>When to pick which</h2>
+        <p><strong>Pick Hotwire Turbo if</strong></p>
+        <ul>
+          <li>You don&rsquo;t need React. Turbo + Stimulus + a sprinkle of Custom Elements is a smaller dependency surface and a much smaller mental model.</li>
+          <li>You&rsquo;re on Rails and want the whole Hotwire stack &mdash; Turbo, Stimulus, Strada &mdash; with first-party integration.</li>
+          <li>Your existing components are vanilla DOM / Stimulus controllers; rewriting them in React would just be churn.</li>
+        </ul>
+        <p><strong>Pick reactolith if</strong></p>
+        <ul>
+          <li>Your component library is already in React &mdash; shadcn/ui, Radix, your own design system &mdash; and you don&rsquo;t want to leave that ecosystem.</li>
+          <li>You want React&rsquo;s programming model (hooks, context, refs, suspense) for interactivity, but you don&rsquo;t want a SPA + JSON API.</li>
+          <li>You want Turbo&rsquo;s morph semantics &mdash; long-lived UI that survives every navigation and form submit &mdash; expressed through the React reconciler.</li>
+          <li>You want to keep the
+            <a
+              href="https://signalvnoise.com/svn3/the-majestic-monolith/"
+              target="_blank"
+              rel="noreferrer noopener"
+              >Majestic Monolith</a
+            >
+            architecture but with a React frontend on top.
+          </li>
+        </ul>
+
+        <h2>Read next</h2>
+        <ul>
+          <li><a href="/comparisons/inertia/">reactolith vs Inertia.js</a></li>
+          <li><a href="/how-it-works/">How reactolith hydrates and morphs the tree</a></li>
+          <li><a href="/mercure/">Mercure: real-time HTML push, like Turbo Streams</a></li>
+        </ul>
+      </app-page>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
