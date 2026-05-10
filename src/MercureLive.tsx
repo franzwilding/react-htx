@@ -30,8 +30,14 @@ export interface MercureLiveProps {
 }
 
 // DOMParser is stateless within a single JS realm; reuse one instance to avoid
-// allocating per incoming Mercure message on high-throughput topics.
-const PARSER = new DOMParser();
+// allocating per incoming Mercure message on high-throughput topics. Constructed
+// lazily so that importing this module in a non-DOM environment (e.g. SSR via
+// `reactolith/server`, or a Node test runner without jsdom) does not throw.
+let parser: DOMParser | null = null;
+function getParser(): DOMParser {
+  if (!parser) parser = new DOMParser();
+  return parser;
+}
 
 export function MercureLive({ topic, children }: MercureLiveProps) {
   const app = useApp();
@@ -45,7 +51,7 @@ export function MercureLive({ topic, children }: MercureLiveProps) {
   const handleMessage = useCallback(
     (data: string) => {
       try {
-        const doc = PARSER.parseFromString(data, "text/html");
+        const doc = getParser().parseFromString(data, "text/html");
         const element = doc.body.firstElementChild as HTMLElement;
 
         if (element) {
