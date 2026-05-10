@@ -145,6 +145,96 @@ describe("Form errors via context", () => {
     expect(admin.validationMessage).toBe("");
   });
 
+  it("ignores duplicate and unnamed errors so each field is set once", async () => {
+    const setCustomValiditySpy = vi.spyOn(
+      HTMLInputElement.prototype,
+      "setCustomValidity",
+    );
+
+    const errors: FormError[] = [
+      // Unnamed error — must be ignored entirely (no field to attach to).
+      { name: "", message: "global" },
+      { name: "email", message: "Invalid email" },
+      // Duplicate name — must NOT re-apply to the email input.
+      { name: "email", message: "Also bad" },
+    ];
+
+    function Page({ is }: { is: string }) {
+      if (is !== "my-page") return null;
+      return (
+        <Form errors={errors} action="/submit" method="POST">
+          <input data-testid="email-input" name="email" />
+        </Form>
+      );
+    }
+
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app"><my-page></my-page></div>`;
+    mountApp(Page);
+
+    const input = (await screen.findByTestId(
+      "email-input",
+    )) as HTMLInputElement;
+
+    await waitFor(() => {
+      expect(input.validity.customError).toBe(true);
+    });
+
+    // Only the first matching error is applied (duplicates skipped).
+    expect(input.validationMessage).toBe("Invalid email");
+
+    // setCustomValidity is called once for the email error, plus once for
+    // the cleanup at unmount. The second "Also bad" error must not produce
+    // an additional setCustomValidity("Also bad") call during the effect.
+    const valuesSet = setCustomValiditySpy.mock.calls.map((c) => c[0]);
+    expect(valuesSet).toContain("Invalid email");
+    expect(valuesSet).not.toContain("Also bad");
+    expect(valuesSet).not.toContain("global");
+
+    setCustomValiditySpy.mockRestore();
+  });
+
+  it("forwards the underlying form element through a function ref", async () => {
+    const fnRef = vi.fn();
+
+    function Page({ is }: { is: string }) {
+      if (is !== "my-page") return null;
+      return (
+        <Form ref={fnRef} action="/submit" method="POST">
+          <input name="x" defaultValue="y" readOnly />
+        </Form>
+      );
+    }
+
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app"><my-page></my-page></div>`;
+    mountApp(Page);
+
+    await waitFor(() => {
+      expect(fnRef).toHaveBeenCalled();
+    });
+    const formArg = fnRef.mock.calls[0][0];
+    expect(formArg).toBeInstanceOf(HTMLFormElement);
+  });
+
+  it("forwards the underlying form element through an object ref", async () => {
+    const objRef = React.createRef<HTMLFormElement>();
+
+    function Page({ is }: { is: string }) {
+      if (is !== "my-page") return null;
+      return (
+        <Form ref={objRef} action="/submit" method="POST">
+          <input name="x" defaultValue="y" readOnly />
+        </Form>
+      );
+    }
+
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app"><my-page></my-page></div>`;
+    mountApp(Page);
+
+    await waitFor(() => {
+      expect(objRef.current).toBeInstanceOf(HTMLFormElement);
+    });
+  });
+
   it("wires errors to native constraint validation and clears them on input", async () => {
     const errors: FormError[] = [{ name: "email", message: "Invalid email" }];
 

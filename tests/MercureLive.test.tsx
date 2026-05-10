@@ -526,6 +526,40 @@ describe("MercureLive", () => {
     });
   });
 
+  it("logs an error when the EventSource emits an error", async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    document.body.innerHTML = `<div id="reactolith-app">
+      <mercure-live topic="/test">
+        <test-component>Initial</test-component>
+      </mercure-live>
+    </div>`;
+
+    const app = new App(createTestComponent());
+    app.mercureConfig = {
+      hubUrl: "https://example.com/.well-known/mercure",
+      withCredentials: false,
+    };
+
+    await waitFor(() => {
+      expect(mockEventSource).not.toBeNull();
+      expect(mockEventSource?.onerror).not.toBeNull();
+    });
+
+    mockEventSource?.simulateError();
+
+    await waitFor(() => {
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining("EventSource error"),
+        expect.any(Event),
+      );
+    });
+
+    consoleErrorSpy.mockRestore();
+  });
+
   it("updates children when navigation changes props (without Mercure messages)", async () => {
     document.body.innerHTML = `<div id="reactolith-app">
       <mercure-live topic="/panel">

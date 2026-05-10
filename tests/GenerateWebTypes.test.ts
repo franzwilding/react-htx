@@ -547,4 +547,91 @@ describe("generateWebTypes", () => {
     expect(title).toBeDefined();
     expect(title.required).toBe(true);
   });
+
+  it("resolves a `export default <NamedImport>` across files", () => {
+    // CrossFileNamedDefault.tsx imports { ImportedComponent } from
+    // ./ImportedComponent and re-exports it as default. Exercises the
+    // named-import branches of resolveIdentifierToProps and
+    // resolveImportedComponent.
+    generateWebTypes({
+      componentsDir,
+      outFile,
+      tsconfig,
+    });
+
+    const content = JSON.parse(fs.readFileSync(outFile, "utf-8"));
+    const elements = content.contributions.html.elements;
+    const cross = elements.find(
+      (el: any) => el.name === "cross-file-named-default",
+    );
+
+    expect(cross).toBeDefined();
+    const heading = cross.attributes.find((a: any) => a.name === "heading");
+    expect(heading).toBeDefined();
+    expect(heading.required).toBe(true);
+  });
+
+  it("resolves a `export default <DefaultImport>` across files", () => {
+    // CrossFileDefaultDefault.tsx imports the default export of
+    // ./ImportedComponent and re-exports it. Exercises the default-import
+    // branch of resolveIdentifierToProps and resolveImportedComponent.
+    generateWebTypes({
+      componentsDir,
+      outFile,
+      tsconfig,
+    });
+
+    const content = JSON.parse(fs.readFileSync(outFile, "utf-8"));
+    const elements = content.contributions.html.elements;
+    const cross = elements.find(
+      (el: any) => el.name === "cross-file-default-default",
+    );
+
+    expect(cross).toBeDefined();
+    const caption = cross.attributes.find((a: any) => a.name === "caption");
+    expect(caption).toBeDefined();
+    expect(caption.required).toBe(true);
+  });
+
+  it("emits an element with no attributes for components that take no props", () => {
+    // NoPropsComponent.tsx has zero parameters, so extractPropsFromFunction
+    // returns a propsType of null and extractAttributesAndSlots
+    // short-circuits.
+    generateWebTypes({
+      componentsDir,
+      outFile,
+      tsconfig,
+    });
+
+    const content = JSON.parse(fs.readFileSync(outFile, "utf-8"));
+    const elements = content.contributions.html.elements;
+    const noProps = elements.find(
+      (el: any) => el.name === "no-props-component",
+    );
+
+    expect(noProps).toBeDefined();
+    expect(noProps.attributes).toEqual([]);
+    expect(noProps.slots).toBeUndefined();
+  });
+
+  it("supports single-`*` and `?` glob characters in exclude patterns", () => {
+    // Single `*` -> [^/]* in the regex (lines 135-136 of GenerateWebTypes.ts);
+    // `?`        -> [^/]   (lines 139-140).
+    generateWebTypes({
+      componentsDir,
+      outFile,
+      tsconfig,
+      // `Butto?.tsx` matches Button.tsx but not Buttonn.tsx; `*Card.tsx`
+      // matches the Card.tsx file under any sibling directory.
+      exclude: ["**/Butto?.tsx", "**/*Card.tsx"],
+    });
+
+    const content = JSON.parse(fs.readFileSync(outFile, "utf-8"));
+    const names = content.contributions.html.elements.map((el: any) => el.name);
+
+    expect(names).not.toContain("button");
+    expect(names).not.toContain("card");
+    // Other components must still be picked up.
+    expect(names).toContain("badge");
+  });
 });
