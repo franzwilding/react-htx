@@ -545,4 +545,40 @@
   .compare-mid {
     color: oklch(0.7 0.15 70);
   }
+
+  /* gradient surfaces — React 19 rejects string `style` attrs from
+     reactolith's HTML-to-React bridge, so we expose them as classes. */
+  .surface-card-violet {
+    background: linear-gradient(
+      135deg,
+      color-mix(in oklch, var(--primary) 7%, var(--card)),
+      var(--card)
+    );
+  }
+  .surface-quote {
+    background: linear-gradient(
+      135deg,
+      color-mix(in oklch, var(--primary) 6%, var(--card)),
+      var(--card)
+    );
+  }
+  .surface-cta {
+    background:
+      radial-gradient(
+        ellipse 50% 70% at 50% 100%,
+        color-mix(in oklch, var(--primary) 22%, transparent),
+        transparent 70%
+      ),
+      color-mix(in oklch, var(--primary) 4%, var(--background));
+  }
+  .shadow-cta-glow {
+    box-shadow: 0 8px 24px -12px
+      color-mix(in oklch, var(--primary) 70%, transparent);
+  }
+  .shadow-pane {
+    box-shadow: 0 24px 60px -30px oklch(0 0 0 / 0.4);
+  }
+  .shadow-pane-lg {
+    box-shadow: 0 30px 60px -40px oklch(0 0 0 / 0.4);
+  }
 }
