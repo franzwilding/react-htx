@@ -43,6 +43,25 @@ const hasSetCustomValidity = (
   typeof (el as { setCustomValidity: unknown }).setCustomValidity ===
     "function";
 
+// `form.elements.namedItem` returns a `RadioNodeList` (not an Element)
+// when several inputs share the same name — e.g. a radio group. The
+// list itself has no `setCustomValidity`, so unwrap to the individual
+// members before applying the error.
+const collectValidatable = (
+  node: ReturnType<HTMLFormElement["elements"]["namedItem"]>,
+): Array<{ setCustomValidity: (msg: string) => void }> => {
+  if (!node) return [];
+  if (hasSetCustomValidity(node)) return [node];
+  if (typeof (node as { length?: unknown }).length === "number") {
+    const out: Array<{ setCustomValidity: (msg: string) => void }> = [];
+    for (const child of Array.from(node as unknown as Iterable<unknown>)) {
+      if (hasSetCustomValidity(child)) out.push(child);
+    }
+    return out;
+  }
+  return [];
+};
+
 export function Form({
   ref,
   errors: propErrors,
@@ -77,11 +96,10 @@ export function Form({
     const taken = new Set<string>();
     for (const error of errors) {
       if (!error.name || taken.has(error.name)) continue;
-      const el = form.elements.namedItem(error.name);
-      if (hasSetCustomValidity(el)) {
-        el.setCustomValidity(error.message);
-        taken.add(error.name);
-      }
+      const targets = collectValidatable(form.elements.namedItem(error.name));
+      if (targets.length === 0) continue;
+      for (const target of targets) target.setCustomValidity(error.message);
+      taken.add(error.name);
     }
     return () => {
       for (const el of Array.from(form.elements)) {
