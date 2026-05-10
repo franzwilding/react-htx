@@ -177,6 +177,13 @@ export class Mercure extends EventEmitter<MercureEventMap> {
             false, // Don't push state, we're already on this page
           );
 
+          if (response.cancelled) {
+            // Superseded by a newer visit (e.g. another empty message
+            // arrived while this refetch was in flight). The newer visit
+            // will report success/failure on its own.
+            return;
+          }
+
           if (response.result) {
             this.emit("refetch:success", event, response.html);
           } else {
