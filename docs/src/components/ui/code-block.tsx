@@ -48,8 +48,7 @@ export function CodeBlock({
       try {
         const html = h.codeToHtml(text, {
           lang: (lang ?? "").toLowerCase(),
-          themes: { light: "github-light", dark: "github-dark" },
-          defaultColor: false,
+          theme: "github-dark",
         });
         setHighlighted(html);
       } catch {

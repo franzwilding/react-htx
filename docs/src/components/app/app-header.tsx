@@ -1,6 +1,5 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { AppThemeToggle } from "./app-theme-toggle";
 import { AppSidebarTrigger } from "./app-sidebar-trigger";
 import { AppLogoMark } from "./app-logo-mark";
 
@@ -20,7 +19,7 @@ function GithubIcon({ className }: { className?: string }) {
 export interface AppHeaderProps extends React.HTMLAttributes<HTMLElement> {
   homeHref?: string;
   repoHref?: string;
-  /** When true, render the marketing-style nav links (Philosophy / Demo …). */
+  /** When true, render the marketing-style nav links. */
   marketing?: boolean;
 }
 
@@ -62,22 +61,22 @@ export function AppHeader({
         {marketing && (
           <nav className="ml-8 hidden items-center gap-6 md:flex">
             <a
-              href="#philosophy"
+              href="#idea"
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              Philosophy
+              Idea
             </a>
             <a
-              href="#demo"
+              href="#example"
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              How it works
+              Example
             </a>
             <a
-              href="#anywhere"
+              href="#compare"
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              Anywhere
+              Compare
             </a>
             <a
               href={`${BASE}installation/`}
@@ -99,7 +98,6 @@ export function AppHeader({
             <GithubIcon className="size-4" />
             <span className="hidden sm:inline">GitHub</span>
           </a>
-          <AppThemeToggle />
           {marketing && (
             <a
               href={`${BASE}installation/`}
