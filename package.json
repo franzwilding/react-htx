@@ -70,8 +70,8 @@
     "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
-    "react": "^18 || ^19",
-    "react-dom": "^18 || ^19"
+    "react": "^19",
+    "react-dom": "^19"
   },
   "dependencies": {
     "ts-morph": "^28.0.0"

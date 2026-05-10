@@ -1,4 +1,4 @@
-import React, { ElementType, JSX, ReactNode } from "react";
+import React, { ElementType, JSX, ReactNode, Ref } from "react";
 
 const ELEMENT_NODE = 1;
 const TEXT_NODE = 3;
@@ -133,6 +133,7 @@ function getChildren(
 type ReactolithProps = React.HTMLAttributes<Element> & {
   element?: Element;
   component: React.ElementType;
+  ref?: Ref<Element>;
 };
 
 /**
@@ -160,30 +161,31 @@ function isReactComponentTag(element: Element): boolean {
   return true;
 }
 
-export const ReactolithComponent = React.forwardRef<Element, ReactolithProps>(
-  ({ element, component: Component, ...props }, forwardedRef) => {
-    if (!element) return null;
+export function ReactolithComponent({
+  element,
+  component: Component,
+  ref,
+  ...props
+}: ReactolithProps) {
+  if (!element) return null;
 
-    const tagName = element.tagName.toLowerCase();
-    const children = getChildren(element, Component);
+  const tagName = element.tagName.toLowerCase();
+  const children = getChildren(element, Component);
 
-    const isReactComponent = isReactComponentTag(element);
+  const isReactComponent = isReactComponentTag(element);
 
-    const type: React.ElementType = isReactComponent
-      ? Component
-      : (tagName as keyof JSX.IntrinsicElements);
+  const type: React.ElementType = isReactComponent
+    ? Component
+    : (tagName as keyof JSX.IntrinsicElements);
 
-    const allProps = {
-      ...getProps(element, Component, isReactComponent),
-      ...getSlots(element, Component),
-      key: getKey(element),
-      ...(isReactComponent ? { is: tagName } : {}),
-      ...props,
-      ref: forwardedRef,
-    };
+  const allProps = {
+    ...getProps(element, Component, isReactComponent),
+    ...getSlots(element, Component),
+    key: getKey(element),
+    ...(isReactComponent ? { is: tagName } : {}),
+    ...props,
+    ref,
+  };
 
-    return React.createElement(type, allProps, ...children);
-  },
-);
-
-ReactolithComponent.displayName = "ReactolithComponent";
+  return React.createElement(type, allProps, ...children);
+}

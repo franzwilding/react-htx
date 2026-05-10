@@ -16,7 +16,7 @@ Return HTML from your backend; reactolith turns it into a live React app — inc
 npm install reactolith react react-dom
 ```
 
-Requires Node 18+ and React 18 or 19.
+Requires Node 18+ and React 19.
 
 ---
 
