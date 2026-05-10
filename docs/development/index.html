@@ -32,6 +32,16 @@ npm run lint        # eslint src tests</ui-code-block>
           always come from a fresh build.
         </p>
 
+        <h2>Continuous integration</h2>
+        <p>
+          Every pull request and push to <code>main</code> runs the
+          <a href="https://github.com/reactolith/reactolith/blob/main/.github/workflows/ci.yml" target="_blank" rel="noreferrer noopener">CI workflow</a>,
+          which executes <code>npm run typecheck</code>, <code>npm run lint</code>,
+          <code>npm test</code>, and <code>npm run build</code>, plus an
+          <code>npm audit --omit=dev</code> step that gates on production-only
+          advisories. Keep these green locally before opening a PR.
+        </p>
+
         <h2>Project structure</h2>
         <ui-code-block>reactolith/
 ├── src/                 # library source (App, Router, Mercure, …)
