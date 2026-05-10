@@ -1,7 +1,7 @@
 export { App } from "./App";
 export type { MercureConfig, AppOptions } from "./App";
 export { Router } from "./Router";
-export type { ScrollOption } from "./Router";
+export type { ScrollOption, VisitResult } from "./Router";
 export { ScrollRestoration, detectScrollContainer } from "./ScrollRestoration";
 export { Mercure } from "./Mercure";
 export type { MercureOptions } from "./Mercure";

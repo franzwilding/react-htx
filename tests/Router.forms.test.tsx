@@ -56,10 +56,10 @@ describe("Router form submission", () => {
     await fireEvent.submit(form);
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("/search?query=test", {
-        method: "GET",
-        body: null,
-      });
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/search?query=test",
+        expect.objectContaining({ method: "GET", body: null }),
+      );
     });
   });
 
@@ -128,10 +128,10 @@ describe("Router form submission", () => {
     await fireEvent.submit(form);
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("/search?page=1&query=test", {
-        method: "GET",
-        body: null,
-      });
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/search?page=1&query=test",
+        expect.objectContaining({ method: "GET", body: null }),
+      );
     });
   });
 

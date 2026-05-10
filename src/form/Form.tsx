@@ -105,15 +105,18 @@ export function Form({
 
       // Native submission bubbles to the Router. Track the next
       // navigation cycle to flip submitting back off — on either a
-      // successful end or a fetch error.
+      // successful end, a fetch error, or supersession by a newer
+      // navigation.
       setSubmitting(true);
       const reset = () => {
         setSubmitting(false);
         offEnded();
         offError();
+        offCancelled();
       };
       const offEnded = router.on("nav:ended", reset);
       const offError = router.on("nav:error", reset);
+      const offCancelled = router.on("nav:cancelled", reset);
     },
     [onSubmit, router],
   );

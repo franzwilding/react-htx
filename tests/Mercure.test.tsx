@@ -593,7 +593,7 @@ describe("Mercure SSE integration", () => {
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
         window.location.pathname + window.location.search,
-        { method: "GET" },
+        expect.objectContaining({ method: "GET" }),
       );
     });
 
