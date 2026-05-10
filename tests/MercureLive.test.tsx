@@ -405,13 +405,13 @@ describe("MercureLive", () => {
       expect(mockEventSource?.onmessage).not.toBeNull();
     });
 
-    // Mock DOMParser to throw an error
-    const originalDOMParser = global.DOMParser;
-    global.DOMParser = class {
-      parseFromString() {
+    // Force the shared DOMParser to throw. Spying on the prototype works even
+    // though the parser instance is created at module load time.
+    const parseSpy = vi
+      .spyOn(DOMParser.prototype, "parseFromString")
+      .mockImplementation(() => {
         throw new Error("Parse error");
-      }
-    } as any;
+      });
 
     // Simulate receiving a message
     mockEventSource?.simulateMessage(
@@ -430,8 +430,7 @@ describe("MercureLive", () => {
     element = screen.getByTestId("test-component");
     expect(element.textContent).toBe("Initial");
 
-    // Restore
-    global.DOMParser = originalDOMParser;
+    parseSpy.mockRestore();
     consoleErrorSpy.mockRestore();
   });
 
