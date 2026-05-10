@@ -68,8 +68,11 @@ under `docs/<topic>/index.html` in the same PR.
 
 Releases are author-managed. Maintainers cut a new version with `npm version`,
 push the tag, and the [`release.yml`](./.github/workflows/release.yml) workflow
-publishes the package to npm. Contributors do **not** need to bump the version
-or edit a changelog as part of a PR.
+publishes the package to npm. Published tarballs carry an
+[npm provenance](https://docs.npmjs.com/generating-provenance-statements)
+attestation linking them back to the GitHub Actions run that built them.
+Contributors do **not** need to bump the version or edit a changelog as part of
+a PR.
 
 ## Reporting bugs / proposing features
 
