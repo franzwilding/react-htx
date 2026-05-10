@@ -172,6 +172,7 @@ export class Router extends EventEmitter<RouterEventMap> {
     init: RequestInit = { method: "GET" },
     pushState: boolean = true,
     scroll?: ScrollOption,
+    replace: boolean = false,
   ): Promise<VisitResult> {
     // Cancel any in-flight visit. Its fetch will reject with AbortError,
     // which we catch below and translate into a terminal `nav:cancelled`
@@ -226,7 +227,10 @@ export class Router extends EventEmitter<RouterEventMap> {
     const finalUrl = response.redirected ? response.url : original;
     const result = this.app.render(html);
 
-    if (result && pushState) {
+    if (result && pushState && replace) {
+      const state = this.scrollRestoration?.replace() ?? {};
+      this.doc.defaultView?.history.replaceState(state, "", finalUrl);
+    } else if (result && pushState) {
       const state = this.scrollRestoration?.push() ?? {};
       this.doc.defaultView?.history.pushState(state, "", finalUrl);
     } else if (result && !pushState) {
@@ -327,8 +331,14 @@ export class Router extends EventEmitter<RouterEventMap> {
 
   public async navigate(
     path: string,
-    options?: { scroll?: ScrollOption },
+    options?: { scroll?: ScrollOption; replace?: boolean },
   ): Promise<void> {
-    await this.visit(path, { method: "GET" }, true, options?.scroll);
+    await this.visit(
+      path,
+      { method: "GET" },
+      true,
+      options?.scroll,
+      options?.replace,
+    );
   }
 }

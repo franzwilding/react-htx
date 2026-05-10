@@ -455,6 +455,179 @@ describe("Router scroll restoration", () => {
     });
   });
 
+  it("navigate({ replace: true }) calls history.replaceState (not pushState)", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Foo</my-component>
+    </div>`;
+
+    const fetchMock = createFetchMock(responseHtml);
+    global.fetch = fetchMock as any;
+
+    const app = new App(testComponent);
+    await act(async () => {});
+
+    const pushSpy = vi.spyOn(history, "pushState");
+    const replaceSpy = vi.spyOn(history, "replaceState");
+
+    const initialLength = history.length;
+    const initialId = history.state.restorationId;
+
+    await app.router.navigate("/dashboard", { replace: true });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    expect(pushSpy).not.toHaveBeenCalled();
+    expect(replaceSpy).toHaveBeenCalled();
+    // history length is unchanged when replacing
+    expect(history.length).toBe(initialLength);
+    // restorationId rotated even though we replaced
+    expect(history.state.restorationId).not.toBe(initialId);
+
+    pushSpy.mockRestore();
+    replaceSpy.mockRestore();
+  });
+
+  it("navigate({ replace: true }) updates the URL to the final URL", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Foo</my-component>
+    </div>`;
+
+    const fetchMock = createFetchMock(responseHtml);
+    global.fetch = fetchMock as any;
+
+    const app = new App(testComponent);
+    await act(async () => {});
+
+    const replaceSpy = vi.spyOn(history, "replaceState");
+
+    await app.router.navigate("/dashboard", { replace: true });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    // Verify replaceState was called with the target URL
+    const lastCall = replaceSpy.mock.calls[replaceSpy.mock.calls.length - 1];
+    expect(lastCall[2]).toBe("/dashboard");
+
+    replaceSpy.mockRestore();
+  });
+
+  it("navigate({ replace: true, scroll: 'preserve' }) does not scroll", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Foo</my-component>
+    </div>`;
+
+    const fetchMock = createFetchMock(responseHtml);
+    global.fetch = fetchMock as any;
+
+    const app = new App(testComponent);
+    await act(async () => {});
+
+    await app.router.navigate("/list?q=x", {
+      replace: true,
+      scroll: "preserve",
+    });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    expect(scrollToSpy).not.toHaveBeenCalled();
+  });
+
+  it("navigate({ replace: true }) scrolls to top by default", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Foo</my-component>
+    </div>`;
+
+    const fetchMock = createFetchMock(responseHtml);
+    global.fetch = fetchMock as any;
+
+    const app = new App(testComponent);
+    await act(async () => {});
+
+    await app.router.navigate("/dashboard", { replace: true });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+      expect(scrollToSpy).toHaveBeenCalledWith(0, 0);
+    });
+  });
+
+  it("replaced entry is not reachable via Back: its scroll position is gone", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Foo</my-component>
+    </div>`;
+
+    const fetchMock = createFetchMock(responseHtml);
+    global.fetch = fetchMock as any;
+
+    const app = new App(testComponent);
+    await act(async () => {});
+
+    // Pretend the user scrolled the original entry to y=600 before we
+    // replace it.
+    Object.defineProperty(window, "scrollX", {
+      value: 0,
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(window, "scrollY", {
+      value: 600,
+      writable: true,
+      configurable: true,
+    });
+
+    const originalId = history.state.restorationId;
+
+    await app.router.navigate("/replacement", { replace: true });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    scrollToSpy.mockClear();
+
+    // Simulate something forcing currentId back to the original id (this
+    // can't happen via real Back since the entry was replaced — we do it
+    // here to prove the saved position was discarded).
+    history.replaceState({ restorationId: originalId }, "");
+    await app.router.visit("/replacement", { method: "GET" }, false);
+
+    // No saved position for originalId → no scroll restoration happens.
+    expect(scrollToSpy).not.toHaveBeenCalled();
+  });
+
+  it("visit() with replace=true forwards to history.replaceState", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Foo</my-component>
+    </div>`;
+
+    const fetchMock = createFetchMock(responseHtml);
+    global.fetch = fetchMock as any;
+
+    const app = new App(testComponent);
+    await act(async () => {});
+
+    const pushSpy = vi.spyOn(history, "pushState");
+    const replaceSpy = vi.spyOn(history, "replaceState");
+
+    await app.router.visit("/page", { method: "GET" }, true, undefined, true);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    expect(pushSpy).not.toHaveBeenCalled();
+    expect(replaceSpy).toHaveBeenCalled();
+
+    pushSpy.mockRestore();
+    replaceSpy.mockRestore();
+  });
+
   it("popstate followed by a failed visit does not corrupt scroll-state ids", async () => {
     document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
       <my-component>Foo</my-component>

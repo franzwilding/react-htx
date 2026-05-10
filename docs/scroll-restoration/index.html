@@ -51,7 +51,16 @@
 router.navigate("/page");
 
 // Preserve current scroll position
-router.navigate("/page", { scroll: "preserve" });</ui-code-block>
+router.navigate("/page", { scroll: "preserve" });
+
+// Replace the current history entry instead of pushing a new one.
+// Useful for redirects after a successful POST, search-state updates,
+// or auth flows that swap /login?next=… for /dashboard without leaving
+// the login route in history.
+router.navigate("/dashboard", { replace: true });
+
+// Combine replace with scroll: "preserve" for in-page filter updates.
+router.navigate("/list?q=x", { replace: true, scroll: "preserve" });</ui-code-block>
 
         <h2>Custom Scroll Container</h2>
         <p>

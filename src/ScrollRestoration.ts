@@ -81,6 +81,18 @@ export class ScrollRestoration {
     return { restorationId: this.currentId };
   }
 
+  /**
+   * Replace the current history entry with a new restorationId.
+   * Returns the state object that must be passed to `history.replaceState`.
+   * The previously-saved scroll position for the replaced entry is dropped,
+   * since that URL is no longer reachable via Back.
+   */
+  replace(): Record<string, unknown> {
+    this.positions.delete(this.currentId);
+    this.currentId = this.generateId();
+    return { restorationId: this.currentId };
+  }
+
   /** Sync `currentId` with the entry the browser just navigated to (popstate). */
   pop(): void {
     this.currentId = this.win.history.state?.restorationId ?? this.currentId;
