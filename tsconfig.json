@@ -5,13 +5,15 @@
     "jsx": "react-jsx",
     "declaration": true,
     "emitDeclarationOnly": false,
+    "rootDir": "./src",
     "outDir": "./dist",
     "moduleResolution": "bundler",
     "strict": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node"]
   },
   "include": ["src"]
 }
