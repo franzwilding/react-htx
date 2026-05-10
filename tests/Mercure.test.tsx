@@ -867,6 +867,229 @@ describe("Mercure SSE integration", () => {
     expect(namedHandler.mock.calls[1][2]).toBe("<aside>x</aside>");
   });
 
+  it("uses a custom getTopic option to derive the subscription topic", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Initial</my-component>
+    </div>`;
+
+    const app = new App(testComponent);
+    appInstances.push(app);
+    const mercure = new Mercure(app);
+
+    const getTopic = vi.fn(() => "/custom-topic");
+
+    mercure.subscribe({
+      hubUrl: "https://example.com/.well-known/mercure",
+      getTopic,
+    });
+
+    expect(getTopic).toHaveBeenCalled();
+    expect(eventSourceCalls.length).toBe(1);
+    expect(eventSourceCalls[0][0]).toContain("topic=%2Fcustom-topic");
+  });
+
+  it("tracks the last event id from incoming messages", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Initial</my-component>
+    </div>`;
+
+    const app = new App(testComponent);
+    appInstances.push(app);
+    const mercure = new Mercure(app);
+
+    mercure.subscribe({
+      hubUrl: "https://example.com/.well-known/mercure",
+    });
+
+    mockEventSource!.simulateOpen();
+    mockEventSource!.simulateMessage(
+      `<div id="reactolith-app"><my-component>x</my-component></div>`,
+      "evt-42",
+    );
+
+    await waitFor(() => {
+      expect(mercure.lastEventId).toBe("evt-42");
+    });
+  });
+
+  it("emits refetch:failed when the refetched HTML cannot render", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Initial</my-component>
+    </div>`;
+
+    // Refetch resolves successfully but returns HTML without a #reactolith-app
+    // root, so app.render(html) returns false and Mercure must report failure.
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      redirected: false,
+      text: async () => `<div id="other-root"></div>`,
+    });
+
+    const app = new App(
+      testComponent,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      mockFetch as any,
+    );
+    appInstances.push(app);
+    const mercure = new Mercure(app);
+
+    const refetchFailedHandler = vi.fn();
+    mercure.on("refetch:failed", refetchFailedHandler);
+
+    mercure.subscribe({
+      hubUrl: "https://example.com/.well-known/mercure",
+    });
+
+    mockEventSource!.simulateOpen();
+    mockEventSource!.simulateMessage("");
+
+    await waitFor(() => {
+      expect(refetchFailedHandler).toHaveBeenCalledTimes(1);
+      expect(refetchFailedHandler.mock.calls[0][1]).toBeInstanceOf(Error);
+      expect(refetchFailedHandler.mock.calls[0][1].message).toMatch(
+        /failed to render/i,
+      );
+    });
+  });
+
+  it("re-subscribing closes the previous router listener", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Initial</my-component>
+    </div>`;
+
+    const app = new App(testComponent);
+    appInstances.push(app);
+    const mercure = new Mercure(app);
+
+    mercure.subscribe({
+      hubUrl: "https://example.com/.well-known/mercure",
+    });
+    expect(eventSourceCalls.length).toBe(1);
+
+    // Subscribe again — should tear down the previous router listener and
+    // make a fresh subscription. Without the unsubscribe-the-previous path,
+    // the next router event would fire two reconnections.
+    mercure.subscribe({
+      hubUrl: "https://example.com/.well-known/mercure",
+      getTopic: () => "/route-b",
+    });
+
+    Object.defineProperty(window, "location", {
+      value: { pathname: "/somewhere-else" },
+      writable: true,
+    });
+
+    (app.router as any).emit(
+      "render:success",
+      "/somewhere-else",
+      {},
+      true,
+      new Response(),
+      "<html></html>",
+      "/somewhere-else",
+    );
+
+    // Each EventSource creation reflects exactly one connect; the old
+    // router listener must not have produced an extra connect.
+    const routeBCalls = eventSourceCalls.filter((c) =>
+      c[0].includes("topic=%2Froute-b"),
+    );
+    expect(routeBCalls.length).toBe(1);
+  });
+
+  it("emits sse:disconnected on error when the EventSource is CLOSED", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Initial</my-component>
+    </div>`;
+
+    const app = new App(testComponent);
+    appInstances.push(app);
+    const mercure = new Mercure(app);
+    const disconnectedHandler = vi.fn();
+
+    mercure.on("sse:disconnected", disconnectedHandler);
+
+    mercure.subscribe({
+      hubUrl: "https://example.com/.well-known/mercure",
+    });
+
+    // Simulate the EventSource transitioning to CLOSED before the error fires.
+    mockEventSource!.readyState = MockEventSource.CLOSED;
+    mockEventSource!.simulateError();
+
+    expect(disconnectedHandler).toHaveBeenCalledTimes(1);
+  });
+
+  it("subscribeRaw forwards EventSource errors to registered error listeners", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Initial</my-component>
+    </div>`;
+
+    const app = new App(testComponent);
+    appInstances.push(app);
+    app.mercureConfig = {
+      hubUrl: "https://example.com/.well-known/mercure",
+    };
+
+    const onMessage = vi.fn();
+    const onError = vi.fn();
+
+    const unsubscribe = app.mercure.subscribeRaw(
+      "/raw-topic",
+      onMessage,
+      onError,
+    );
+
+    // openRawSource constructs an EventSource — assert and trigger its onerror.
+    expect(mockEventSource).not.toBeNull();
+    mockEventSource!.simulateError();
+
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0][0]).toBeInstanceOf(Event);
+
+    // Unsubscribing twice must not throw — second call hits the early-return
+    // path when the entry has already been cleaned up.
+    unsubscribe();
+    expect(() => unsubscribe()).not.toThrow();
+  });
+
+  it("subscribeRaw reopens connections when app.mercureConfig is reassigned", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Initial</my-component>
+    </div>`;
+
+    const app = new App(testComponent);
+    appInstances.push(app);
+    app.mercureConfig = {
+      hubUrl: "https://hub-a.example.com/.well-known/mercure",
+    };
+
+    const onMessage = vi.fn();
+    app.mercure.subscribeRaw("/raw-topic", onMessage);
+
+    // First connection uses hub-a.
+    expect(eventSourceCalls.length).toBe(1);
+    expect(eventSourceCalls[0][0]).toContain("hub-a.example.com");
+    const firstSource = mockEventSource;
+
+    // Reassigning the config must close the old EventSource and open a new
+    // one against the new hub URL. Listeners stay registered.
+    app.mercureConfig = {
+      hubUrl: "https://hub-b.example.com/.well-known/mercure",
+    };
+
+    expect(firstSource!.readyState).toBe(MockEventSource.CLOSED);
+    expect(eventSourceCalls.length).toBe(2);
+    expect(eventSourceCalls[1][0]).toContain("hub-b.example.com");
+
+    // The new EventSource still drives the original message listener.
+    mockEventSource!.simulateMessage("hello");
+    expect(onMessage).toHaveBeenCalledWith("hello", expect.anything());
+  });
+
   it("does not deliver named events for unsubscribed names", async () => {
     document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
       <my-component>Initial</my-component>

@@ -57,4 +57,75 @@ describe("Test app router", () => {
     expect(root.querySelector("pre")).toHaveAttribute("data-loading", "false");
     expect(root.querySelector("pre")).toHaveTextContent("Baa");
   });
+
+  it("visit({ replace: true }) replaces the history entry instead of pushing", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+<my-component>Foo</my-component>
+</div>`;
+
+    const fetchMock = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        redirected: false,
+        url: "/replaced",
+        text: () =>
+          Promise.resolve(`<div id="reactolith-app" data-testid="reactolith-app">
+<my-component>Replaced</my-component>
+</div>`),
+      }),
+    );
+    global.fetch = fetchMock as any;
+
+    const replaceSpy = vi.spyOn(window.history, "replaceState");
+    const pushSpy = vi.spyOn(window.history, "pushState");
+
+    const app = new App(testComponent);
+    await screen.findByTestId("reactolith-app");
+
+    await app.router.visit(
+      "/replaced",
+      { method: "GET" },
+      true,
+      undefined,
+      true,
+    );
+
+    expect(replaceSpy).toHaveBeenCalled();
+    expect(pushSpy).not.toHaveBeenCalled();
+
+    replaceSpy.mockRestore();
+    pushSpy.mockRestore();
+  });
+
+  it("visit() accepts a URL object (not just a string) as input", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+<my-component>Foo</my-component>
+</div>`;
+
+    const fetchMock = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        redirected: false,
+        url: "http://localhost:3000/from-url",
+        text: () =>
+          Promise.resolve(`<div id="reactolith-app" data-testid="reactolith-app">
+<my-component>From URL</my-component>
+</div>`),
+      }),
+    );
+    global.fetch = fetchMock as any;
+
+    const app = new App(testComponent);
+    const root = await screen.findByTestId("reactolith-app");
+
+    const url = new URL("http://localhost:3000/from-url");
+    const result = await app.router.visit(url, { method: "GET" }, true);
+
+    expect(result.result).toBe(true);
+    // Underlying fetch must receive the URL itself.
+    expect(fetchMock.mock.calls[0][0]).toBe(url);
+    await waitFor(() => {
+      expect(root.querySelector("pre")).toHaveTextContent("From URL");
+    });
+  });
 });

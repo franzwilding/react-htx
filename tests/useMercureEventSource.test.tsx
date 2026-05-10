@@ -229,6 +229,33 @@ describe("useMercureEventSource", () => {
     });
   });
 
+  it("survives EventSource errors when no onError callback is provided", async () => {
+    // No onError handler is passed: the optional-callback branch must not
+    // throw when the underlying EventSource emits an error event.
+    function Subscriber({ is }: { is: string }) {
+      useMercureEventSource("/topic", () => {});
+      return <div data-testid="my-subscriber" data-is={is} />;
+    }
+
+    document.body.innerHTML = `<div id="reactolith-app">
+      <my-subscriber></my-subscriber>
+    </div>`;
+
+    const app = new App(Subscriber);
+    app.mercureConfig = {
+      hubUrl: "https://example.com/.well-known/mercure",
+    };
+
+    await screen.findByTestId("my-subscriber");
+    await waitFor(() => expect(eventSources.length).toBe(1));
+
+    // Calling the EventSource error handler must not throw even though
+    // the hook was registered without an onError callback.
+    expect(() => {
+      eventSources[0].onerror?.(new Event("error"));
+    }).not.toThrow();
+  });
+
   it("uses app.mercureConfig to build the subscription URL", async () => {
     function Subscriber({ is }: { is: string }) {
       useMercureEventSource("/notifications", () => {});

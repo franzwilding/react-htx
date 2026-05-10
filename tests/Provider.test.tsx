@@ -245,6 +245,17 @@ describe("RouterProvider", () => {
     );
   });
 
+  it("throws when useApp is used outside <AppProvider>", () => {
+    function Consumer() {
+      useApp();
+      return null;
+    }
+
+    expect(() => renderToString(<Consumer />)).toThrow(
+      /useApp must be used inside <AppProvider>/,
+    );
+  });
+
   it("cleans up event listeners on unmount", async () => {
     document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
       <my-component>Content</my-component>
