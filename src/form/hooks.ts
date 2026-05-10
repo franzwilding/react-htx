@@ -6,8 +6,15 @@ import {
 } from "./FormContext";
 
 /**
- * Returns whether the surrounding `<Form>` is currently submitting.
- * Returns `false` if used outside a `<Form>`.
+ * Returns whether the surrounding `<Form>` is currently submitting via
+ * reactolith's `Router` (i.e. a plain `action="…"` URL submission whose
+ * response re-hydrates the page). Returns `false` outside a `<Form>`.
+ *
+ * This is distinct from React 19's `useFormStatus()` (`react-dom`), which
+ * only reports `pending` for submissions kicked off by a React form
+ * action (`<form action={fn}>`). The two hooks track different
+ * submission models and do not overlap. See the Forms doc page for the
+ * full comparison.
  */
 export function useFormSubmitting(): boolean {
   return useContext(FormSubmittingContext);
