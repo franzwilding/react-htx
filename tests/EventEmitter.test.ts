@@ -102,6 +102,44 @@ describe("EventEmitter", () => {
     expect(() => emitter.off("evt:single", vi.fn())).not.toThrow();
   });
 
+  it("lets a listener unsubscribe a sibling without skipping it for the in-flight emit", () => {
+    const emitter = new TestEmitter();
+    const a = vi.fn();
+    const b = vi.fn(() => emitter.off("evt:single", a));
+
+    emitter.on("evt:single", b);
+    emitter.on("evt:single", a);
+
+    emitter.fire("evt:single", 1);
+
+    expect(b).toHaveBeenCalledTimes(1);
+    expect(a).toHaveBeenCalledTimes(1);
+    expect(a).toHaveBeenCalledWith(1);
+
+    emitter.fire("evt:single", 2);
+
+    expect(b).toHaveBeenCalledTimes(2);
+    expect(a).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not invoke a listener registered during the current emit", () => {
+    const emitter = new TestEmitter();
+    const late = vi.fn();
+    const adder = vi.fn(() => emitter.on("evt:single", late));
+
+    emitter.on("evt:single", adder);
+
+    emitter.fire("evt:single", 1);
+
+    expect(adder).toHaveBeenCalledTimes(1);
+    expect(late).not.toHaveBeenCalled();
+
+    emitter.fire("evt:single", 2);
+
+    expect(late).toHaveBeenCalledTimes(1);
+    expect(late).toHaveBeenCalledWith(2);
+  });
+
   it("clearListeners() removes all subscriptions", () => {
     const emitter = new TestEmitter();
     const a = vi.fn();
