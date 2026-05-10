@@ -55,9 +55,16 @@
 
         <p>
           If a <code>json-*</code> attribute contains invalid JSON,
-          <code>reactolith</code> logs a warning and drops the prop instead of
-          throwing.
+          <code>reactolith</code> logs a warning and passes the prop as
+          <code>undefined</code> instead of throwing. The <code>App</code>
+          instance also emits a <code>"json-parse:failed"</code> event so
+          you can ship the failure to your telemetry pipeline:
         </p>
+
+<ui-code-block lang="ts">app.on("json-parse:failed", (error, { attrName, value, element }) =&gt; {
+  // forward to Sentry / log aggregator / whatever
+  console.error("malformed prop", attrName, value, error);
+});</ui-code-block>
       </app-page>
     </div>
     <script type="module" src="/src/main.tsx"></script>

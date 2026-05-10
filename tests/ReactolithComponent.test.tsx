@@ -499,5 +499,85 @@ describe("ReactolithComponent HTML to React transformation", () => {
       expect(warn).toHaveBeenCalled();
       warn.mockRestore();
     });
+
+    it("emits json-parse:failed and passes undefined when JSON is malformed", async () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+        <my-thing json-config='{ not valid json }'>Content</my-thing>
+      </div>`;
+
+      function configComponent({
+        is,
+        config,
+      }: {
+        is: string;
+        config?: unknown;
+      }) {
+        return (
+          <div
+            data-is={is}
+            data-has-config={config === undefined ? "no" : "yes"}
+          >
+            Content
+          </div>
+        );
+      }
+
+      const handler = vi.fn();
+      const app = new App(configComponent);
+      // The constructor schedules the React render asynchronously, so
+      // subscribing now still catches the parse failure that happens during
+      // the first commit.
+      app.on("json-parse:failed", handler);
+
+      const root = await screen.findByTestId("reactolith-app");
+
+      await waitFor(() => {
+        expect(root.querySelector('[data-has-config="no"]')).not.toBeNull();
+      });
+
+      await waitFor(() => {
+        expect(handler).toHaveBeenCalled();
+      });
+
+      const [error, detail] = handler.mock.calls.at(-1)!;
+      expect(error).toBeInstanceOf(Error);
+      expect(detail.attrName).toBe("json-config");
+      expect(detail.value).toBe("{ not valid json }");
+      expect(detail.element).toBeInstanceOf(Element);
+      expect((detail.element as Element).tagName.toLowerCase()).toBe(
+        "my-thing",
+      );
+
+      warn.mockRestore();
+    });
+
+    it("does not emit json-parse:failed when JSON is valid", async () => {
+      document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+        <my-list json-items='["a", "b"]'>List</my-list>
+      </div>`;
+
+      function listComponent({ is, items }: { is: string; items: string[] }) {
+        return (
+          <ul data-is={is}>
+            {items.map((item, i) => (
+              <li key={i}>{item}</li>
+            ))}
+          </ul>
+        );
+      }
+
+      const handler = vi.fn();
+      const app = new App(listComponent);
+      app.on("json-parse:failed", handler);
+
+      const root = await screen.findByTestId("reactolith-app");
+
+      await waitFor(() => {
+        expect(root.querySelectorAll("li").length).toBe(2);
+      });
+
+      expect(handler).not.toHaveBeenCalled();
+    });
   });
 });

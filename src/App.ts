@@ -5,10 +5,28 @@ import { FetchLike, Router } from "./Router";
 import { Mercure } from "./Mercure";
 import { ReactolithComponent } from "./ReactolithComponent";
 import { detectScrollContainer } from "./ScrollRestoration";
+import { EventEmitter } from "./util/EventEmitter";
 
 export type MercureConfig = {
   hubUrl: string;
   withCredentials?: boolean;
+};
+
+export type JsonParseFailureDetail = {
+  /** Original attribute name (e.g. `"json-config"`). */
+  attrName: string;
+  /** Raw attribute value that failed to parse. */
+  value: string;
+  /** The element on which the attribute was set. */
+  element: Element;
+};
+
+export type AppEventMap = {
+  /**
+   * Emitted when a `json-*` attribute on a custom element fails `JSON.parse`.
+   * The corresponding prop is passed to the component as `undefined`.
+   */
+  "json-parse:failed": [error: Error, detail: JsonParseFailureDetail];
 };
 
 export type AppOptions = {
@@ -22,7 +40,7 @@ export type AppOptions = {
   hiddenClass?: string;
 };
 
-export class App {
+export class App extends EventEmitter<AppEventMap> {
   public readonly element: HTMLElement;
   public readonly router: Router;
   public readonly mercure: Mercure;
@@ -49,6 +67,7 @@ export class App {
     fetchImp: FetchLike = fetch,
     options: AppOptions = {},
   ) {
+    super();
     this.component = component;
     this.appProvider = appProvider;
     this.doc = doc;
@@ -188,9 +207,21 @@ export class App {
     this.root.unmount();
   }
 
+  /**
+   * @internal Used by `ReactolithComponent` to report a `json-*` parse
+   * failure. Prefer subscribing via `app.on("json-parse:failed", …)`.
+   */
+  public emitJsonParseFailed(
+    error: Error,
+    detail: JsonParseFailureDetail,
+  ): void {
+    this.emit("json-parse:failed", error, detail);
+  }
+
   /** Tear down event listeners and unmount the React tree. */
   public destroy(): void {
     this.router.destroy();
     this.root.unmount();
+    this.clearListeners();
   }
 }
