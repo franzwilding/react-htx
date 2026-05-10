@@ -48,12 +48,12 @@
             </tr>
           </thead>
           <tbody>
-            <tr><td><code>--components</code></td><td><code>-c</code></td><td>Components directory (repeatable or comma-separated)</td><td><code>components/ui</code></td></tr>
-            <tr><td><code>--tsconfig</code></td><td><code>-t</code></td><td>TypeScript config file</td><td><code>tsconfig.app.json</code> (else <code>tsconfig.json</code>)</td></tr>
-            <tr><td><code>--out</code></td><td><code>-o</code></td><td>Output file</td><td><code>web-types.json</code></td></tr>
-            <tr><td><code>--name</code></td><td><code>-n</code></td><td>Library name</td><td><code>reactolith-components</code></td></tr>
-            <tr><td><code>--version</code></td><td><code>-v</code></td><td>Library version</td><td><code>1.0.0</code></td></tr>
-            <tr><td><code>--prefix</code></td><td><code>-p</code></td><td>Element name prefix (must be empty or end with <code>-</code>)</td><td><code>""</code></td></tr>
+            <tr><td><code>--components</code></td><td><code>-c</code></td><td>Components directory. Repeatable / comma-separated (see &ldquo;Multiple folders&rdquo; below).</td><td><code>components/ui</code></td></tr>
+            <tr><td><code>--tsconfig</code></td><td><code>-t</code></td><td>TypeScript config file (one shared project for all groups)</td><td><code>tsconfig.app.json</code> (else <code>tsconfig.json</code>)</td></tr>
+            <tr><td><code>--out</code></td><td><code>-o</code></td><td>Output file. Repeat to emit one file per group.</td><td><code>web-types.json</code></td></tr>
+            <tr><td><code>--name</code></td><td><code>-n</code></td><td>Library name. Repeat to set per-group.</td><td><code>reactolith-components</code></td></tr>
+            <tr><td><code>--version</code></td><td><code>-v</code></td><td>Library version. Repeat to set per-group.</td><td><code>1.0.0</code></td></tr>
+            <tr><td><code>--prefix</code></td><td><code>-p</code></td><td>Element name prefix (must be empty or end with <code>-</code>). Repeat to set per-group.</td><td><code>""</code></td></tr>
             <tr><td><code>--exclude</code></td><td></td><td>Glob to skip (e.g. <code>**/*.stories.tsx</code>). Repeatable.</td><td></td></tr>
             <tr><td><code>--help</code></td><td><code>-h</code></td><td>Show help</td><td></td></tr>
           </tbody>
@@ -79,8 +79,60 @@ npx generate-web-types \
 # Custom tsconfig (e.g. monorepo or library setup)
 npx generate-web-types -c packages/ui/src -t packages/ui/tsconfig.json -o packages/ui/web-types.json</ui-code-block>
 
+        <h2>Multiple folders, multiple prefixes</h2>
+        <p>
+          The web-types spec lets <code>package.json</code> point to an
+          <em>array</em> of files, so you can ship one file per folder and
+          give each its own prefix. Repeat <code>-o</code> to define more
+          than one output, then pair the i-th <code>-c</code> and
+          <code>-p</code> with it positionally:
+        </p>
+        <ui-code-block lang="bash">npx generate-web-types \
+  -n my-app -v 1.0.0 \
+  -c src/components/ui     -p ui-    -o web-types/ui.json \
+  -c src/components/charts -p chart- -o web-types/charts.json \
+  -c src/components/forms  -p form-  -o web-types/forms.json</ui-code-block>
+
+        <p>
+          The CLI prints the snippet you should drop into
+          <code>package.json</code> after each run, so you don't have to
+          remember the array form:
+        </p>
+        <ui-code-block lang="json">{
+  "name": "my-app",
+  "web-types": [
+    "./web-types/ui.json",
+    "./web-types/charts.json",
+    "./web-types/forms.json"
+  ]
+}</ui-code-block>
+
+        <p>
+          <strong>Pairing rules.</strong> When <code>-o</code> appears
+          <em>N</em> times, the rest line up like this:
+        </p>
+        <ul>
+          <li>
+            <code>-c</code> must appear <em>N</em> times — one source folder
+            per output. (Comma-separated values inside one <code>-c</code>
+            still merge multiple folders into the same output.)
+          </li>
+          <li>
+            <code>-p</code> may appear <em>0</em> times (no prefix),
+            <em>1</em> time (same prefix for every output), or <em>N</em>
+            times (one per output).
+          </li>
+          <li>
+            <code>-n</code> and <code>-v</code> follow the same 0/1/N rule.
+          </li>
+          <li>
+            <code>--exclude</code> is shared across every group;
+            <code>-t</code> uses one TypeScript project for all of them.
+          </li>
+        </ul>
+
         <h2>Configure your project</h2>
-        <p>Add the generated file to your <code>package.json</code>:</p>
+        <p>Add the generated file (or files) to your <code>package.json</code>:</p>
         <ui-code-block lang="json">{
   "name": "my-app",
   "web-types": "./web-types.json"

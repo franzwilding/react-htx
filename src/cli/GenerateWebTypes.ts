@@ -15,23 +15,66 @@ import {
 import fs from "fs";
 import path from "path";
 
-export interface GenerateWebTypesOptions {
+/**
+ * One output file: scans the given folders, applies the prefix, and writes a
+ * single web-types JSON file. Each project can have many of these (the
+ * package.json `web-types` field accepts an array of paths).
+ */
+export interface WebTypesGroup {
   /**
    * One or more directories scanned recursively for component files.
-   * Accepts a single path or an array of paths. Defaults to `components/ui`.
+   * Accepts a single path or an array of paths.
    */
+  from: string | string[];
+  /** Output JSON path. */
+  out: string;
+  /** Element name prefix. Must be empty or end with `-`. */
+  prefix?: string;
+  /** Library name written into the JSON (overrides the top-level default). */
+  name?: string;
+  /** Library version written into the JSON (overrides the top-level default). */
+  version?: string;
+  /**
+   * Glob-like patterns of component files to skip. Merged with the top-level
+   * `exclude` patterns.
+   */
+  exclude?: string[];
+}
+
+export interface MultiGroupOptions {
+  groups: WebTypesGroup[];
+  tsconfig?: string;
+  /** Default library name used by groups that don't set their own. */
+  name?: string;
+  /** Default library version used by groups that don't set their own. */
+  version?: string;
+  /** Patterns applied to every group. */
+  exclude?: string[];
+}
+
+/**
+ * Legacy single-group options. Equivalent to a `groups: [{ … }]` config.
+ */
+export interface SingleGroupOptions {
   componentsDir?: string | string[];
   outFile?: string;
   tsconfig?: string;
   libraryName?: string;
   libraryVersion?: string;
   prefix?: string;
-  /**
-   * Glob-like patterns of component files to skip (e.g. `**\/*.stories.tsx`).
-   * Patterns are matched against the file's absolute path; `*` is greedy
-   * within a single segment, `**` crosses path separators.
-   */
   exclude?: string[];
+}
+
+export type GenerateWebTypesOptions = SingleGroupOptions | MultiGroupOptions;
+
+export interface GenerateGroupResult {
+  out: string;
+  elementCount: number;
+  prefix: string;
+}
+
+export interface GenerateResult {
+  outputs: GenerateGroupResult[];
 }
 
 interface ComponentInfo {
@@ -79,8 +122,6 @@ function findComponentFiles(dir: string): string[] {
 
 /** Convert a glob-like pattern to a RegExp matched against absolute paths. */
 function globToRegExp(pattern: string): RegExp {
-  // Normalise path separators, escape regex specials except * and ?,
-  // then translate ** -> .*, * -> [^/]*, ? -> [^/].
   let re = "";
   let i = 0;
   while (i < pattern.length) {
@@ -111,109 +152,188 @@ function globToRegExp(pattern: string): RegExp {
   return new RegExp(`(?:^|/)${re}$`);
 }
 
-export function generateWebTypes(options: GenerateWebTypesOptions): void {
-  const project = new Project({
-    tsConfigFilePath: options.tsconfig || "./tsconfig.json",
-  });
+function isMultiGroup(
+  options: GenerateWebTypesOptions,
+): options is MultiGroupOptions {
+  return Array.isArray((options as MultiGroupOptions).groups);
+}
 
-  const dirs = (
-    Array.isArray(options.componentsDir)
-      ? options.componentsDir
-      : [options.componentsDir || "components/ui"]
-  ).map((d) => path.resolve(d));
-
-  for (const dir of dirs) {
-    if (!fs.existsSync(dir)) {
-      throw new Error(`Components directory does not exist: ${dir}`);
+function normaliseGroups(options: GenerateWebTypesOptions): {
+  groups: WebTypesGroup[];
+  tsconfig: string;
+  defaultName: string;
+  defaultVersion: string;
+  sharedExclude: string[];
+} {
+  if (isMultiGroup(options)) {
+    if (options.groups.length === 0) {
+      throw new Error(
+        "generateWebTypes: `groups` must contain at least one entry.",
+      );
     }
+    const seen = new Set<string>();
+    for (const g of options.groups) {
+      const out = path.resolve(g.out);
+      if (seen.has(out)) {
+        throw new Error(
+          `generateWebTypes: duplicate output path across groups: ${g.out}`,
+        );
+      }
+      seen.add(out);
+      if (g.prefix && !g.prefix.endsWith("-")) {
+        throw new Error(
+          `generateWebTypes: prefix must be empty or end with "-". Got "${g.prefix}".`,
+        );
+      }
+    }
+    return {
+      groups: options.groups,
+      tsconfig: options.tsconfig || "./tsconfig.json",
+      defaultName: options.name || "reactolith-components",
+      defaultVersion: options.version || "1.0.0",
+      sharedExclude: options.exclude || [],
+    };
   }
 
-  const excludePatterns = (options.exclude || []).map(globToRegExp);
-  const seen = new Set<string>();
-  const files: string[] = [];
-  for (const dir of dirs) {
-    for (const file of findComponentFiles(dir)) {
-      if (seen.has(file)) continue;
-      const normalised = file.replace(/\\/g, "/");
-      if (excludePatterns.some((re) => re.test(normalised))) continue;
-      seen.add(file);
-      files.push(file);
-    }
-  }
-
-  if (files.length === 0) {
-    console.warn(
-      `generate-web-types: no component files found in ${dirs.join(", ")}` +
-        (excludePatterns.length
-          ? ` after applying ${excludePatterns.length} exclude pattern(s)`
-          : ""),
+  const single = options;
+  if (single.prefix && !single.prefix.endsWith("-")) {
+    throw new Error(
+      `generateWebTypes: prefix must be empty or end with "-". Got "${single.prefix}".`,
     );
   }
-
-  const elements: WebTypeElement[] = [];
-  const prefix = options.prefix || "";
-
-  files.forEach((filePath: string) => {
-    const sourceFile = project.addSourceFileAtPath(filePath);
-    if (!sourceFile) return;
-
-    // Strategy 1: Look for exported *Props types (existing behavior)
-    const propsFromTypes = extractFromExportedPropsTypes(sourceFile);
-
-    // Strategy 2: Look for exported React components and extract their props
-    const propsFromComponents = extractFromComponentFunctions(sourceFile);
-
-    // Merge results, preferring explicit Props types
-    const componentMap = new Map<string, ComponentInfo>();
-
-    propsFromComponents.forEach((info) => {
-      componentMap.set(info.name, info);
-    });
-
-    propsFromTypes.forEach((info) => {
-      componentMap.set(info.name, info);
-    });
-
-    componentMap.forEach((info) => {
-      const { attributes, slots } = extractAttributesAndSlots(
-        info.propsType,
-        info.propsNode || info.sourceFile,
-      );
-      const tagName =
-        prefix + info.name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
-
-      const element: WebTypeElement = {
-        name: tagName,
-        description: `${info.name} component`,
-        attributes,
-      };
-
-      // Only add slots if there are any
-      if (slots.length > 0) {
-        element.slots = slots;
-      }
-
-      elements.push(element);
-    });
-  });
-
-  elements.sort((a, b) => a.name.localeCompare(b.name));
-
-  const webTypes = {
-    $schema:
-      "https://raw.githubusercontent.com/JetBrains/web-types/master/schema/web-types.json",
-    name: options.libraryName || "reactolith-components",
-    version: options.libraryVersion || "1.0.0",
-    "js-types-syntax": "typescript",
-    "description-markup": "markdown",
-    contributions: {
-      html: {
-        elements,
+  return {
+    groups: [
+      {
+        from: single.componentsDir ?? "components/ui",
+        out: single.outFile ?? "web-types.json",
+        prefix: single.prefix ?? "",
+        name: single.libraryName,
+        version: single.libraryVersion,
       },
-    },
+    ],
+    tsconfig: single.tsconfig || "./tsconfig.json",
+    defaultName: single.libraryName || "reactolith-components",
+    defaultVersion: single.libraryVersion || "1.0.0",
+    sharedExclude: single.exclude || [],
   };
-  const outFile = options.outFile || "web-types.json";
-  fs.writeFileSync(outFile, JSON.stringify(webTypes, null, 2));
+}
+
+export function generateWebTypes(
+  options: GenerateWebTypesOptions,
+): GenerateResult {
+  const { groups, tsconfig, defaultName, defaultVersion, sharedExclude } =
+    normaliseGroups(options);
+
+  const project = new Project({ tsConfigFilePath: tsconfig });
+
+  const outputs: GenerateGroupResult[] = [];
+
+  for (const group of groups) {
+    const dirs = (Array.isArray(group.from) ? group.from : [group.from]).map(
+      (d) => path.resolve(d),
+    );
+    for (const dir of dirs) {
+      if (!fs.existsSync(dir)) {
+        throw new Error(`Components directory does not exist: ${dir}`);
+      }
+    }
+
+    const excludePatterns = [...sharedExclude, ...(group.exclude || [])].map(
+      globToRegExp,
+    );
+
+    const seen = new Set<string>();
+    const files: string[] = [];
+    for (const dir of dirs) {
+      for (const file of findComponentFiles(dir)) {
+        if (seen.has(file)) continue;
+        const normalised = file.replace(/\\/g, "/");
+        if (excludePatterns.some((re) => re.test(normalised))) continue;
+        seen.add(file);
+        files.push(file);
+      }
+    }
+
+    if (files.length === 0) {
+      console.warn(
+        `generate-web-types: no component files found in ${dirs.join(", ")}` +
+          (excludePatterns.length
+            ? ` after applying ${excludePatterns.length} exclude pattern(s)`
+            : ""),
+      );
+    }
+
+    const prefix = group.prefix ?? "";
+    const elements: WebTypeElement[] = [];
+
+    for (const filePath of files) {
+      const sourceFile =
+        project.getSourceFile(filePath) ||
+        project.addSourceFileAtPath(filePath);
+      if (!sourceFile) continue;
+
+      const propsFromTypes = extractFromExportedPropsTypes(sourceFile);
+      const propsFromComponents = extractFromComponentFunctions(sourceFile);
+
+      const componentMap = new Map<string, ComponentInfo>();
+      propsFromComponents.forEach((info) => {
+        componentMap.set(info.name, info);
+      });
+      propsFromTypes.forEach((info) => {
+        componentMap.set(info.name, info);
+      });
+
+      componentMap.forEach((info) => {
+        const { attributes, slots } = extractAttributesAndSlots(
+          info.propsType,
+          info.propsNode || info.sourceFile,
+        );
+        const tagName =
+          prefix +
+          info.name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
+
+        const element: WebTypeElement = {
+          name: tagName,
+          description: `${info.name} component`,
+          attributes,
+        };
+        if (slots.length > 0) {
+          element.slots = slots;
+        }
+        elements.push(element);
+      });
+    }
+
+    elements.sort((a, b) => a.name.localeCompare(b.name));
+
+    const webTypes = {
+      $schema:
+        "https://raw.githubusercontent.com/JetBrains/web-types/master/schema/web-types.json",
+      name: group.name || defaultName,
+      version: group.version || defaultVersion,
+      "js-types-syntax": "typescript",
+      "description-markup": "markdown",
+      contributions: {
+        html: {
+          elements,
+        },
+      },
+    };
+
+    const outDir = path.dirname(path.resolve(group.out));
+    if (!fs.existsSync(outDir)) {
+      fs.mkdirSync(outDir, { recursive: true });
+    }
+    fs.writeFileSync(group.out, JSON.stringify(webTypes, null, 2));
+
+    outputs.push({
+      out: group.out,
+      elementCount: elements.length,
+      prefix,
+    });
+  }
+
+  return { outputs };
 }
 
 /**
@@ -256,10 +376,7 @@ function extractFromComponentFunctions(
   const exported = sourceFile.getExportedDeclarations();
 
   for (const [name, decls] of exported) {
-    // Skip Props types (handled by Strategy 1)
     if (name.endsWith("Props")) continue;
-
-    // Skip non-PascalCase names (not React components)
     if (!/^[A-Z]/.test(name)) continue;
 
     const decl = decls[0];
@@ -276,24 +393,20 @@ function extractFromComponentFunctions(
     }
   }
 
-  // Also check for default export
   const defaultExport = sourceFile.getDefaultExportSymbol();
   if (defaultExport) {
     const decls = defaultExport.getDeclarations();
     for (const decl of decls) {
       let propsInfo = extractPropsFromDeclaration(decl);
 
-      // If no props found directly, check if it's an ExportAssignment with an Identifier
       if (!propsInfo && Node.isExportAssignment(decl)) {
         const expr = decl.getExpression();
         if (Node.isIdentifier(expr)) {
-          // Try to resolve the identifier to its declaration
           propsInfo = resolveIdentifierToProps(expr, sourceFile);
         }
       }
 
       if (propsInfo) {
-        // Use filename as component name for default exports, converting kebab-case to PascalCase
         const fileName = path.basename(
           sourceFile.getFilePath(),
           path.extname(sourceFile.getFilePath()),
@@ -315,28 +428,22 @@ function extractFromComponentFunctions(
   return results;
 }
 
-/**
- * Resolve an identifier to its props - handles local variables and imports
- */
 function resolveIdentifierToProps(
   identifier: Identifier,
   sourceFile: SourceFile,
 ): { type: Type | null; node: Node } | null {
   const identifierName = identifier.getText();
 
-  // First, check if it's a local variable declaration
   const localVar = sourceFile.getVariableDeclaration(identifierName);
   if (localVar) {
     return extractPropsFromDeclaration(localVar);
   }
 
-  // Check if it's a local function declaration
   const localFunc = sourceFile.getFunction(identifierName);
   if (localFunc) {
     return extractPropsFromDeclaration(localFunc);
   }
 
-  // Check if it's an imported symbol - try to get props directly from the type
   const identifierType = identifier.getType();
   const callSignatures = identifierType.getCallSignatures();
   if (callSignatures.length > 0) {
@@ -350,7 +457,6 @@ function resolveIdentifierToProps(
         return { type: paramType, node: identifier };
       }
     } else {
-      // No params but returns JSX - component without props
       const returnType = sig.getReturnType();
       if (isJsxReturnType(returnType)) {
         return { type: null, node: identifier };
@@ -358,21 +464,17 @@ function resolveIdentifierToProps(
     }
   }
 
-  // Fallback: try to resolve from the imported module source file
   const importDecls = sourceFile.getImportDeclarations();
   for (const importDecl of importDecls) {
-    // Check named imports
     const namedImports = importDecl.getNamedImports();
     for (const namedImport of namedImports) {
       const importedName =
         namedImport.getAliasNode()?.getText() || namedImport.getName();
       if (importedName === identifierName) {
-        // Found the import - resolve from the imported module
         return resolveImportedComponent(importDecl, namedImport.getName());
       }
     }
 
-    // Check default import
     const defaultImport = importDecl.getDefaultImport();
     if (defaultImport && defaultImport.getText() === identifierName) {
       return resolveImportedComponent(importDecl, "default");
@@ -382,21 +484,14 @@ function resolveIdentifierToProps(
   return null;
 }
 
-/**
- * Resolve props from an imported component
- */
 function resolveImportedComponent(
   importDecl: ImportDeclaration,
   exportName: string,
 ): { type: Type | null; node: Node } | null {
   try {
     const resolvedModule = importDecl.getModuleSpecifierSourceFile();
+    if (!resolvedModule) return null;
 
-    if (!resolvedModule) {
-      return null;
-    }
-
-    // Get the exported declaration from the module
     const exported = resolvedModule.getExportedDeclarations();
 
     if (exportName === "default") {
@@ -418,15 +513,12 @@ function resolveImportedComponent(
       }
     }
   } catch {
-    // Module resolution failed - this is okay for external modules
+    // External module: ignore.
   }
 
   return null;
 }
 
-/**
- * Get the Type of a declaration node, if available.
- */
 function getTypeOfDeclaration(decl: Node): Type | null {
   if ("getType" in decl && typeof decl.getType === "function") {
     return (decl as { getType: () => Type }).getType();
@@ -434,18 +526,13 @@ function getTypeOfDeclaration(decl: Node): Type | null {
   return null;
 }
 
-/**
- * Extract props type from a function/variable declaration
- */
 function extractPropsFromDeclaration(
   decl: Node,
 ): { type: Type | null; node: Node } | null {
-  // Handle function declarations: export function Button(props: ButtonProps) {}
   if (Node.isFunctionDeclaration(decl)) {
     return extractPropsFromFunction(decl);
   }
 
-  // Handle variable declarations: export const Button = (props: ButtonProps) => {}
   if (Node.isVariableDeclaration(decl)) {
     const varDecl = decl as VariableDeclaration;
     const initializer = varDecl.getInitializer();
@@ -458,7 +545,6 @@ function extractPropsFromDeclaration(
       return extractPropsFromFunctionExpression(initializer);
     }
 
-    // Handle React.forwardRef, React.memo, etc.
     if (initializer && Node.isCallExpression(initializer)) {
       const args = initializer.getArguments();
       for (const arg of args) {
@@ -471,15 +557,12 @@ function extractPropsFromDeclaration(
       }
     }
 
-    // Handle property access expressions: const Select = SelectPrimitive.Root
     if (
       initializer &&
       (Node.isPropertyAccessExpression(initializer) ||
         Node.isIdentifier(initializer))
     ) {
-      // Try to get the type from the variable declaration
       const varType = varDecl.getType();
-      // Check if this is a React component type (has Props in the call signature)
       const callSignatures = varType.getCallSignatures();
       if (callSignatures.length > 0) {
         const sig = callSignatures[0];
@@ -496,7 +579,6 @@ function extractPropsFromDeclaration(
     }
   }
 
-  // Handle export default function() {}
   if (Node.isExportAssignment(decl)) {
     const expr = decl.getExpression();
     if (Node.isArrowFunction(expr)) {
@@ -513,15 +595,11 @@ function extractPropsFromDeclaration(
 function extractPropsFromFunction(
   func: FunctionDeclaration,
 ): { type: Type | null; node: Node } | null {
-  // Check if this looks like a React component (returns JSX)
   const returnType = func.getReturnType();
   if (!isJsxReturnType(returnType)) return null;
 
   const params = func.getParameters();
-  if (params.length === 0) {
-    // No params - return empty props type
-    return { type: null, node: func };
-  }
+  if (params.length === 0) return { type: null, node: func };
 
   const firstParam = params[0];
   const type = firstParam.getType();
@@ -531,15 +609,11 @@ function extractPropsFromFunction(
 function extractPropsFromArrowFunction(
   func: ArrowFunction,
 ): { type: Type | null; node: Node } | null {
-  // Check if this looks like a React component (returns JSX)
   const returnType = func.getReturnType();
   if (!isJsxReturnType(returnType)) return null;
 
   const params = func.getParameters();
-  if (params.length === 0) {
-    // No params - return empty props type
-    return { type: null, node: func };
-  }
+  if (params.length === 0) return { type: null, node: func };
 
   const firstParam = params[0];
   const type = firstParam.getType();
@@ -549,24 +623,17 @@ function extractPropsFromArrowFunction(
 function extractPropsFromFunctionExpression(
   func: FunctionExpression,
 ): { type: Type | null; node: Node } | null {
-  // Check if this looks like a React component (returns JSX)
   const returnType = func.getReturnType();
   if (!isJsxReturnType(returnType)) return null;
 
   const params = func.getParameters();
-  if (params.length === 0) {
-    // No params - return empty props type
-    return { type: null, node: func };
-  }
+  if (params.length === 0) return { type: null, node: func };
 
   const firstParam = params[0];
   const type = firstParam.getType();
   return { type, node: firstParam };
 }
 
-/**
- * Check if a return type looks like JSX (React.ReactElement, JSX.Element, etc.)
- */
 function isJsxReturnType(type: Type): boolean {
   const text = type.getText();
   return (
@@ -579,28 +646,16 @@ function isJsxReturnType(type: Type): boolean {
   );
 }
 
-/**
- * Check if a type represents a React slot (ReactNode, ReactElement, etc.)
- */
 function isSlotType(typeText: string): boolean {
-  // Exact patterns that indicate a slot type
   const slotPatterns = ["ReactNode", "ReactElement", "JSX.Element"];
-
-  // Check if type is a slot type (but not a function returning ReactNode or event handler)
   const isSlot = slotPatterns.some((pattern) => typeText.includes(pattern));
-
-  // Exclude event handlers and functions
   const isFunction =
     typeText.includes("=>") ||
     typeText.includes("EventHandler") ||
     typeText.includes("Handler<");
-
   return isSlot && !isFunction;
 }
 
-/**
- * Extract attributes and slots from a Type
- */
 function extractAttributesAndSlots(
   type: Type | null,
   contextNode: Node,
@@ -608,15 +663,10 @@ function extractAttributesAndSlots(
   const attributes: WebTypeAttribute[] = [];
   const slots: WebTypeSlot[] = [];
 
-  // Handle null type (components with no props)
-  if (!type) {
-    return { attributes, slots };
-  }
+  if (!type) return { attributes, slots };
 
   type.getProperties().forEach((prop: TsSymbol) => {
     const propName = prop.getName();
-
-    // Skip internal React props
     if (["key", "ref"].includes(propName)) return;
 
     const propType = prop.getTypeAtLocation(contextNode);
@@ -624,9 +674,7 @@ function extractAttributesAndSlots(
     const description = getPropertyDescription(prop);
     const required = !prop.isOptional();
 
-    // Check if this prop is a slot (ReactNode type)
     if (isSlotType(typeText)) {
-      // "children" becomes the "default" slot
       const slotName = propName === "children" ? "default" : propName;
       slots.push({
         name: slotName,
@@ -635,32 +683,26 @@ function extractAttributesAndSlots(
       return;
     }
 
-    // Skip children if it's not a ReactNode (e.g., string children)
     if (propName === "children") return;
 
-    // Regular attribute
     const attr: WebTypeAttribute = {
       name: toKebabCase(propName),
       description: description || undefined,
       required,
     };
 
-    // Check for boolean types first (including optional booleans)
-    if (typeText === "boolean" || typeText === "boolean | undefined") {
-      // Boolean attributes can be used without value
-      attr.value = {
-        kind: "no-value",
-        type: "boolean",
-      };
-    } else if (typeText.includes("|")) {
-      // Parse union types for enum-like values
-      const values = typeText
-        .split("|")
-        .map((v: string) => v.trim())
-        .filter((v: string) => v !== "undefined" && v !== "null");
+    // Resolve the structural union (handles type aliases like
+    // `type ButtonVariant = "default" | "destructive" | …` which `getText()`
+    // would otherwise leave as just `"ButtonVariant"`).
+    const unionMembers = collectUnionMemberTexts(propType);
 
-      // Check if all values are string literals (quoted strings only)
-      // Exclude primitive types like boolean, string, number, etc.
+    if (typeText === "boolean" || typeText === "boolean | undefined") {
+      attr.value = { kind: "no-value", type: "boolean" };
+    } else if (unionMembers !== null) {
+      const values = unionMembers.filter(
+        (v) => v !== "undefined" && v !== "null",
+      );
+
       const primitiveTypes = [
         "boolean",
         "string",
@@ -670,46 +712,26 @@ function extractAttributesAndSlots(
         "unknown",
         "never",
       ];
-      const stringLiteralValues = values.filter((v: string) =>
-        /^["'].*["']$/.test(v),
-      );
+      const stringLiteralValues = values.filter((v) => /^["'].*["']$/.test(v));
 
       const hasOnlyStringLiterals =
         stringLiteralValues.length === values.length && values.length > 0;
+      const hasOnlyPrimitives = values.every((v) => primitiveTypes.includes(v));
 
-      const hasOnlyPrimitives = values.every((v: string) =>
-        primitiveTypes.includes(v),
-      );
+      const displayType = values.join(" | ") || typeText;
 
       if (hasOnlyStringLiterals) {
-        attr.value = {
-          kind: "plain",
-          type: typeText,
-        };
-        // Add enum values for better autocomplete
+        attr.value = { kind: "plain", type: displayType };
         attr.values = stringLiteralValues
-          .map((v: string) => v.replace(/['"]/g, ""))
-          .map((v: string) => ({ name: v }));
-      } else if (
-        hasOnlyPrimitives ||
-        values.some((v: string) => v.includes("=>"))
-      ) {
-        // Function types or primitive unions
-        attr.value = {
-          kind: "expression",
-          type: typeText,
-        };
+          .map((v) => v.replace(/['"]/g, ""))
+          .map((v) => ({ name: v }));
+      } else if (hasOnlyPrimitives || values.some((v) => v.includes("=>"))) {
+        attr.value = { kind: "expression", type: displayType };
       } else {
-        attr.value = {
-          kind: "plain",
-          type: typeText,
-        };
+        attr.value = { kind: "plain", type: displayType };
       }
     } else {
-      attr.value = {
-        kind: "plain",
-        type: typeText,
-      };
+      attr.value = { kind: "plain", type: typeText };
     }
 
     attributes.push(attr);
@@ -719,26 +741,33 @@ function extractAttributesAndSlots(
 }
 
 /**
- * Clean up type text for display
+ * Return the printed form of each member of a (possibly aliased) union type,
+ * or `null` if the type is not a union. Falls back to splitting the printed
+ * text on `|` so we still recognise unions that ts-morph doesn't classify as
+ * `isUnion()` (e.g. `string | number` literal-typed unions in some configs).
  */
+function collectUnionMemberTexts(propType: Type): string[] | null {
+  if (propType.isUnion()) {
+    return propType.getUnionTypes().map((t) => cleanTypeText(t.getText()));
+  }
+  const text = cleanTypeText(propType.getText());
+  if (text.includes("|")) {
+    return text.split("|").map((v) => v.trim());
+  }
+  return null;
+}
+
 function cleanTypeText(text: string): string {
-  // Remove import(...) paths
   return text
     .replace(/import\([^)]+\)\./g, "")
     .replace(/\s+/g, " ")
     .trim();
 }
 
-/**
- * Convert camelCase to kebab-case
- */
 function toKebabCase(str: string): string {
   return str.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
 }
 
-/**
- * Try to extract JSDoc description from a property
- */
 function getPropertyDescription(prop: TsSymbol): string | undefined {
   const declarations = prop.getDeclarations();
   for (const decl of declarations) {
