@@ -7,6 +7,12 @@ import dts from "rollup-plugin-dts";
 // externalize react and its subpaths (jsx-runtime) + react-dom if you use it
 const external = (id) => /^(react|react-dom|ts-morph)(\/|$)/.test(id);
 
+// rollup-plugin-typescript2's default include uses `*.ts+(|x)`, which newer
+// picomatch versions no longer match. Provide explicit globs so .ts/.tsx files
+// actually go through the TypeScript transform.
+const tsInclude = ["**/*.ts", "**/*.tsx", "**/*.cts", "**/*.mts"];
+const tsExclude = ["**/*.d.ts", "**/*.d.cts", "**/*.d.mts"];
+
 export default [
   // JS bundles
   {
@@ -20,6 +26,8 @@ export default [
       typescript({
         tsconfig: "./tsconfig.json",
         clean: true,
+        include: tsInclude,
+        exclude: tsExclude,
         tsconfigOverride: { compilerOptions: { declaration: false } }, // dts plugin handles .d.ts
       }),
     ],
@@ -44,6 +52,8 @@ export default [
       typescript({
         tsconfig: "./tsconfig.json",
         clean: true,
+        include: tsInclude,
+        exclude: tsExclude,
         tsconfigOverride: { compilerOptions: { declaration: false } },
       }),
     ],
@@ -68,6 +78,8 @@ export default [
       typescript({
         tsconfig: "./tsconfig.json",
         clean: true,
+        include: tsInclude,
+        exclude: tsExclude,
         tsconfigOverride: { compilerOptions: { declaration: false } }, // dts plugin handles .d.ts
       }),
     ],
