@@ -81,6 +81,29 @@ See the docs for the full feature list, API reference, and end-to-end guides.
 
 ---
 
+## Server-side rendering
+
+For static-site generators or progressive enhancement, import a server-safe
+`renderToString` from `reactolith/server`:
+
+```ts
+import { JSDOM } from "jsdom";
+import { renderToString } from "reactolith/server";
+import { resolveComponent } from "./resolve-component";
+
+const dom = new JSDOM(`<div id="root"><my-button>Hello</my-button></div>`);
+const html = renderToString(
+  dom.window.document.getElementById("root")!,
+  resolveComponent,
+);
+```
+
+Router and Mercure side effects are skipped on the server because both rely on
+`useEffect`. See the [SSR guide](https://reactolith.github.io/reactolith/ssr/)
+for the full walkthrough.
+
+---
+
 ## Reactolith vs. the alternatives
 
 If you came here looking for an alternative to one of these, head to the
@@ -122,4 +145,4 @@ npm run lint        # eslint src tests
 
 `prepublishOnly` runs `npm run build` so published artifacts always come from a fresh build.
 
-Contributions welcome — open an issue or PR.
+Contributions welcome — open an issue or PR. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the local-checks workflow, docs-site setup, and commit conventions.
