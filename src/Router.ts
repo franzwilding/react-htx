@@ -284,8 +284,16 @@ export class Router extends EventEmitter<RouterEventMap> {
 
     const formData = new FormData(form);
 
-    if (event.submitter instanceof HTMLButtonElement && event.submitter.name) {
-      formData.append(event.submitter.name, event.submitter.value || "");
+    const submitter = event.submitter;
+    if (submitter && "name" in submitter && submitter.name) {
+      if (submitter instanceof HTMLButtonElement) {
+        formData.append(submitter.name, submitter.value || "");
+      } else if (
+        submitter instanceof HTMLInputElement &&
+        (submitter.type === "submit" || submitter.type === "image")
+      ) {
+        formData.append(submitter.name, submitter.value || "");
+      }
     }
 
     const method = (form.method || "GET").toUpperCase();

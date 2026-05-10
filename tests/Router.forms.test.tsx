@@ -182,6 +182,147 @@ describe("Router form submission", () => {
     });
   });
 
+  it('includes <input type="submit"> submitter value in form data', async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Foo</my-component>
+      <form action="/action" method="POST">
+        <input type="text" name="data" default-value="test" read-only />
+        <input type="submit" name="action" value="save" />
+        <input type="submit" name="action" value="delete" />
+      </form>
+    </div>`;
+
+    const fetchMock =
+      createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Done</my-component>
+    </div>`);
+    global.fetch = fetchMock as any;
+
+    new App(testComponent);
+
+    await act(async () => {});
+
+    const root = await screen.findByTestId("reactolith-app");
+    await waitFor(() => {
+      expect(root.querySelector("pre")).not.toBeNull();
+    });
+
+    const form = root.querySelector("form")!;
+    const saveInput = root.querySelector(
+      'input[value="save"]',
+    ) as HTMLInputElement;
+
+    const submitEvent = new Event("submit", {
+      bubbles: true,
+      cancelable: true,
+    }) as SubmitEvent;
+    Object.defineProperty(submitEvent, "submitter", { value: saveInput });
+
+    form.dispatchEvent(submitEvent);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+      const [, init] = fetchMock.mock.calls[0];
+      const formData = init.body as FormData;
+      expect(formData.get("action")).toBe("save");
+    });
+  });
+
+  it('includes <input type="image"> submitter value in form data', async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Foo</my-component>
+      <form action="/action" method="POST">
+        <input type="text" name="data" default-value="test" read-only />
+        <input type="image" name="action" value="save" src="/save.png" alt="Save" />
+      </form>
+    </div>`;
+
+    const fetchMock =
+      createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Done</my-component>
+    </div>`);
+    global.fetch = fetchMock as any;
+
+    new App(testComponent);
+
+    await act(async () => {});
+
+    const root = await screen.findByTestId("reactolith-app");
+    await waitFor(() => {
+      expect(root.querySelector("pre")).not.toBeNull();
+    });
+
+    const form = root.querySelector("form")!;
+    const imageInput = root.querySelector(
+      'input[type="image"]',
+    ) as HTMLInputElement;
+
+    const submitEvent = new Event("submit", {
+      bubbles: true,
+      cancelable: true,
+    }) as SubmitEvent;
+    Object.defineProperty(submitEvent, "submitter", { value: imageInput });
+
+    form.dispatchEvent(submitEvent);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+      const [, init] = fetchMock.mock.calls[0];
+      const formData = init.body as FormData;
+      expect(formData.get("action")).toBe("save");
+    });
+  });
+
+  it("ignores non-submit input as submitter", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Foo</my-component>
+      <form action="/action" method="POST">
+        <input type="text" name="data" default-value="test" read-only />
+        <input type="text" name="action" value="should-be-ignored" />
+        <button type="submit">Submit</button>
+      </form>
+    </div>`;
+
+    const fetchMock =
+      createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Done</my-component>
+    </div>`);
+    global.fetch = fetchMock as any;
+
+    new App(testComponent);
+
+    await act(async () => {});
+
+    const root = await screen.findByTestId("reactolith-app");
+    await waitFor(() => {
+      expect(root.querySelector("pre")).not.toBeNull();
+    });
+
+    const form = root.querySelector("form")!;
+    // Simulate a stray text input as submitter (shouldn't really happen, but
+    // exercises the type guard so the formData isn't double-appended).
+    const textInput = root.querySelector(
+      'input[type="text"][name="action"]',
+    ) as HTMLInputElement;
+
+    const submitEvent = new Event("submit", {
+      bubbles: true,
+      cancelable: true,
+    }) as SubmitEvent;
+    Object.defineProperty(submitEvent, "submitter", { value: textInput });
+
+    form.dispatchEvent(submitEvent);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+      const [, init] = fetchMock.mock.calls[0];
+      const formData = init.body as FormData;
+      // The text input contributes its own value as part of FormData, but
+      // the submitter branch should NOT have appended it again.
+      expect(formData.getAll("action")).toEqual(["should-be-ignored"]);
+    });
+  });
+
   it("uses current location for forms without action", async () => {
     document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
       <my-component>Foo</my-component>
