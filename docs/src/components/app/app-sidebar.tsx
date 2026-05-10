@@ -89,11 +89,11 @@ export function AppSidebar({
   return (
     <nav className={cn("text-sm", className)} aria-label="Documentation">
       {NAV.map((group) => (
-        <div key={group.label} className="mb-6">
-          <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <div key={group.label} className="mb-7">
+          <p className="mb-2 px-2 font-mono text-[10.5px] font-medium uppercase tracking-[0.12em] text-primary/80">
             {group.label}
           </p>
-          <ul className="flex flex-col">
+          <ul className="flex flex-col gap-px">
             {group.items.map((item) => {
               const active = normalize(item.href) === normalize(baseStripped);
               return (
@@ -102,12 +102,18 @@ export function AppSidebar({
                     href={withBase(item.href)}
                     onClick={() => setMobileOpen(false)}
                     className={cn(
-                      "block rounded-md px-2 py-1.5 no-underline transition-colors",
+                      "relative block rounded-md px-2.5 py-1.5 no-underline transition-colors",
                       active
                         ? "bg-accent text-accent-foreground font-medium"
                         : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
                     )}
                   >
+                    {active && (
+                      <span
+                        aria-hidden="true"
+                        className="absolute left-0 top-1/2 h-4 w-px -translate-y-1/2 bg-primary shadow-[0_0_8px_var(--primary)]"
+                      />
+                    )}
                     {item.label}
                   </a>
                 </li>
