@@ -29,6 +29,10 @@ export interface MercureLiveProps {
   children: ReactNode;
 }
 
+// DOMParser is stateless within a single JS realm; reuse one instance to avoid
+// allocating per incoming Mercure message on high-throughput topics.
+const PARSER = new DOMParser();
+
 export function MercureLive({ topic, children }: MercureLiveProps) {
   const app = useApp();
   const [content, setContent] = useState<ReactNode>(children);
@@ -41,8 +45,7 @@ export function MercureLive({ topic, children }: MercureLiveProps) {
   const handleMessage = useCallback(
     (data: string) => {
       try {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(data, "text/html");
+        const doc = PARSER.parseFromString(data, "text/html");
         const element = doc.body.firstElementChild as HTMLElement;
 
         if (element) {
