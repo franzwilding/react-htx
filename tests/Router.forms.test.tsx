@@ -528,6 +528,223 @@ describe("Router form submission", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("respects submitter formaction overriding form action", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Foo</my-component>
+      <form action="/users/42" method="POST">
+        <button type="submit">Update</button>
+        <button type="submit" formaction="/users/42/delete">Delete</button>
+      </form>
+    </div>`;
+
+    const fetchMock =
+      createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Deleted</my-component>
+    </div>`);
+    global.fetch = fetchMock as any;
+
+    new App(testComponent);
+
+    await act(async () => {});
+
+    const root = await screen.findByTestId("reactolith-app");
+    await waitFor(() => {
+      expect(root.querySelector("pre")).not.toBeNull();
+    });
+
+    const form = root.querySelector("form")!;
+    const deleteButton = root.querySelector(
+      'button[formaction="/users/42/delete"]',
+    ) as HTMLButtonElement;
+
+    const submitEvent = new Event("submit", {
+      bubbles: true,
+      cancelable: true,
+    }) as SubmitEvent;
+    Object.defineProperty(submitEvent, "submitter", { value: deleteButton });
+
+    form.dispatchEvent(submitEvent);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(url).toBe("/users/42/delete");
+      expect(init.method).toBe("POST");
+      expect(init.body).toBeInstanceOf(FormData);
+    });
+  });
+
+  it("respects submitter formmethod overriding form method", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Foo</my-component>
+      <form action="/search" method="GET">
+        <input type="text" name="query" default-value="hello" read-only />
+        <button type="submit">Search</button>
+        <button type="submit" formmethod="POST">Save query</button>
+      </form>
+    </div>`;
+
+    const fetchMock =
+      createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Saved</my-component>
+    </div>`);
+    global.fetch = fetchMock as any;
+
+    new App(testComponent);
+
+    await act(async () => {});
+
+    const root = await screen.findByTestId("reactolith-app");
+    await waitFor(() => {
+      expect(root.querySelector("pre")).not.toBeNull();
+    });
+
+    const form = root.querySelector("form")!;
+    const saveButton = root.querySelector(
+      'button[formmethod="POST"]',
+    ) as HTMLButtonElement;
+
+    const submitEvent = new Event("submit", {
+      bubbles: true,
+      cancelable: true,
+    }) as SubmitEvent;
+    Object.defineProperty(submitEvent, "submitter", { value: saveButton });
+
+    form.dispatchEvent(submitEvent);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(url).toBe("/search");
+      expect(init.method).toBe("POST");
+      expect(init.body).toBeInstanceOf(FormData);
+      expect((init.body as FormData).get("query")).toBe("hello");
+    });
+  });
+
+  it('respects formaction on <input type="submit">', async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Foo</my-component>
+      <form action="/default" method="POST">
+        <input type="submit" formaction="/x" value="Go" />
+      </form>
+    </div>`;
+
+    const fetchMock =
+      createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Done</my-component>
+    </div>`);
+    global.fetch = fetchMock as any;
+
+    new App(testComponent);
+
+    await act(async () => {});
+
+    const root = await screen.findByTestId("reactolith-app");
+    await waitFor(() => {
+      expect(root.querySelector("pre")).not.toBeNull();
+    });
+
+    const form = root.querySelector("form")!;
+    const inputSubmit = root.querySelector(
+      'input[type="submit"]',
+    ) as HTMLInputElement;
+
+    const submitEvent = new Event("submit", {
+      bubbles: true,
+      cancelable: true,
+    }) as SubmitEvent;
+    Object.defineProperty(submitEvent, "submitter", { value: inputSubmit });
+
+    form.dispatchEvent(submitEvent);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(url).toBe("/x");
+      expect(init.method).toBe("POST");
+    });
+  });
+
+  it("falls back to form action/method when submitter has no overrides", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Foo</my-component>
+      <form action="/posts" method="POST">
+        <input type="text" name="title" default-value="hi" read-only />
+        <button type="submit">Save</button>
+      </form>
+    </div>`;
+
+    const fetchMock =
+      createFetchMock(`<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>OK</my-component>
+    </div>`);
+    global.fetch = fetchMock as any;
+
+    new App(testComponent);
+
+    await act(async () => {});
+
+    const root = await screen.findByTestId("reactolith-app");
+    await waitFor(() => {
+      expect(root.querySelector("pre")).not.toBeNull();
+    });
+
+    const form = root.querySelector("form")!;
+    const saveButton = root.querySelector("button") as HTMLButtonElement;
+
+    const submitEvent = new Event("submit", {
+      bubbles: true,
+      cancelable: true,
+    }) as SubmitEvent;
+    Object.defineProperty(submitEvent, "submitter", { value: saveButton });
+
+    form.dispatchEvent(submitEvent);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(url).toBe("/posts");
+      expect(init.method).toBe("POST");
+    });
+  });
+
+  it("ignores forms with cross-origin formaction on submitter", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Foo</my-component>
+      <form action="/local" method="POST">
+        <button type="submit" formaction="https://external.com/x">Go</button>
+      </form>
+    </div>`;
+
+    const fetchMock = createFetchMock(`<div id="reactolith-app">
+      <my-component>Done</my-component>
+    </div>`);
+    global.fetch = fetchMock as any;
+
+    new App(testComponent);
+
+    await act(async () => {});
+
+    const root = await screen.findByTestId("reactolith-app");
+    await waitFor(() => {
+      expect(root.querySelector("pre")).not.toBeNull();
+    });
+
+    const form = root.querySelector("form")!;
+    const button = root.querySelector("button") as HTMLButtonElement;
+
+    const submitEvent = new Event("submit", {
+      bubbles: true,
+      cancelable: true,
+    }) as SubmitEvent;
+    Object.defineProperty(submitEvent, "submitter", { value: button });
+
+    form.dispatchEvent(submitEvent);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("ignores forms with absolute action URLs", async () => {
     document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
       <my-component>Foo</my-component>
