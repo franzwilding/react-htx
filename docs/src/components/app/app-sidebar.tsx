@@ -43,6 +43,7 @@ const NAV: NavGroup[] = [
     label: "Tooling",
     items: [
       { label: "Web Types (IDE)", href: "/web-types/" },
+      { label: "Chunk Preloading", href: "/preloading/" },
       { label: "API Cheatsheet", href: "/api/" },
       { label: "Development", href: "/development/" },
     ],
