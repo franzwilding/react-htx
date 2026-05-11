@@ -3,11 +3,13 @@ import { AppLayout } from "./app-layout";
 import { AppHeader } from "./app-header";
 import { AppSidebar } from "./app-sidebar";
 import { AppPageNav } from "./app-page-nav";
+import { AppPagePager } from "./app-page-pager";
 import { AppRouteProgress } from "./app-route-progress";
 
 /**
  * Convenience wrapper used in HTML pages: renders the full doc shell
- * (header + sidebar + page-nav + route progress) around the page's content.
+ * (header + sidebar + page-nav + route progress) around the page's content,
+ * followed by prev/next chapter navigation.
  *
  *   <app-page>
  *     <h1>…</h1>
@@ -21,6 +23,7 @@ export function AppPage({ children }: { children?: React.ReactNode }) {
       sidebar={<AppSidebar />}
       pageNav={<AppPageNav />}
       routeProgress={<AppRouteProgress />}
+      pageFooter={<AppPagePager />}
     >
       {children}
     </AppLayout>
