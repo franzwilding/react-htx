@@ -2,7 +2,7 @@ import { screen, waitFor } from "@testing-library/dom";
 import { App } from "../src";
 import { ReactNode, ElementType } from "react";
 
-function testComponent({ is, children }: { is: string; children: ReactNode }) {
+function TestComponent({ is, children }: { is: string; children: ReactNode }) {
   return <pre data-is={is}>{children}</pre>;
 }
 
@@ -53,7 +53,7 @@ describe("Test mounting an app", () => {
     <ui-custom></ui-custom>
 </div>`;
 
-    new App(testComponent);
+    new App(TestComponent);
     const root = await screen.findByTestId("reactolith-app");
 
     await waitFor(() => {
@@ -73,7 +73,7 @@ describe("Test mounting an app", () => {
   it("Renders just a custom root element", async () => {
     document.body.innerHTML = '<div data-testid="reactolith-app"></div>';
 
-    new App(testComponent, testRoot, '[data-testid="reactolith-app"]');
+    new App(TestComponent, testRoot, '[data-testid="reactolith-app"]');
     const root = await screen.findByTestId("reactolith-app");
 
     await waitFor(() => {
@@ -134,7 +134,7 @@ describe("Test mounting an app", () => {
     <ui-button>Test Button</ui-button>
 </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     const root = await screen.findByTestId("reactolith-app");
 
     await waitFor(() => {
@@ -154,7 +154,7 @@ describe("Test mounting an app", () => {
     <ui-button>Test Button</ui-button>
 </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     const root = await screen.findByTestId("reactolith-app");
 
     await waitFor(() => {
@@ -174,7 +174,7 @@ describe("Test mounting an app", () => {
     <ui-button>Test Button</ui-button>
 </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     const root = await screen.findByTestId("reactolith-app");
 
     await waitFor(() => {

@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from "vitest";
 import { App } from "../src";
 import { ReactNode } from "react";
 
-function testComponent({ is, children }: { is: string; children: ReactNode }) {
+function TestComponent({ is, children }: { is: string; children: ReactNode }) {
   return <pre data-is={is}>{children}</pre>;
 }
 
@@ -17,7 +17,7 @@ describe("ReactolithComponent HTML to React transformation", () => {
         </div>
       </div>`;
 
-      new App(testComponent);
+      new App(TestComponent);
 
       const root = await screen.findByTestId("reactolith-app");
 
@@ -34,7 +34,7 @@ describe("ReactolithComponent HTML to React transformation", () => {
         <div class="my-class another-class">Content</div>
       </div>`;
 
-      new App(testComponent);
+      new App(TestComponent);
 
       const root = await screen.findByTestId("reactolith-app");
 
@@ -50,7 +50,7 @@ describe("ReactolithComponent HTML to React transformation", () => {
         <button data-action="submit" data-id="123">Click</button>
       </div>`;
 
-      new App(testComponent);
+      new App(TestComponent);
 
       const root = await screen.findByTestId("reactolith-app");
 
@@ -70,7 +70,7 @@ describe("ReactolithComponent HTML to React transformation", () => {
         <button aria-label="close" aria-pressed="false" aria-describedby="hint">Close</button>
       </div>`;
 
-      new App(testComponent);
+      new App(TestComponent);
 
       const root = await screen.findByTestId("reactolith-app");
 
@@ -92,7 +92,7 @@ describe("ReactolithComponent HTML to React transformation", () => {
         </div>
       </div>`;
 
-      new App(testComponent);
+      new App(TestComponent);
 
       const root = await screen.findByTestId("reactolith-app");
 
@@ -114,7 +114,7 @@ describe("ReactolithComponent HTML to React transformation", () => {
         </table>
       </div>`;
 
-      new App(testComponent);
+      new App(TestComponent);
 
       const root = await screen.findByTestId("reactolith-app");
 
@@ -132,7 +132,7 @@ describe("ReactolithComponent HTML to React transformation", () => {
         <input type="text" maxlength="20" minlength="3" />
       </div>`;
 
-      new App(testComponent);
+      new App(TestComponent);
 
       const root = await screen.findByTestId("reactolith-app");
 
@@ -150,7 +150,7 @@ describe("ReactolithComponent HTML to React transformation", () => {
         <input type="text" readonly value="locked" />
       </div>`;
 
-      new App(testComponent);
+      new App(TestComponent);
 
       const root = await screen.findByTestId("reactolith-app");
 
@@ -169,7 +169,7 @@ describe("ReactolithComponent HTML to React transformation", () => {
         </form>
       </div>`;
 
-      new App(testComponent);
+      new App(TestComponent);
 
       const root = await screen.findByTestId("reactolith-app");
 
@@ -188,7 +188,7 @@ describe("ReactolithComponent HTML to React transformation", () => {
         <img src="https://example.com/x.png" crossorigin="anonymous" />
       </div>`;
 
-      new App(testComponent);
+      new App(TestComponent);
 
       const root = await screen.findByTestId("reactolith-app");
 
@@ -207,7 +207,7 @@ describe("ReactolithComponent HTML to React transformation", () => {
         <svg viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="10"></circle></svg>
       </div>`;
 
-      new App(testComponent);
+      new App(TestComponent);
 
       const root = await screen.findByTestId("reactolith-app");
 
@@ -223,7 +223,7 @@ describe("ReactolithComponent HTML to React transformation", () => {
         <input type="text" placeholder="Hello" name="x" />
       </div>`;
 
-      new App(testComponent);
+      new App(TestComponent);
 
       const root = await screen.findByTestId("reactolith-app");
 
@@ -243,7 +243,7 @@ describe("ReactolithComponent HTML to React transformation", () => {
         <custom-button>Click</custom-button>
       </div>`;
 
-      new App(testComponent);
+      new App(TestComponent);
 
       const root = await screen.findByTestId("reactolith-app");
 
@@ -505,7 +505,7 @@ describe("ReactolithComponent HTML to React transformation", () => {
         </my-outer>
       </div>`;
 
-      new App(testComponent);
+      new App(TestComponent);
 
       const root = await screen.findByTestId("reactolith-app");
 
@@ -527,7 +527,7 @@ describe("ReactolithComponent HTML to React transformation", () => {
         </my-list>
       </div>`;
 
-      new App(testComponent);
+      new App(TestComponent);
 
       const root = await screen.findByTestId("reactolith-app");
 
@@ -576,7 +576,7 @@ describe("ReactolithComponent HTML to React transformation", () => {
         <my-empty></my-empty>
       </div>`;
 
-      new App(testComponent);
+      new App(TestComponent);
 
       const root = await screen.findByTestId("reactolith-app");
 
@@ -596,7 +596,7 @@ describe("ReactolithComponent HTML to React transformation", () => {
         </div>
       </div>`;
 
-      new App(testComponent);
+      new App(TestComponent);
 
       const root = await screen.findByTestId("reactolith-app");
 
@@ -644,7 +644,7 @@ describe("ReactolithComponent HTML to React transformation", () => {
         <my-component>Content</my-component>
       </div>`;
 
-      new App(testComponent);
+      new App(TestComponent);
 
       const root = await screen.findByTestId("reactolith-app");
 
@@ -659,7 +659,7 @@ describe("ReactolithComponent HTML to React transformation", () => {
         <my-thing json-config='{ not valid json }'>Content</my-thing>
       </div>`;
 
-      new App(testComponent);
+      new App(TestComponent);
 
       const root = await screen.findByTestId("reactolith-app");
 

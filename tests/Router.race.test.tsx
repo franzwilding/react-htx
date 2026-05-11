@@ -4,7 +4,7 @@ import { App } from "../src";
 import { ReactNode, act } from "react";
 import { useRouter } from "../src/provider/RouterProvider";
 
-function testComponent({ is, children }: { is: string; children: ReactNode }) {
+function TestComponent({ is, children }: { is: string; children: ReactNode }) {
   const { loading } = useRouter();
   return (
     <pre data-is={is} data-loading={loading}>
@@ -74,7 +74,7 @@ describe("Router overlapping visit() calls", () => {
       );
     global.fetch = fetchMock as never;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await act(async () => {});
 
     const a = app.router.visit("/a");
@@ -124,7 +124,7 @@ describe("Router overlapping visit() calls", () => {
       );
     global.fetch = fetchMock as never;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await act(async () => {});
 
     const cancelled = vi.fn();
@@ -169,7 +169,7 @@ describe("Router overlapping visit() calls", () => {
     window.addEventListener("unhandledrejection", unhandled);
 
     try {
-      const app = new App(testComponent);
+      const app = new App(TestComponent);
       await act(async () => {});
 
       const a = app.router.visit("/a");

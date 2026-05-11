@@ -139,19 +139,22 @@ describe("useMercureEventSource", () => {
     let aMessages = 0;
     let bMessages = 0;
 
+    function CompA({ is }: { is: string }) {
+      useMercureEventSource("/shared", () => {
+        aMessages += 1;
+      });
+      return <div data-testid="comp-a" data-is={is} />;
+    }
+    function CompB({ is }: { is: string }) {
+      useMercureEventSource("/shared", () => {
+        bMessages += 1;
+      });
+      return <div data-testid="comp-b" data-is={is} />;
+    }
+
     function Wrapper({ is }: { is: string }) {
-      if (is === "comp-a") {
-        useMercureEventSource("/shared", () => {
-          aMessages += 1;
-        });
-        return <div data-testid="comp-a" data-is={is} />;
-      }
-      if (is === "comp-b") {
-        useMercureEventSource("/shared", () => {
-          bMessages += 1;
-        });
-        return <div data-testid="comp-b" data-is={is} />;
-      }
+      if (is === "comp-a") return <CompA is={is} />;
+      if (is === "comp-b") return <CompB is={is} />;
       return null;
     }
 
@@ -184,15 +187,18 @@ describe("useMercureEventSource", () => {
   });
 
   it("closes the shared EventSource only after the last subscriber unmounts", async () => {
+    function CompA({ is }: { is: string }) {
+      useMercureEventSource("/shared", () => {});
+      return <div data-testid="comp-a" data-is={is} />;
+    }
+    function CompB({ is }: { is: string }) {
+      useMercureEventSource("/shared", () => {});
+      return <div data-testid="comp-b" data-is={is} />;
+    }
+
     function Wrapper({ is }: { is: string }) {
-      if (is === "comp-a") {
-        useMercureEventSource("/shared", () => {});
-        return <div data-testid="comp-a" data-is={is} />;
-      }
-      if (is === "comp-b") {
-        useMercureEventSource("/shared", () => {});
-        return <div data-testid="comp-b" data-is={is} />;
-      }
+      if (is === "comp-a") return <CompA is={is} />;
+      if (is === "comp-b") return <CompB is={is} />;
       return null;
     }
 

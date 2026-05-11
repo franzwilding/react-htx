@@ -5,7 +5,7 @@ import { ReactNode, act } from "react";
 import { useRouter } from "../src/provider/RouterProvider";
 import { ScrollRestoration } from "../src/ScrollRestoration";
 
-function testComponent({ is, children }: { is: string; children: ReactNode }) {
+function TestComponent({ is, children }: { is: string; children: ReactNode }) {
   const { loading } = useRouter();
   return (
     <pre data-is={is} data-loading={loading}>
@@ -52,7 +52,7 @@ describe("Router scroll restoration", () => {
     const fetchMock = createFetchMock(responseHtml);
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await act(async () => {});
 
     await app.router.navigate("/page");
@@ -72,7 +72,7 @@ describe("Router scroll restoration", () => {
     const fetchMock = createFetchMock(responseHtml);
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await act(async () => {});
 
     const root = await screen.findByTestId("reactolith-app");
@@ -105,7 +105,7 @@ describe("Router scroll restoration", () => {
     const fetchMock = createFetchMock(responseHtml);
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await act(async () => {});
 
     const root = await screen.findByTestId("reactolith-app");
@@ -142,7 +142,7 @@ describe("Router scroll restoration", () => {
     const fetchMock = createFetchMock(responseHtml);
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await act(async () => {});
 
     const root = await screen.findByTestId("reactolith-app");
@@ -174,7 +174,7 @@ describe("Router scroll restoration", () => {
     const fetchMock = createFetchMock(responseHtml);
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await act(async () => {});
 
     await app.router.navigate("/page", { scroll: "preserve" });
@@ -194,7 +194,7 @@ describe("Router scroll restoration", () => {
     const fetchMock = createFetchMock(responseHtml);
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await act(async () => {});
 
     // Initial entry should have a restorationId (set by ScrollRestoration constructor)
@@ -220,7 +220,7 @@ describe("Router scroll restoration", () => {
     const fetchMock = createFetchMock(responseHtml);
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await act(async () => {});
 
     // Simulate scroll position on initial page
@@ -270,7 +270,7 @@ describe("Router scroll restoration", () => {
     const fetchMock = createFetchMock(responseHtml);
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await act(async () => {});
 
     // Navigate to a URL with hash - test via visit() directly
@@ -299,7 +299,7 @@ describe("Router scroll restoration", () => {
     const fetchMock = createFetchMock(responseHtml);
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await act(async () => {});
 
     await app.router.visit("/page#section%20one", { method: "GET" }, true);
@@ -326,7 +326,7 @@ describe("Router scroll restoration", () => {
     const fetchMock = createFetchMock(responseHtml);
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await act(async () => {});
 
     await app.router.visit("/page#top", { method: "GET" }, true);
@@ -347,7 +347,7 @@ describe("Router scroll restoration", () => {
     const fetchMock = createFetchMock(responseHtml);
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await act(async () => {});
 
     await app.router.visit("/page#nonexistent", { method: "GET" }, true);
@@ -367,7 +367,7 @@ describe("Router scroll restoration", () => {
     const fetchMock = createFetchMock(`<div id="other">Bar</div>`);
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await act(async () => {});
 
     scrollToSpy.mockClear();
@@ -405,7 +405,7 @@ describe("Router scroll restoration", () => {
     const scrollElSpy = vi.fn();
     scrollDiv.scrollTo = scrollElSpy;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await act(async () => {});
 
     await app.router.navigate("/page");
@@ -436,7 +436,7 @@ describe("Router scroll restoration", () => {
     const scrollElSpy = vi.fn();
     scrollDiv.scrollTo = scrollElSpy;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await act(async () => {});
 
     await app.router.navigate("/page");
@@ -457,7 +457,7 @@ describe("Router scroll restoration", () => {
     const fetchMock = createFetchMock(responseHtml);
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await act(async () => {});
 
     Object.defineProperty(window, "scrollX", {
@@ -499,7 +499,7 @@ describe("Router scroll restoration", () => {
     const fetchMock = createFetchMock(responseHtml);
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await act(async () => {});
 
     await app.router.visit("/page", { method: "GET" }, true, "top");
@@ -517,7 +517,7 @@ describe("Router scroll restoration", () => {
     const fetchMock = createFetchMock(responseHtml);
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await act(async () => {});
 
     const pushSpy = vi.spyOn(history, "pushState");
@@ -551,7 +551,7 @@ describe("Router scroll restoration", () => {
     const fetchMock = createFetchMock(responseHtml);
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await act(async () => {});
 
     const replaceSpy = vi.spyOn(history, "replaceState");
@@ -577,7 +577,7 @@ describe("Router scroll restoration", () => {
     const fetchMock = createFetchMock(responseHtml);
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await act(async () => {});
 
     await app.router.navigate("/list?q=x", {
@@ -600,7 +600,7 @@ describe("Router scroll restoration", () => {
     const fetchMock = createFetchMock(responseHtml);
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await act(async () => {});
 
     await app.router.navigate("/dashboard", { replace: true });
@@ -619,7 +619,7 @@ describe("Router scroll restoration", () => {
     const fetchMock = createFetchMock(responseHtml);
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await act(async () => {});
 
     // Pretend the user scrolled the original entry to y=600 before we
@@ -663,7 +663,7 @@ describe("Router scroll restoration", () => {
     const fetchMock = createFetchMock(responseHtml);
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await act(async () => {});
 
     const pushSpy = vi.spyOn(history, "pushState");
@@ -713,7 +713,7 @@ describe("Router scroll restoration", () => {
 
     const popSpy = vi.spyOn(ScrollRestoration.prototype, "pop");
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await act(async () => {});
 
     // Simulate scroll position on /a *before* leaving it.

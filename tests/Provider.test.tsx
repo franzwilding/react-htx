@@ -13,11 +13,11 @@ describe("AppProvider", () => {
       <my-component>Content</my-component>
     </div>`;
 
-    function testComponent({ is }: { is: string }) {
+    function TestComponent({ is }: { is: string }) {
       return <pre data-is={is}>Rendered</pre>;
     }
 
-    new App(testComponent);
+    new App(TestComponent);
 
     const root = await screen.findByTestId("reactolith-app");
 
@@ -34,12 +34,12 @@ describe("AppProvider", () => {
       <my-component>Content</my-component>
     </div>`;
 
-    function testComponent({ is }: { is: string }) {
+    function TestComponent({ is }: { is: string }) {
       return <pre data-is={is}>Rendered</pre>;
     }
 
     new App(
-      testComponent,
+      TestComponent,
       undefined,
       undefined,
       undefined,
@@ -61,12 +61,12 @@ describe("AppProvider", () => {
       <my-component>Content</my-component>
     </div>`;
 
-    function testComponent({ is }: { is: string }) {
+    function TestComponent({ is }: { is: string }) {
       return <pre data-is={is}>Rendered</pre>;
     }
 
     new App(
-      testComponent,
+      TestComponent,
       undefined,
       undefined,
       undefined,
@@ -87,11 +87,11 @@ describe("AppProvider", () => {
       <my-component>Content</my-component>
     </div>`;
 
-    function testComponent({ is }: { is: string }) {
+    function TestComponent({ is }: { is: string }) {
       return <pre data-is={is}>Rendered</pre>;
     }
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     const handler = vi.fn();
     app.onHydrated(handler);
 
@@ -112,13 +112,13 @@ describe("AppProvider", () => {
 
     let capturedApp: App | null = null;
 
-    function testComponent({ is }: { is: string }) {
+    function TestComponent({ is }: { is: string }) {
       const app = useApp();
       capturedApp = app;
       return <pre data-is={is}>{app.constructor.name}</pre>;
     }
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
 
     const root = await screen.findByTestId("reactolith-app");
 
@@ -141,12 +141,12 @@ describe("RouterProvider", () => {
       <my-component>Foo</my-component>
     </div>`;
 
-    function testComponent({ is }: { is: string }) {
+    function TestComponent({ is }: { is: string }) {
       const { loading } = useRouter();
       return <pre data-is={is} data-loading={String(loading)}></pre>;
     }
 
-    new App(testComponent);
+    new App(TestComponent);
 
     const root = await screen.findByTestId("reactolith-app");
 
@@ -162,14 +162,14 @@ describe("RouterProvider", () => {
       <my-component>Foo</my-component>
     </div>`;
 
-    function testComponent({ is }: { is: string }) {
+    function TestComponent({ is }: { is: string }) {
       const { lastError } = useRouter();
       return (
         <pre data-is={is} data-has-error={lastError ? "true" : "false"}></pre>
       );
     }
 
-    new App(testComponent);
+    new App(TestComponent);
 
     const root = await screen.findByTestId("reactolith-app");
 
@@ -190,13 +190,13 @@ describe("RouterProvider", () => {
 
     let clearErrorFn: (() => void) | null = null;
 
-    function testComponent({ is }: { is: string }) {
+    function TestComponent({ is }: { is: string }) {
       const { clearError } = useRouter();
       clearErrorFn = clearError;
       return <pre data-is={is}>Rendered</pre>;
     }
 
-    new App(testComponent);
+    new App(TestComponent);
 
     const root = await screen.findByTestId("reactolith-app");
 
@@ -214,13 +214,13 @@ describe("RouterProvider", () => {
 
     let capturedRouter: any = null;
 
-    function testComponent({ is }: { is: string }) {
+    function TestComponent({ is }: { is: string }) {
       const { router } = useRouter();
       capturedRouter = router;
       return <pre data-is={is}>Rendered</pre>;
     }
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
 
     const root = await screen.findByTestId("reactolith-app");
 
@@ -261,12 +261,12 @@ describe("RouterProvider", () => {
       <my-component>Content</my-component>
     </div>`;
 
-    function testComponent({ is }: { is: string }) {
+    function TestComponent({ is }: { is: string }) {
       useRouter();
       return <pre data-is={is}>Rendered</pre>;
     }
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
 
     const root = await screen.findByTestId("reactolith-app");
 
