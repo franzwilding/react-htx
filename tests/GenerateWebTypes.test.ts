@@ -615,6 +615,270 @@ describe("generateWebTypes", () => {
     expect(noProps.slots).toBeUndefined();
   });
 
+  it("resolves an aliased named import re-exported as default", () => {
+    // AliasedNamedImport.tsx does `import { ImportedComponent as Aliased }`
+    // and `export default Aliased`, exercising the alias branch of
+    // resolveIdentifierToProps (`namedImport.getAliasNode()`).
+    generateWebTypes({
+      componentsDir,
+      outFile,
+      tsconfig,
+    });
+
+    const content = JSON.parse(fs.readFileSync(outFile, "utf-8"));
+    const elements = content.contributions.html.elements;
+    const aliased = elements.find(
+      (el: any) => el.name === "aliased-named-import",
+    );
+
+    expect(aliased).toBeDefined();
+    const heading = aliased.attributes.find((a: any) => a.name === "heading");
+    expect(heading).toBeDefined();
+    expect(heading.required).toBe(true);
+  });
+
+  it("extracts props from memo-wrapped function expressions", () => {
+    // MemoFunctionExpression.tsx wraps a `function (props) { … }` in
+    // `memo(…)`, exercising the FunctionExpression-in-CallExpression-argument
+    // branch of extractPropsFromDeclaration.
+    generateWebTypes({
+      componentsDir,
+      outFile,
+      tsconfig,
+    });
+
+    const content = JSON.parse(fs.readFileSync(outFile, "utf-8"));
+    const elements = content.contributions.html.elements;
+    const memo = elements.find(
+      (el: any) => el.name === "memo-function-expression",
+    );
+
+    expect(memo).toBeDefined();
+    const label = memo.attributes.find((a: any) => a.name === "label");
+    expect(label).toBeDefined();
+    expect(label.required).toBe(true);
+  });
+
+  it("does not crash on imports that cannot be resolved", () => {
+    // ExternalImport.tsx points at a non-existent package. The catch-all in
+    // resolveImportedComponent must swallow the failure and the generator
+    // must still emit a result for the rest of the components.
+    expect(() =>
+      generateWebTypes({
+        componentsDir,
+        outFile,
+        tsconfig,
+      }),
+    ).not.toThrow();
+
+    const content = JSON.parse(fs.readFileSync(outFile, "utf-8"));
+    const names = content.contributions.html.elements.map(
+      (el: { name: string }) => el.name,
+    );
+
+    // Unresolved external imports produce no element, but the rest of the
+    // run is unaffected.
+    expect(names).not.toContain("external-import");
+    expect(names).toContain("button");
+  });
+
+  it("skips render-prop `children` instead of treating it as a slot", () => {
+    // RenderPropChildren.tsx types `children` as `(value: number) => string`,
+    // which is not a slot. Exercises the `propName === \"children\"`
+    // early-return that runs after isSlotType has rejected the function.
+    generateWebTypes({
+      componentsDir,
+      outFile,
+      tsconfig,
+    });
+
+    const content = JSON.parse(fs.readFileSync(outFile, "utf-8"));
+    const elements = content.contributions.html.elements;
+    const renderProp = elements.find(
+      (el: any) => el.name === "render-prop-children",
+    );
+
+    expect(renderProp).toBeDefined();
+    // No slot was emitted for the function-typed children.
+    expect(renderProp.slots).toBeUndefined();
+    // children is not surfaced as an attribute either.
+    expect(renderProp.attributes.some((a: any) => a.name === "children")).toBe(
+      false,
+    );
+    // Other props are still emitted.
+    expect(renderProp.attributes.some((a: any) => a.name === "label")).toBe(
+      true,
+    );
+  });
+
+  it("falls back to splitting on `|` for types ts-morph does not classify as unions", () => {
+    // UnclassifiedUnion.tsx exposes `Promise<\"a\" | \"b\">`. The outer type
+    // is not classified by ts-morph as a union, but its printed text
+    // contains `|`, so collectUnionMemberTexts has to fall back to
+    // `text.split(\"|\")`.
+    generateWebTypes({
+      componentsDir,
+      outFile,
+      tsconfig,
+    });
+
+    const content = JSON.parse(fs.readFileSync(outFile, "utf-8"));
+    const elements = content.contributions.html.elements;
+    const fallback = elements.find(
+      (el: any) => el.name === "unclassified-union",
+    );
+
+    expect(fallback).toBeDefined();
+    const pending = fallback.attributes.find((a: any) => a.name === "pending");
+    expect(pending).toBeDefined();
+    // The prop is required (otherwise the outer type would be classified
+    // as `Promise<…> | undefined`, taking the normal isUnion() path).
+    expect(pending.required).toBe(true);
+    expect(pending.value).toBeDefined();
+    expect(typeof pending.value.type).toBe("string");
+    expect(pending.value.type).toContain("|");
+  });
+
+  it("extracts props from `export default (props) => …`", () => {
+    // ExportArrowDefault.tsx — exercises the ExportAssignment-with-
+    // ArrowFunction branch of extractPropsFromDeclaration.
+    generateWebTypes({
+      componentsDir,
+      outFile,
+      tsconfig,
+    });
+
+    const content = JSON.parse(fs.readFileSync(outFile, "utf-8"));
+    const elements = content.contributions.html.elements;
+    const arrow = elements.find(
+      (el: any) => el.name === "export-arrow-default",
+    );
+
+    expect(arrow).toBeDefined();
+    const heading = arrow.attributes.find((a: any) => a.name === "heading");
+    expect(heading).toBeDefined();
+    expect(heading.required).toBe(true);
+  });
+
+  it("extracts props from anonymous `export default function (props) { … }`", () => {
+    // ExportFunctionExprDefault.tsx — TS parses an anonymous default-export
+    // function as a FunctionDeclaration, so this exercises the file-name-
+    // based naming path of extractFromComponentFunctions for unnamed default
+    // exports.
+    generateWebTypes({
+      componentsDir,
+      outFile,
+      tsconfig,
+    });
+
+    const content = JSON.parse(fs.readFileSync(outFile, "utf-8"));
+    const elements = content.contributions.html.elements;
+    const fn = elements.find(
+      (el: any) => el.name === "export-function-expr-default",
+    );
+
+    expect(fn).toBeDefined();
+    const caption = fn.attributes.find((a: any) => a.name === "caption");
+    expect(caption).toBeDefined();
+    expect(caption.required).toBe(true);
+  });
+
+  it("emits an empty-attribute element for zero-param arrow components", () => {
+    // NoParamsArrow.tsx — exercises the empty-params branch of
+    // extractPropsFromArrowFunction (`params.length === 0`).
+    generateWebTypes({
+      componentsDir,
+      outFile,
+      tsconfig,
+    });
+
+    const content = JSON.parse(fs.readFileSync(outFile, "utf-8"));
+    const elements = content.contributions.html.elements;
+    const noParams = elements.find((el: any) => el.name === "no-params-arrow");
+
+    expect(noParams).toBeDefined();
+    expect(noParams.attributes).toEqual([]);
+    expect(noParams.slots).toBeUndefined();
+  });
+
+  it("emits an empty-attribute element for zero-param function expressions", () => {
+    // NoParamsFunctionExpr.tsx — exercises the empty-params branch of
+    // extractPropsFromFunctionExpression.
+    generateWebTypes({
+      componentsDir,
+      outFile,
+      tsconfig,
+    });
+
+    const content = JSON.parse(fs.readFileSync(outFile, "utf-8"));
+    const elements = content.contributions.html.elements;
+    const noParams = elements.find(
+      (el: any) => el.name === "no-params-function-expr",
+    );
+
+    expect(noParams).toBeDefined();
+    expect(noParams.attributes).toEqual([]);
+    expect(noParams.slots).toBeUndefined();
+  });
+
+  it("extracts props through a `const X = <Identifier>` re-export", () => {
+    // ReExportedIdentifier.tsx exposes `const ReExportedIdentifier =
+    // ImportedComponent`, exercising the Identifier-initializer branch of
+    // extractPropsFromDeclaration (which inspects call signatures).
+    generateWebTypes({
+      componentsDir,
+      outFile,
+      tsconfig,
+    });
+
+    const content = JSON.parse(fs.readFileSync(outFile, "utf-8"));
+    const elements = content.contributions.html.elements;
+    const reExp = elements.find(
+      (el: any) => el.name === "re-exported-identifier",
+    );
+
+    expect(reExp).toBeDefined();
+    const heading = reExp.attributes.find((a: any) => a.name === "heading");
+    expect(heading).toBeDefined();
+    expect(heading.required).toBe(true);
+  });
+
+  it("rejects a single-group prefix that does not end with '-'", () => {
+    // Exercises the legacy single-group prefix validation in
+    // normaliseGroups (the multi-group equivalent is already covered by
+    // GenerateWebTypesGroups.test.ts).
+    expect(() =>
+      generateWebTypes({
+        componentsDir,
+        outFile,
+        tsconfig,
+        prefix: "ui_",
+      }),
+    ).toThrow(/prefix must be empty or end with "-"/);
+  });
+
+  it("escapes regex metacharacters in exclude glob patterns", () => {
+    // The Card fixture lives at components/Card.tsx. The pattern below
+    // contains a `+` and parentheses — both regex metacharacters that
+    // globToRegExp must escape, otherwise the regex either fails to compile
+    // or matches the wrong file.
+    generateWebTypes({
+      componentsDir,
+      outFile,
+      tsconfig,
+      // Should NOT match anything (no `Card+x` or paren-named files exist),
+      // so card.tsx must still be picked up.
+      exclude: ["**/Card+x.tsx", "**/(weird).tsx"],
+    });
+
+    const content = JSON.parse(fs.readFileSync(outFile, "utf-8"));
+    const names = content.contributions.html.elements.map(
+      (el: { name: string }) => el.name,
+    );
+
+    expect(names).toContain("card");
+  });
+
   it("supports single-`*` and `?` glob characters in exclude patterns", () => {
     // Single `*` -> [^/]* in the regex (lines 135-136 of GenerateWebTypes.ts);
     // `?`        -> [^/]   (lines 139-140).
