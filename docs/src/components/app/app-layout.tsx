@@ -8,6 +8,7 @@ export interface AppLayoutProps extends React.HTMLAttributes<HTMLDivElement> {
   pageNav?: React.ReactNode;
   header?: React.ReactNode;
   routeProgress?: React.ReactNode;
+  pageFooter?: React.ReactNode;
 }
 
 export function AppLayout({
@@ -16,6 +17,7 @@ export function AppLayout({
   pageNav,
   header,
   routeProgress,
+  pageFooter,
   children,
   ...props
 }: AppLayoutProps) {
@@ -33,6 +35,9 @@ export function AppLayout({
           )}
           <main className="min-w-0 flex-1 py-10">
             <article className="doc-prose mx-auto max-w-3xl">{children}</article>
+            {pageFooter && (
+              <div className="mx-auto max-w-3xl">{pageFooter}</div>
+            )}
           </main>
           {pageNav && (
             <aside className="sticky top-16 hidden h-[calc(100vh-4rem)] w-56 shrink-0 overflow-y-auto py-10 xl:block">
