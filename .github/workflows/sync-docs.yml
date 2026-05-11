@@ -1,0 +1,60 @@
+name: Sync docs to reactolith.github.io
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - ".github/workflows/sync-docs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-docs
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source repo
+        uses: actions/checkout@v6
+        with:
+          path: source
+
+      - name: Checkout target repo (reactolith/reactolith.github.io)
+        uses: actions/checkout@v6
+        with:
+          repository: reactolith/reactolith.github.io
+          token: ${{ secrets.DOCS_SYNC_TOKEN }}
+          path: target
+          fetch-depth: 0
+
+      - name: Mirror docs/ into target repo
+        run: |
+          rsync -av --delete \
+            --exclude='.git' \
+            --exclude='.github' \
+            source/docs/ target/
+
+      - name: Commit and push if changed
+        working-directory: target
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+          SOURCE_REPO: ${{ github.repository }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No changes to sync."
+            exit 0
+          fi
+
+          git add -A
+          git commit -m "Sync docs from ${SOURCE_REPO}@${SOURCE_SHA:0:7}
+
+          Source: https://github.com/${SOURCE_REPO}/commit/${SOURCE_SHA}"
+          git push origin HEAD
