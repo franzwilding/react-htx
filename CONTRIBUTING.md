@@ -49,11 +49,12 @@ npm run dev      # local preview at http://localhost:5173
 npm run build    # production build into docs/dist
 ```
 
-The deployed site lives at <https://reactolith.github.io/reactolith/> and is
-built and published from `main` by the workflow in
-[`.github/workflows/docs.yml`](./.github/workflows/docs.yml). If your change
-touches public API or user-visible behavior, please update the relevant page
-under `docs/<topic>/index.html` in the same PR.
+The deployed site lives at <https://reactolith.github.io/> and is mirrored
+from `docs/` into the [`reactolith/reactolith.github.io`](https://github.com/reactolith/reactolith.github.io)
+repository on every push to `main` by the workflow in
+[`.github/workflows/sync-docs.yml`](./.github/workflows/sync-docs.yml). If your
+change touches public API or user-visible behavior, please update the relevant
+page under `docs/<topic>/index.html` in the same PR.
 
 ## Branches and commits
 
