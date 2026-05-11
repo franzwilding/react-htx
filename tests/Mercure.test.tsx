@@ -3,7 +3,7 @@ import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { App, Mercure } from "../src";
 import { ReactNode } from "react";
 
-function testComponent({ is, children }: { is: string; children: ReactNode }) {
+function TestComponent({ is, children }: { is: string; children: ReactNode }) {
   return <pre data-is={is}>{children}</pre>;
 }
 
@@ -120,7 +120,7 @@ describe("Mercure SSE integration", () => {
       <my-component>Initial</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     appInstances.push(app);
     appInstances.push(app);
     const mercure = new Mercure(app);
@@ -134,7 +134,7 @@ describe("Mercure SSE integration", () => {
       <my-component>Initial</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     appInstances.push(app);
     const mercure = new Mercure(app);
 
@@ -160,7 +160,7 @@ describe("Mercure SSE integration", () => {
       writable: true,
     });
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     appInstances.push(app);
     const mercure = new Mercure(app);
 
@@ -178,7 +178,7 @@ describe("Mercure SSE integration", () => {
       <my-component>Initial</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     appInstances.push(app);
     const mercure = new Mercure(app);
     const connectedHandler = vi.fn();
@@ -200,7 +200,7 @@ describe("Mercure SSE integration", () => {
       <my-component>Initial</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     appInstances.push(app);
     const mercure = new Mercure(app);
 
@@ -232,7 +232,7 @@ describe("Mercure SSE integration", () => {
       <my-component>Initial</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     appInstances.push(app);
     const mercure = new Mercure(app);
     const successHandler = vi.fn();
@@ -261,7 +261,7 @@ describe("Mercure SSE integration", () => {
       <my-component>Initial</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     appInstances.push(app);
     const mercure = new Mercure(app);
     const failedHandler = vi.fn();
@@ -291,7 +291,7 @@ describe("Mercure SSE integration", () => {
       <my-component>Initial</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     appInstances.push(app);
     const mercure = new Mercure(app);
     const messageHandler = vi.fn();
@@ -316,7 +316,7 @@ describe("Mercure SSE integration", () => {
       <my-component>Initial</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     appInstances.push(app);
     const mercure = new Mercure(app);
     const errorHandler = vi.fn();
@@ -337,7 +337,7 @@ describe("Mercure SSE integration", () => {
       <my-component>Initial</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     appInstances.push(app);
     const mercure = new Mercure(app);
     const disconnectedHandler = vi.fn();
@@ -362,7 +362,7 @@ describe("Mercure SSE integration", () => {
       <my-component>Initial</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     appInstances.push(app);
     const mercure = new Mercure(app);
     const handler = vi.fn();
@@ -384,7 +384,7 @@ describe("Mercure SSE integration", () => {
       <my-component>Initial</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     appInstances.push(app);
     const mercure = new Mercure(app);
     const handler = vi.fn();
@@ -406,7 +406,7 @@ describe("Mercure SSE integration", () => {
       <my-component>Initial</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     appInstances.push(app);
     const mercure = new Mercure(app);
     const disconnectedHandler = vi.fn();
@@ -451,7 +451,7 @@ describe("Mercure SSE integration", () => {
       <my-component>Initial</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     appInstances.push(app);
     const mercure = new Mercure(app);
 
@@ -469,7 +469,7 @@ describe("Mercure SSE integration", () => {
       <my-component>Initial</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     appInstances.push(app);
     const mercure = new Mercure(app);
 
@@ -488,7 +488,7 @@ describe("Mercure SSE integration", () => {
       <my-component>Initial</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     appInstances.push(app);
     const mercure = new Mercure(app);
 
@@ -507,7 +507,7 @@ describe("Mercure SSE integration", () => {
       <my-component>Initial</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     appInstances.push(app);
     const mercure = new Mercure(app);
 
@@ -553,7 +553,7 @@ describe("Mercure SSE integration", () => {
     });
 
     const app = new App(
-      testComponent,
+      TestComponent,
       undefined,
       undefined,
       undefined,
@@ -622,7 +622,7 @@ describe("Mercure SSE integration", () => {
     });
 
     const app = new App(
-      testComponent,
+      TestComponent,
       undefined,
       undefined,
       undefined,
@@ -676,7 +676,7 @@ describe("Mercure SSE integration", () => {
     const mockFetch = vi.fn().mockRejectedValue(new Error("Network error"));
 
     const app = new App(
-      testComponent,
+      TestComponent,
       undefined,
       undefined,
       undefined,
@@ -741,7 +741,7 @@ describe("Mercure SSE integration", () => {
       });
 
     const app = new App(
-      testComponent,
+      TestComponent,
       undefined,
       undefined,
       undefined,
@@ -803,7 +803,7 @@ describe("Mercure SSE integration", () => {
     const mockFetch = vi.fn();
 
     const app = new App(
-      testComponent,
+      TestComponent,
       undefined,
       undefined,
       undefined,
@@ -843,7 +843,7 @@ describe("Mercure SSE integration", () => {
       <my-component>Initial</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     appInstances.push(app);
     const mercure = new Mercure(app);
     const namedHandler = vi.fn();
@@ -872,7 +872,7 @@ describe("Mercure SSE integration", () => {
       <my-component>Initial</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     appInstances.push(app);
     const mercure = new Mercure(app);
 
@@ -893,7 +893,7 @@ describe("Mercure SSE integration", () => {
       <my-component>Initial</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     appInstances.push(app);
     const mercure = new Mercure(app);
 
@@ -926,7 +926,7 @@ describe("Mercure SSE integration", () => {
     });
 
     const app = new App(
-      testComponent,
+      TestComponent,
       undefined,
       undefined,
       undefined,
@@ -960,7 +960,7 @@ describe("Mercure SSE integration", () => {
       <my-component>Initial</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     appInstances.push(app);
     const mercure = new Mercure(app);
 
@@ -1005,7 +1005,7 @@ describe("Mercure SSE integration", () => {
       <my-component>Initial</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     appInstances.push(app);
     const mercure = new Mercure(app);
     const disconnectedHandler = vi.fn();
@@ -1028,7 +1028,7 @@ describe("Mercure SSE integration", () => {
       <my-component>Initial</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     appInstances.push(app);
     app.mercureConfig = {
       hubUrl: "https://example.com/.well-known/mercure",
@@ -1061,7 +1061,7 @@ describe("Mercure SSE integration", () => {
       <my-component>Initial</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     appInstances.push(app);
     app.mercureConfig = {
       hubUrl: "https://hub-a.example.com/.well-known/mercure",
@@ -1095,7 +1095,7 @@ describe("Mercure SSE integration", () => {
       <my-component>Initial</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     appInstances.push(app);
     const mercure = new Mercure(app);
     const namedHandler = vi.fn();

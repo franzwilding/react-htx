@@ -4,7 +4,7 @@ import { App } from "../src";
 import { ReactNode, act } from "react";
 import { useRouter } from "../src/provider/RouterProvider";
 
-function testComponent({ is, children }: { is: string; children: ReactNode }) {
+function TestComponent({ is, children }: { is: string; children: ReactNode }) {
   const { loading } = useRouter();
   return (
     <pre data-is={is} data-loading={loading}>
@@ -32,7 +32,7 @@ describe("Test app router", () => {
     );
     global.fetch = fetchMock as any;
 
-    new App(testComponent);
+    new App(TestComponent);
     const root = await screen.findByTestId("reactolith-app");
 
     // Give React a tick so the Provider's useEffect subscribes
@@ -79,7 +79,7 @@ describe("Test app router", () => {
     const replaceSpy = vi.spyOn(window.history, "replaceState");
     const pushSpy = vi.spyOn(window.history, "pushState");
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     await screen.findByTestId("reactolith-app");
 
     await app.router.visit(
@@ -115,7 +115,7 @@ describe("Test app router", () => {
     );
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     const root = await screen.findByTestId("reactolith-app");
 
     const url = new URL("http://localhost:3000/from-url");

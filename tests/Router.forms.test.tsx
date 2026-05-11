@@ -4,7 +4,7 @@ import { App } from "../src";
 import { ReactNode, act } from "react";
 import { useRouter } from "../src/provider/RouterProvider";
 
-function testComponent({ is, children }: { is: string; children: ReactNode }) {
+function TestComponent({ is, children }: { is: string; children: ReactNode }) {
   const { loading } = useRouter();
   return (
     <pre data-is={is} data-loading={loading}>
@@ -43,7 +43,7 @@ describe("Router form submission", () => {
     </div>`);
     global.fetch = fetchMock as any;
 
-    new App(testComponent);
+    new App(TestComponent);
 
     await act(async () => {});
 
@@ -78,7 +78,7 @@ describe("Router form submission", () => {
     </div>`);
     global.fetch = fetchMock as any;
 
-    new App(testComponent);
+    new App(TestComponent);
 
     await act(async () => {});
 
@@ -115,7 +115,7 @@ describe("Router form submission", () => {
     </div>`);
     global.fetch = fetchMock as any;
 
-    new App(testComponent);
+    new App(TestComponent);
 
     await act(async () => {});
 
@@ -150,7 +150,7 @@ describe("Router form submission", () => {
     </div>`);
     global.fetch = fetchMock as any;
 
-    new App(testComponent);
+    new App(TestComponent);
     await act(async () => {});
 
     const root = await screen.findByTestId("reactolith-app");
@@ -184,7 +184,7 @@ describe("Router form submission", () => {
     </div>`);
     global.fetch = fetchMock as any;
 
-    new App(testComponent);
+    new App(TestComponent);
     await act(async () => {});
 
     const root = await screen.findByTestId("reactolith-app");
@@ -218,7 +218,7 @@ describe("Router form submission", () => {
     </div>`);
     global.fetch = fetchMock as any;
 
-    new App(testComponent);
+    new App(TestComponent);
     await act(async () => {});
 
     const root = await screen.findByTestId("reactolith-app");
@@ -251,7 +251,7 @@ describe("Router form submission", () => {
     </div>`);
     global.fetch = fetchMock as any;
 
-    new App(testComponent);
+    new App(TestComponent);
     await act(async () => {});
 
     const root = await screen.findByTestId("reactolith-app");
@@ -286,7 +286,7 @@ describe("Router form submission", () => {
     </div>`);
     global.fetch = fetchMock as any;
 
-    new App(testComponent);
+    new App(TestComponent);
 
     await act(async () => {});
 
@@ -333,7 +333,7 @@ describe("Router form submission", () => {
     </div>`);
     global.fetch = fetchMock as any;
 
-    new App(testComponent);
+    new App(TestComponent);
 
     await act(async () => {});
 
@@ -378,7 +378,7 @@ describe("Router form submission", () => {
     </div>`);
     global.fetch = fetchMock as any;
 
-    new App(testComponent);
+    new App(TestComponent);
 
     await act(async () => {});
 
@@ -424,7 +424,7 @@ describe("Router form submission", () => {
     </div>`);
     global.fetch = fetchMock as any;
 
-    new App(testComponent);
+    new App(TestComponent);
 
     await act(async () => {});
 
@@ -473,7 +473,7 @@ describe("Router form submission", () => {
     </div>`);
     global.fetch = fetchMock as any;
 
-    new App(testComponent);
+    new App(TestComponent);
 
     await act(async () => {});
 
@@ -506,7 +506,7 @@ describe("Router form submission", () => {
     </div>`);
     global.fetch = fetchMock as any;
 
-    new App(testComponent);
+    new App(TestComponent);
 
     await act(async () => {});
 
@@ -543,7 +543,7 @@ describe("Router form submission", () => {
     </div>`);
     global.fetch = fetchMock as any;
 
-    new App(testComponent);
+    new App(TestComponent);
 
     await act(async () => {});
 
@@ -590,7 +590,7 @@ describe("Router form submission", () => {
     </div>`);
     global.fetch = fetchMock as any;
 
-    new App(testComponent);
+    new App(TestComponent);
 
     await act(async () => {});
 
@@ -636,7 +636,7 @@ describe("Router form submission", () => {
     </div>`);
     global.fetch = fetchMock as any;
 
-    new App(testComponent);
+    new App(TestComponent);
 
     await act(async () => {});
 
@@ -681,7 +681,7 @@ describe("Router form submission", () => {
     </div>`);
     global.fetch = fetchMock as any;
 
-    new App(testComponent);
+    new App(TestComponent);
 
     await act(async () => {});
 
@@ -722,7 +722,7 @@ describe("Router form submission", () => {
     </div>`);
     global.fetch = fetchMock as any;
 
-    new App(testComponent);
+    new App(TestComponent);
 
     await act(async () => {});
 
@@ -758,7 +758,7 @@ describe("Router form submission", () => {
     </div>`);
     global.fetch = fetchMock as any;
 
-    new App(testComponent);
+    new App(TestComponent);
 
     await act(async () => {});
 

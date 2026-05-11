@@ -3,7 +3,7 @@ import { vi, describe, it, expect, beforeEach } from "vitest";
 import { App } from "../src";
 import { ReactNode } from "react";
 
-function testComponent({ is, children }: { is: string; children: ReactNode }) {
+function TestComponent({ is, children }: { is: string; children: ReactNode }) {
   return <pre data-is={is}>{children}</pre>;
 }
 
@@ -18,7 +18,7 @@ describe("App error handling", () => {
     </div>`;
 
     expect(() => {
-      new App(testComponent);
+      new App(TestComponent);
     }).toThrow(
       "Could not find root element in document. Please check your selector!",
     );
@@ -30,7 +30,7 @@ describe("App error handling", () => {
     </div>`;
 
     expect(() => {
-      new App(testComponent, undefined, "#non-existent");
+      new App(TestComponent, undefined, "#non-existent");
     }).toThrow(
       "Could not find root element in document. Please check your selector!",
     );
@@ -41,7 +41,7 @@ describe("App error handling", () => {
       <my-component>Custom</my-component>
     </div>`;
 
-    new App(testComponent, undefined, (doc) =>
+    new App(TestComponent, undefined, (doc) =>
       doc.querySelector('[data-app="custom"]'),
     );
 
@@ -59,7 +59,7 @@ describe("App error handling", () => {
       <my-component>Original</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
 
     const root = await screen.findByTestId("reactolith-app");
     await waitFor(() => {
@@ -81,7 +81,7 @@ describe("App error handling", () => {
       <my-component>Original</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
 
     const root = await screen.findByTestId("reactolith-app");
     await waitFor(() => {
@@ -104,7 +104,7 @@ describe("App error handling", () => {
       <my-component>Original</my-component>
     </div>`;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
 
     const root = await screen.findByTestId("reactolith-app");
     await waitFor(() => {
@@ -133,7 +133,7 @@ describe("App error handling", () => {
       Text node here
     </div>`;
 
-    new App(testComponent);
+    new App(TestComponent);
 
     const root = await screen.findByTestId("reactolith-app");
 

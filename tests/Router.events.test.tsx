@@ -4,7 +4,7 @@ import { App } from "../src";
 import { ReactNode, act } from "react";
 import { useRouter } from "../src/provider/RouterProvider";
 
-function testComponent({ is, children }: { is: string; children: ReactNode }) {
+function TestComponent({ is, children }: { is: string; children: ReactNode }) {
   const { loading, lastError, clearError } = useRouter();
   return (
     <pre
@@ -44,7 +44,7 @@ describe("Router event system", () => {
     </div>`);
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     const startHandler = vi.fn();
     const endHandler = vi.fn();
 
@@ -83,7 +83,7 @@ describe("Router event system", () => {
     </div>`);
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     const successHandler = vi.fn();
 
     app.router.on("render:success", successHandler);
@@ -114,7 +114,7 @@ describe("Router event system", () => {
     </div>`);
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     const failedHandler = vi.fn();
 
     app.router.on("render:failed", failedHandler);
@@ -145,7 +145,7 @@ describe("Router event system", () => {
     </div>`);
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     const handler = vi.fn();
 
     app.router.on("nav:started", handler);
@@ -179,7 +179,7 @@ describe("Router event system", () => {
     </div>`);
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     const handler = vi.fn();
 
     const unsubscribe = app.router.on("nav:started", handler);
@@ -211,7 +211,7 @@ describe("Router event system", () => {
     const fetchMock = vi.fn(() => Promise.reject(fetchError));
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     const startHandler = vi.fn();
     const endHandler = vi.fn();
     const errorHandler = vi.fn();
@@ -261,7 +261,7 @@ describe("Router event system", () => {
     window.addEventListener("unhandledrejection", unhandled);
 
     try {
-      const app = new App(testComponent);
+      const app = new App(TestComponent);
       await act(async () => {});
 
       const root = await screen.findByTestId("reactolith-app");
@@ -303,7 +303,7 @@ describe("Router event system", () => {
     );
     global.fetch = fetchMock as any;
 
-    const app = new App(testComponent);
+    const app = new App(TestComponent);
     const endHandler = vi.fn();
 
     app.router.on("nav:ended", endHandler);
