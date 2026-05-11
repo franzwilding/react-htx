@@ -52,9 +52,6 @@ export function AppHeader({
             <span className="font-serif text-xl leading-none tracking-tight">
               reactolith
             </span>
-            <span className="ml-1 hidden rounded border border-border px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider text-muted-foreground sm:inline-block">
-              v1.1.3
-            </span>
           </a>
         </div>
 
