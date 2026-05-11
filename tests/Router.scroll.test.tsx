@@ -285,6 +285,60 @@ describe("Router scroll restoration", () => {
     expect(scrollToSpy).not.toHaveBeenCalled();
   });
 
+  it("scrolls to hash element when URL fragment is percent-encoded", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Foo</my-component>
+    </div>`;
+
+    const target = document.createElement("h2");
+    target.id = "section one";
+    document.body.appendChild(target);
+    const scrollIntoViewSpy = vi.fn();
+    target.scrollIntoView = scrollIntoViewSpy;
+
+    const fetchMock = createFetchMock(responseHtml);
+    global.fetch = fetchMock as any;
+
+    const app = new App(testComponent);
+    await act(async () => {});
+
+    await app.router.visit("/page#section%20one", { method: "GET" }, true);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    expect(scrollIntoViewSpy).toHaveBeenCalled();
+    expect(scrollToSpy).not.toHaveBeenCalled();
+  });
+
+  it("scrolls to <a name> anchor when no matching id exists", async () => {
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Foo</my-component>
+    </div>`;
+
+    const anchor = document.createElement("a");
+    anchor.setAttribute("name", "top");
+    document.body.appendChild(anchor);
+    const scrollIntoViewSpy = vi.fn();
+    anchor.scrollIntoView = scrollIntoViewSpy;
+
+    const fetchMock = createFetchMock(responseHtml);
+    global.fetch = fetchMock as any;
+
+    const app = new App(testComponent);
+    await act(async () => {});
+
+    await app.router.visit("/page#top", { method: "GET" }, true);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    expect(scrollIntoViewSpy).toHaveBeenCalled();
+    expect(scrollToSpy).not.toHaveBeenCalled();
+  });
+
   it("falls back to scroll-to-top when hash element is not found", async () => {
     document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
       <my-component>Foo</my-component>

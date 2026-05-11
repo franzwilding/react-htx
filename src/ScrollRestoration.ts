@@ -115,7 +115,16 @@ export class ScrollRestoration {
     // 1. Hash takes priority
     const hash = this.extractHash(url);
     if (hash) {
-      const target = this.win.document.getElementById(hash);
+      let key = hash;
+      try {
+        key = decodeURIComponent(hash);
+      } catch {
+        // malformed percent-encoding – fall back to the raw fragment
+      }
+      const target =
+        this.win.document.getElementById(key) ||
+        this.win.document.getElementsByName(key)[0] ||
+        null;
       if (target) {
         target.scrollIntoView();
         return;

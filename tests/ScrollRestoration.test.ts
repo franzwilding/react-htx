@@ -255,6 +255,51 @@ describe("ScrollRestoration", () => {
 
       expect(scrollToSpy).toHaveBeenCalledWith(0, 0);
     });
+
+    it("decodes percent-encoded fragments before lookup", () => {
+      document.body.innerHTML = `<h2 id="section one">target</h2>`;
+      const scrollIntoViewSpy = vi.fn();
+      document.getElementById("section one")!.scrollIntoView =
+        scrollIntoViewSpy;
+
+      const sr = new ScrollRestoration(window);
+      sr.scroll(true, undefined, "/page#section%20one");
+
+      expect(scrollIntoViewSpy).toHaveBeenCalled();
+      expect(scrollToSpy).not.toHaveBeenCalled();
+    });
+
+    it("decodes non-ASCII percent-encoded fragments", () => {
+      document.body.innerHTML = `<h2 id="übersicht">target</h2>`;
+      const scrollIntoViewSpy = vi.fn();
+      document.getElementById("übersicht")!.scrollIntoView = scrollIntoViewSpy;
+
+      const sr = new ScrollRestoration(window);
+      sr.scroll(true, undefined, "/page#" + encodeURIComponent("übersicht"));
+
+      expect(scrollIntoViewSpy).toHaveBeenCalled();
+    });
+
+    it("falls back to <a name> anchors when no element id matches", () => {
+      document.body.innerHTML = `<a name="top">anchor</a>`;
+      const anchor = document.getElementsByName("top")[0]!;
+      const scrollIntoViewSpy = vi.fn();
+      anchor.scrollIntoView = scrollIntoViewSpy;
+
+      const sr = new ScrollRestoration(window);
+      sr.scroll(true, undefined, "/page#top");
+
+      expect(scrollIntoViewSpy).toHaveBeenCalled();
+      expect(scrollToSpy).not.toHaveBeenCalled();
+    });
+
+    it("does not throw on malformed percent-encoding", () => {
+      const sr = new ScrollRestoration(window);
+
+      expect(() => sr.scroll(true, undefined, "/page#%E0%A4%A")).not.toThrow();
+      // No matching target → falls through to default push behaviour
+      expect(scrollToSpy).toHaveBeenCalledWith(0, 0);
+    });
   });
 
   describe("sessionStorage persistence", () => {
