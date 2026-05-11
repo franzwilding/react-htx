@@ -31,6 +31,54 @@ const normalizePropName = (name: string) => {
   return name.substring(0, 1).toLowerCase() + name.substring(1);
 };
 
+// Lowercase HTML attribute names that React expects in camelCase on native
+// intrinsic elements. Keys are matched case-insensitively against the raw
+// attribute name. Anything not listed here is passed through unchanged.
+// `aria-*` and `data-*` are not included because React accepts them verbatim.
+const HTML_TO_REACT_NATIVE_ATTR: Record<string, string> = {
+  class: "className",
+  for: "htmlFor",
+  tabindex: "tabIndex",
+  colspan: "colSpan",
+  rowspan: "rowSpan",
+  maxlength: "maxLength",
+  minlength: "minLength",
+  readonly: "readOnly",
+  enctype: "encType",
+  crossorigin: "crossOrigin",
+  viewbox: "viewBox",
+  autoplay: "autoPlay",
+  autofocus: "autoFocus",
+  autocomplete: "autoComplete",
+  autocapitalize: "autoCapitalize",
+  novalidate: "noValidate",
+  formaction: "formAction",
+  formenctype: "formEncType",
+  formmethod: "formMethod",
+  formnovalidate: "formNoValidate",
+  formtarget: "formTarget",
+  inputmode: "inputMode",
+  spellcheck: "spellCheck",
+  contenteditable: "contentEditable",
+  srcdoc: "srcDoc",
+  srclang: "srcLang",
+  srcset: "srcSet",
+  charset: "charSet",
+  usemap: "useMap",
+  accesskey: "accessKey",
+  itemprop: "itemProp",
+  itemref: "itemRef",
+  itemid: "itemId",
+  itemtype: "itemType",
+  itemscope: "itemScope",
+  hreflang: "hrefLang",
+  datetime: "dateTime",
+  "accept-charset": "acceptCharset",
+  "http-equiv": "httpEquiv",
+  allowfullscreen: "allowFullScreen",
+  referrerpolicy: "referrerPolicy",
+};
+
 function getKey(element: Element): string | undefined {
   return element.attributes.getNamedItem("key")?.value;
 }
@@ -78,17 +126,40 @@ function getProps(
           element,
         });
       }
-    } else if (!isReactComponent && attr.name.startsWith("data-")) {
+    } else if (
+      !isReactComponent &&
+      (attr.name.startsWith("data-") || attr.name.startsWith("aria-"))
+    ) {
+      // React accepts data-* and aria-* attributes verbatim on intrinsic
+      // elements; keep the hyphenated name so they land on the DOM as-is.
       props[attr.name] = attr.value;
     } else {
-      // Special case: empty value on a custom-component attribute is treated as boolean true
+      // Special case: empty attribute value is treated as boolean true. This
+      // matches HTML boolean-attribute semantics (`<input readonly>`,
+      // `<my-button disabled>`).
       if (typeof value === "string" && value.length === 0) {
         value = true;
       }
 
-      props[
-        attr.name === "class" ? "className" : normalizePropName(attr.name)
-      ] = value;
+      let propName: string;
+      if (!isReactComponent) {
+        // Native intrinsic element: prefer the known alias, then fall back to
+        // camelCase for hyphenated names (so `read-only` still becomes
+        // `readOnly`), otherwise pass through unchanged.
+        const lower = attr.name.toLowerCase();
+        if (lower in HTML_TO_REACT_NATIVE_ATTR) {
+          propName = HTML_TO_REACT_NATIVE_ATTR[lower];
+        } else if (attr.name.includes("-")) {
+          propName = normalizePropName(attr.name);
+        } else {
+          propName = attr.name;
+        }
+      } else {
+        propName =
+          attr.name === "class" ? "className" : normalizePropName(attr.name);
+      }
+
+      props[propName] = value;
     }
   });
   return props;
