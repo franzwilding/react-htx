@@ -54,6 +54,64 @@ function SubmitButton() {
   );
 }</ui-code-block>
 
+        <h2>Populating fields server-side</h2>
+        <p>
+          Reactolith forms are server-rendered &mdash; every field's current
+          value lives in the HTML the backend emits. How you pass that value
+          depends on the prop shape of the component (or native element)
+          you're rendering:
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Field</th>
+              <th>Current value goes in&hellip;</th>
+              <th>Example</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Text-like input (<code>text</code>, <code>email</code>, <code>number</code>, &hellip;)</td>
+              <td>The <code>value</code> attribute</td>
+              <td><code>&lt;input name="email" value="ada@example.com"&gt;</code></td>
+            </tr>
+            <tr>
+              <td>Native <code>&lt;textarea&gt;</code></td>
+              <td>Element children</td>
+              <td><code>&lt;textarea name="bio"&gt;Hello&lt;/textarea&gt;</code></td>
+            </tr>
+            <tr>
+              <td>Custom textarea component</td>
+              <td>Component-defined prop (often <code>value</code>)</td>
+              <td><code>&lt;ui-textarea name="bio" value="Hello"&gt;</code></td>
+            </tr>
+            <tr>
+              <td>Boolean (<code>checkbox</code>, switch)</td>
+              <td><code>json-checked</code> &mdash; <em>not</em> <code>checked="true"</code></td>
+              <td><code>&lt;ui-checkbox name="newsletter" json-checked="true"&gt;</code></td>
+            </tr>
+            <tr>
+              <td>Select / dropdown</td>
+              <td>Component prop (e.g. <code>json-value</code>) or per-option <code>json-selected</code></td>
+              <td><code>&lt;ui-select name="country" json-value='"DE"'&gt;</code></td>
+            </tr>
+            <tr>
+              <td>Radio group</td>
+              <td>Group-level <code>json-value</code> holding the active option</td>
+              <td><code>&lt;ui-radio-group name="plan" json-value='"pro"'&gt;</code></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p>
+          The boolean row is the easy one to get wrong: writing
+          <code>checked="true"</code> sends the literal string <code>"true"</code>
+          to the React prop, which is truthy <em>and</em> not a boolean. Always
+          use the <code>json-</code> prefix for non-string values &mdash; see the
+          <a href="/props/">encoding rules</a> for the full table.
+        </p>
+
         <h2>Backend validation errors</h2>
         <p>
           Render the form (and any backend errors) on the server, then ship
@@ -69,6 +127,42 @@ function SubmitButton() {
         <p>
           After submission reactolith re-renders the new HTML &mdash; including
           new errors &mdash; without losing component state.
+        </p>
+
+        <h2>Round-trip after a validation error</h2>
+        <p>
+          The morph-based render path is what makes server-driven forms feel
+          responsive. The full loop:
+        </p>
+        <ol>
+          <li>Server renders the form &mdash; each field's current value lives in the HTML.</li>
+          <li>User edits a field. The DOM input keeps the typed value; no React re-render is involved.</li>
+          <li>Submit. Reactolith intercepts and POSTs.</li>
+          <li>Server validates, fails, re-renders <strong>the same template</strong> with the user's submitted values <em>and</em> a <code>json-errors</code> payload.</li>
+          <li>Reactolith morphs the new HTML over the live tree. The focused field stays focused, its cursor position survives, sibling state (open dialogs, scroll, &hellip;) is untouched.</li>
+        </ol>
+
+        <p>
+          In practice that means your template is symmetric &mdash; the same
+          markup handles the initial render and every subsequent re-render:
+        </p>
+
+        <ui-code-block lang="twig">{# users/new.html.twig #}
+&lt;my-form action="/users" method="POST"
+  {% if errors %} json-errors='{{ errors|json_encode|e('html_attr') }}'{% endif %}
+&gt;
+  &lt;ui-input name="email" value="{{ form.email|default('') }}"&gt;
+  &lt;ui-checkbox name="newsletter" {% if form.newsletter %}json-checked="true"{% endif %}&gt;
+  &lt;ui-button type="submit"&gt;Sign up&lt;/ui-button&gt;
+&lt;/my-form&gt;</ui-code-block>
+
+        <p>
+          On the very first GET, <code>form</code> is empty and
+          <code>errors</code> is undefined, so the form renders blank. After a
+          failed POST the controller re-renders the same template with
+          <code>form</code> populated from the submitted request and
+          <code>errors</code> filled in &mdash; no separate "error template"
+          and no client-side state to reconcile.
         </p>
 
         <h2>Native validity & <code>:user-invalid</code></h2>
