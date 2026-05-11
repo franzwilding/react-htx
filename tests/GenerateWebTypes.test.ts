@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { generateWebTypes } from "../src/cli/GenerateWebTypes";
 import fs from "fs";
+import os from "os";
 import path from "path";
 
 describe("generateWebTypes", () => {
@@ -633,5 +634,106 @@ describe("generateWebTypes", () => {
     expect(names).not.toContain("card");
     // Other components must still be picked up.
     expect(names).toContain("badge");
+  });
+
+  describe("symlink handling", () => {
+    let tmpDir: string;
+
+    beforeEach(() => {
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "reactolith-symlinks-"));
+    });
+
+    afterEach(() => {
+      if (fs.existsSync(tmpDir)) {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+    });
+
+    it("terminates instead of looping when a symlink points at an ancestor", () => {
+      const subDir = path.join(tmpDir, "sub");
+      fs.mkdirSync(subDir);
+      fs.writeFileSync(
+        path.join(subDir, "Widget.tsx"),
+        `export type WidgetProps = { label: string };\n` +
+          `export const Widget = (_p: WidgetProps) => null;\n`,
+      );
+      // sub/loop -> ../  (back to tmpDir, an ancestor)
+      fs.symlinkSync("..", path.join(subDir, "loop"));
+
+      const tmpOut = path.join(tmpDir, "web-types.json");
+
+      expect(() =>
+        generateWebTypes({
+          componentsDir: tmpDir,
+          outFile: tmpOut,
+          tsconfig,
+        }),
+      ).not.toThrow();
+
+      const content = JSON.parse(fs.readFileSync(tmpOut, "utf-8"));
+      const widgets = content.contributions.html.elements.filter(
+        (el: { name: string }) => el.name === "widget",
+      );
+      // Widget is reachable through the cycle multiple times but must only
+      // appear once in the output.
+      expect(widgets).toHaveLength(1);
+    });
+
+    it("follows symlinks to directories outside the configured tree", () => {
+      const externalDir = path.join(tmpDir, "external");
+      fs.mkdirSync(externalDir);
+      fs.writeFileSync(
+        path.join(externalDir, "External.tsx"),
+        `export type ExternalProps = { id: string };\n` +
+          `export const External = (_p: ExternalProps) => null;\n`,
+      );
+
+      const componentsRoot = path.join(tmpDir, "components");
+      fs.mkdirSync(componentsRoot);
+      fs.symlinkSync(externalDir, path.join(componentsRoot, "linked"));
+
+      const tmpOut = path.join(tmpDir, "web-types.json");
+
+      generateWebTypes({
+        componentsDir: componentsRoot,
+        outFile: tmpOut,
+        tsconfig,
+      });
+
+      const content = JSON.parse(fs.readFileSync(tmpOut, "utf-8"));
+      const names = content.contributions.html.elements.map(
+        (el: { name: string }) => el.name,
+      );
+      expect(names).toContain("external");
+    });
+
+    it("follows symlinks pointing directly at component files", () => {
+      const realDir = path.join(tmpDir, "real");
+      fs.mkdirSync(realDir);
+      const realFile = path.join(realDir, "Linked.tsx");
+      fs.writeFileSync(
+        realFile,
+        `export type LinkedProps = { value: number };\n` +
+          `export const Linked = (_p: LinkedProps) => null;\n`,
+      );
+
+      const componentsRoot = path.join(tmpDir, "components");
+      fs.mkdirSync(componentsRoot);
+      fs.symlinkSync(realFile, path.join(componentsRoot, "Linked.tsx"));
+
+      const tmpOut = path.join(tmpDir, "web-types.json");
+
+      generateWebTypes({
+        componentsDir: componentsRoot,
+        outFile: tmpOut,
+        tsconfig,
+      });
+
+      const content = JSON.parse(fs.readFileSync(tmpOut, "utf-8"));
+      const names = content.contributions.html.elements.map(
+        (el: { name: string }) => el.name,
+      );
+      expect(names).toContain("linked");
+    });
   });
 });
