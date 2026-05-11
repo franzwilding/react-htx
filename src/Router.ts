@@ -276,7 +276,16 @@ export class Router extends EventEmitter<RouterEventMap> {
     const form = event.target as HTMLFormElement;
     if (!form) return;
 
-    const actionAttr = form.getAttribute("action");
+    // Per HTML spec, a submitter button's formaction/formmethod attributes
+    // override the corresponding attributes on the <form>. The browser does
+    // this automatically for full-page submits; we have to do it ourselves.
+    const submitter = event.submitter as
+      | HTMLButtonElement
+      | HTMLInputElement
+      | null;
+
+    const actionAttr =
+      submitter?.getAttribute("formaction") ?? form.getAttribute("action");
     const isSameOriginAction =
       actionAttr === null || isSameOriginNavigation(actionAttr, this.doc);
 
@@ -288,7 +297,6 @@ export class Router extends EventEmitter<RouterEventMap> {
 
     const formData = new FormData(form);
 
-    const submitter = event.submitter;
     if (submitter && "name" in submitter && submitter.name) {
       if (submitter instanceof HTMLButtonElement) {
         formData.append(submitter.name, submitter.value || "");
@@ -300,7 +308,11 @@ export class Router extends EventEmitter<RouterEventMap> {
       }
     }
 
-    const method = (form.method || "GET").toUpperCase();
+    const method = (
+      submitter?.getAttribute("formmethod") ||
+      form.method ||
+      "GET"
+    ).toUpperCase();
     let body: BodyInit | null = null;
     let url = actionAttr ?? "";
 
