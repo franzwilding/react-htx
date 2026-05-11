@@ -64,6 +64,177 @@ describe("ReactolithComponent HTML to React transformation", () => {
       );
       expect(root.querySelector("button")).toHaveAttribute("data-id", "123");
     });
+
+    it("passes aria-* attributes to native elements verbatim", async () => {
+      document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+        <button aria-label="close" aria-pressed="false" aria-describedby="hint">Close</button>
+      </div>`;
+
+      new App(testComponent);
+
+      const root = await screen.findByTestId("reactolith-app");
+
+      await waitFor(() => {
+        expect(root.querySelector("button")).not.toBeNull();
+      });
+
+      const button = root.querySelector("button")!;
+      expect(button).toHaveAttribute("aria-label", "close");
+      expect(button).toHaveAttribute("aria-pressed", "false");
+      expect(button).toHaveAttribute("aria-describedby", "hint");
+    });
+
+    it("maps `for` on a <label> to htmlFor so it associates with its input", async () => {
+      document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+        <div>
+          <label for="email">Email</label>
+          <input id="email" type="text" />
+        </div>
+      </div>`;
+
+      new App(testComponent);
+
+      const root = await screen.findByTestId("reactolith-app");
+
+      await waitFor(() => {
+        expect(root.querySelector("label")).not.toBeNull();
+      });
+
+      expect(root.querySelector("label")).toHaveAttribute("for", "email");
+    });
+
+    it("maps colspan/rowspan on <td> to colSpan/rowSpan", async () => {
+      document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+        <table>
+          <tbody>
+            <tr>
+              <td colspan="2" rowspan="3">cell</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>`;
+
+      new App(testComponent);
+
+      const root = await screen.findByTestId("reactolith-app");
+
+      await waitFor(() => {
+        expect(root.querySelector("td")).not.toBeNull();
+      });
+
+      const cell = root.querySelector("td")!;
+      expect(cell).toHaveAttribute("colspan", "2");
+      expect(cell).toHaveAttribute("rowspan", "3");
+    });
+
+    it("maps maxlength/minlength on <input> to maxLength/minLength", async () => {
+      document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+        <input type="text" maxlength="20" minlength="3" />
+      </div>`;
+
+      new App(testComponent);
+
+      const root = await screen.findByTestId("reactolith-app");
+
+      await waitFor(() => {
+        expect(root.querySelector("input")).not.toBeNull();
+      });
+
+      const input = root.querySelector("input")!;
+      expect(input).toHaveAttribute("maxlength", "20");
+      expect(input).toHaveAttribute("minlength", "3");
+    });
+
+    it("maps readonly on <input> to readOnly", async () => {
+      document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+        <input type="text" readonly value="locked" />
+      </div>`;
+
+      new App(testComponent);
+
+      const root = await screen.findByTestId("reactolith-app");
+
+      await waitFor(() => {
+        expect(root.querySelector("input")).not.toBeNull();
+      });
+
+      const input = root.querySelector("input") as HTMLInputElement;
+      expect(input.readOnly).toBe(true);
+    });
+
+    it("maps enctype on <form> to encType", async () => {
+      document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+        <form action="/upload" method="post" enctype="multipart/form-data">
+          <input type="file" name="f" />
+        </form>
+      </div>`;
+
+      new App(testComponent);
+
+      const root = await screen.findByTestId("reactolith-app");
+
+      await waitFor(() => {
+        expect(root.querySelector("form")).not.toBeNull();
+      });
+
+      expect(root.querySelector("form")).toHaveAttribute(
+        "enctype",
+        "multipart/form-data",
+      );
+    });
+
+    it("maps crossorigin on <img> to crossOrigin", async () => {
+      document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+        <img src="https://example.com/x.png" crossorigin="anonymous" />
+      </div>`;
+
+      new App(testComponent);
+
+      const root = await screen.findByTestId("reactolith-app");
+
+      await waitFor(() => {
+        expect(root.querySelector("img")).not.toBeNull();
+      });
+
+      expect(root.querySelector("img")).toHaveAttribute(
+        "crossorigin",
+        "anonymous",
+      );
+    });
+
+    it("preserves viewBox casing on inline <svg> via the alias table", async () => {
+      document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+        <svg viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="10"></circle></svg>
+      </div>`;
+
+      new App(testComponent);
+
+      const root = await screen.findByTestId("reactolith-app");
+
+      await waitFor(() => {
+        expect(root.querySelector("svg")).not.toBeNull();
+      });
+
+      expect(root.querySelector("svg")).toHaveAttribute("viewBox", "0 0 24 24");
+    });
+
+    it("passes through unknown native attributes unchanged (no camelCase)", async () => {
+      document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+        <input type="text" placeholder="Hello" name="x" />
+      </div>`;
+
+      new App(testComponent);
+
+      const root = await screen.findByTestId("reactolith-app");
+
+      await waitFor(() => {
+        expect(root.querySelector("input")).not.toBeNull();
+      });
+
+      const input = root.querySelector("input")!;
+      expect(input).toHaveAttribute("placeholder", "Hello");
+      expect(input).toHaveAttribute("name", "x");
+    });
   });
 
   describe("Custom elements", () => {

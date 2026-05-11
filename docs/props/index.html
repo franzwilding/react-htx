@@ -28,7 +28,9 @@
             <tr><td><code>enabled</code> (no value)</td><td><code>enabled: true</code></td><td>Empty / boolean attributes become <code>true</code></td></tr>
             <tr><td><code>data-foo="baa"</code></td><td><code>dataFoo: "baa"</code></td><td>On a custom-component tag, normalized to camelCase</td></tr>
             <tr><td><code>data-foo="baa"</code></td><td><code>data-foo: "baa"</code></td><td>On a native element, kept as <code>data-*</code> for the DOM</td></tr>
+            <tr><td><code>aria-label="x"</code></td><td><code>aria-label: "x"</code></td><td>On a native element, <code>aria-*</code> is passed through verbatim so it lands on the DOM unchanged</td></tr>
             <tr><td><code>class="x"</code></td><td><code>className: "x"</code></td><td><code>class</code> is automatically renamed to <code>className</code></td></tr>
+            <tr><td><code>for="email"</code></td><td><code>htmlFor: "email"</code></td><td>Common lowercase HTML attributes on native elements (<code>for</code>, <code>tabindex</code>, <code>colspan</code>, <code>rowspan</code>, <code>maxlength</code>, <code>readonly</code>, <code>enctype</code>, <code>crossorigin</code>, <code>viewbox</code>, …) are mapped to their React camelCase names</td></tr>
             <tr><td><code>json-config='{"x":1}'</code></td><td><code>config: { x: 1 }</code></td><td>Attributes prefixed with <code>json-</code> are JSON-parsed</td></tr>
             <tr><td><code>as="{my-other}"</code></td><td><code>as: &lt;my-other /&gt;</code></td><td>Wrapping a value in <code>{...}</code> resolves it to a React component</td></tr>
             <tr><td><code>key="abc"</code></td><td>(used as React key)</td><td>Reserved &mdash; not passed as a prop</td></tr>
