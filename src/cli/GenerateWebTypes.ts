@@ -107,12 +107,44 @@ interface WebTypeElement {
   slots?: WebTypeSlot[];
 }
 
-function findComponentFiles(dir: string): string[] {
+function findComponentFiles(dir: string, seen?: Set<string>): string[] {
+  const visited = seen ?? new Set<string>();
+  let real: string;
+  try {
+    real = fs.realpathSync(dir);
+  } catch {
+    return [];
+  }
+  if (visited.has(real)) return [];
+  visited.add(real);
+
   const results: string[] = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      results.push(...findComponentFiles(fullPath));
+    if (entry.isSymbolicLink()) {
+      let target: string;
+      try {
+        target = fs.realpathSync(fullPath);
+      } catch {
+        continue;
+      }
+      if (visited.has(target)) continue;
+      let stat: fs.Stats;
+      try {
+        stat = fs.statSync(target);
+      } catch {
+        continue;
+      }
+      if (stat.isDirectory()) {
+        results.push(...findComponentFiles(fullPath, visited));
+      } else if (
+        stat.isFile() &&
+        (target.endsWith(".tsx") || target.endsWith(".ts"))
+      ) {
+        results.push(fullPath);
+      }
+    } else if (entry.isDirectory()) {
+      results.push(...findComponentFiles(fullPath, visited));
     } else if (entry.name.endsWith(".tsx") || entry.name.endsWith(".ts")) {
       results.push(fullPath);
     }
