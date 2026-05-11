@@ -152,6 +152,24 @@ header('Link: ' . implode(', ', $links));</ui-code-block>
           convention.
         </p>
 
+        <h3>Eating the documentation</h3>
+        <p>
+          This documentation site itself runs the recipe above as a Vite
+          build plugin &mdash; view source on any page and you'll find a
+          block like this in the <code>&lt;head&gt;</code>, generated from
+          the tags that page actually uses:
+        </p>
+        <ui-code-block lang="html">&lt;!-- reactolith: preloaded component chunks --&gt;
+&lt;link rel="modulepreload" href="/assets/app-page-…​.js"&gt;
+&lt;link rel="modulepreload" href="/assets/code-block-…​.js"&gt;
+&lt;link rel="preload" as="style" href="/assets/code-block-…​.css"&gt;</ui-code-block>
+        <p>
+          The implementation lives in
+          <code>docs/vite-plugin-preload-component-chunks.ts</code> &mdash;
+          about 60 lines &mdash; and is wired into
+          <code>docs/vite.config.ts</code>.
+        </p>
+
         <p>
           Continue with the
           <a href="/quick-start/">Quick Start</a> to mount your first app.

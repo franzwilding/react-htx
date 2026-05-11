@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { resolve, relative, dirname, join } from "node:path";
 import { readdirSync } from "node:fs";
+import { preloadComponentChunks } from "./vite-plugin-preload-component-chunks";
 
 const docsRoot = dirname(new URL(import.meta.url).pathname);
 
@@ -38,7 +39,21 @@ function findHtmlInputs(): Record<string, string> {
 
 export default defineConfig({
   base: "/",
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    // Eats the documentation it preaches: scans each built HTML for custom
+    // tags, looks them up in Vite's manifest, and injects modulepreload links
+    // for the chunks that page will actually need. See docs/installation/.
+    preloadComponentChunks({
+      resolve: (tag) => {
+        if (tag.startsWith("app-")) return `src/components/app/${tag}.tsx`;
+        if (tag.startsWith("ui-"))
+          return `src/components/ui/${tag.slice(3)}.tsx`;
+        return null;
+      },
+    }),
+  ],
   resolve: {
     alias: {
       "@": resolve(docsRoot, "src"),
@@ -49,6 +64,7 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
+    manifest: true,
     rollupOptions: { input: findHtmlInputs() },
   },
 });
