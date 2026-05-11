@@ -81,6 +81,54 @@
           Only the <code>&lt;h1&gt;</code> text and the <code>pressed</code>
           prop are updated &mdash; everything else remains untouched.
         </p>
+
+        <h2>Links inside custom components</h2>
+        <p>
+          The Router only intercepts clicks on actual <code>&lt;a&gt;</code>
+          elements with an <code>href</code> attribute. A custom component
+          like <code>&lt;ui-button&gt;</code> is not an anchor, so passing
+          <code>href</code> to it does nothing unless the component itself
+          renders an <code>&lt;a&gt;</code>. There are three ways to make
+          something clickable navigate:
+        </p>
+
+        <ol>
+          <li>
+            <p><strong>Use a real anchor.</strong> The simplest option &mdash; wrap your component, or have your component wrap a child, with <code>&lt;a&gt;</code>:</p>
+            <ui-code-block lang="html">&lt;a href="/settings"&gt;
+  &lt;ui-button variant="ghost"&gt;Settings&lt;/ui-button&gt;
+&lt;/a&gt;</ui-code-block>
+            <p>Style the anchor to remove its default underline if needed. Semantically this is the correct shape: a link styled like a button.</p>
+          </li>
+          <li>
+            <p><strong>Render-as-child (<code>asChild</code>) pattern.</strong> Many React component libraries built on Radix / Base UI (<a href="https://ui.shadcn.com/" target="_blank" rel="noreferrer noopener">shadcn/ui</a> being the common example) expose an <code>asChild</code> prop that swaps the rendered element for its child while keeping the styles and behavior. That gives you a single element that <em>is</em> the anchor:</p>
+            <ui-code-block lang="html">&lt;ui-button as-child&gt;
+  &lt;a href="/settings"&gt;Settings&lt;/a&gt;
+&lt;/ui-button&gt;</ui-code-block>
+            <p>Whether this works depends on the component library, not on reactolith. Reactolith only cares that there's eventually an <code>&lt;a href&gt;</code> in the DOM &mdash; the Router picks it up either way.</p>
+          </li>
+          <li>
+            <p><strong>Programmatic navigation.</strong> When there's no link to click &mdash; e.g. after some local logic completes &mdash; reach into the Router from a hook:</p>
+            <ui-code-block lang="tsx">import { useRouter } from "reactolith";
+
+function SaveAndGo() {
+  const { router } = useRouter();
+  return (
+    &lt;button onClick={() =&gt; router.visit("/done")}&gt;
+      Save
+    &lt;/button&gt;
+  );
+}</ui-code-block>
+            <p>Form submits go through the Router automatically &mdash; you only need <code>router.visit()</code> for navigation that isn't tied to a click on a link or a form submit.</p>
+          </li>
+        </ol>
+
+        <p>
+          Same-origin anchors are intercepted; external links, hash links,
+          <code>target="_blank"</code>, <code>rel="external"</code>, and
+          <code>download</code> attributes all opt out of SPA navigation and
+          let the browser handle them normally.
+        </p>
       </app-page>
     </div>
     <script type="module" src="/src/main.tsx"></script>

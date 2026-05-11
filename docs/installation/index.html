@@ -42,6 +42,32 @@
 
 console.log(typeof App); // "function"</ui-code-block>
 
+        <h2>Optional: HTTP/2 component preloading</h2>
+        <p>
+          Because reactolith resolves component tags lazily from the rendered
+          HTML, the browser only discovers which chunks it needs <em>after</em>
+          parsing the page. On HTTP/2 you can close that gap by telling a
+          reverse proxy or CDN which components a page uses, and have it push
+          (or <code>103 Early Hints</code>) the corresponding JS chunks.
+        </p>
+        <p>
+          The convention reactolith adopts is a single response header that
+          lists every custom-tag name found in the document:
+        </p>
+        <ui-code-block lang="http">X-Reactolith-Components: ui-button, ui-input, ui-label, ui-toaster</ui-code-block>
+        <p>
+          Implementing it on the backend is a few lines: walk the response
+          body once it's rendered, collect any tag whose local name contains a
+          hyphen, deduplicate, set the header. A reverse proxy then maps each
+          name to its JS chunk and emits the corresponding <code>Link</code>
+          /<code>103</code> hints.
+        </p>
+        <p>
+          This is a deployment-time optimization &mdash; reactolith itself
+          doesn't need it. It's documented here so backend bundles can agree
+          on the same header name and format.
+        </p>
+
         <p>
           Continue with the
           <a href="/quick-start/">Quick Start</a> to mount your first app.

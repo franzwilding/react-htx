@@ -53,6 +53,56 @@
   config: { foo: "baa" },         // parsed from JSON
 };</ui-code-block>
 
+        <h2>Encoding props server-side</h2>
+        <p>
+          The table above is the client-side contract &mdash; how reactolith
+          reads HTML and turns it into React props. The mirror image is the
+          <strong>server-side</strong> contract: how your backend has to
+          serialize a JavaScript-shaped prop value into an HTML attribute so it
+          round-trips correctly.
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Prop value (server)</th>
+              <th>HTML attribute (rendered)</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>"text"</code></td><td><code>name="text"</code></td><td>Plain strings</td></tr>
+            <tr><td><code>42</code></td><td><code>name="42"</code></td><td>Numbers are stringified</td></tr>
+            <tr><td><code>true</code></td><td><code>name</code></td><td>Bare attribute &mdash; <em>not</em> <code>name="true"</code>, which would arrive as the string <code>"true"</code></td></tr>
+            <tr><td><code>false</code> / <code>null</code> / <code>undefined</code></td><td><em>(omit entirely)</em></td><td>Don't render the attribute at all</td></tr>
+            <tr><td><code>{ x: 1 }</code></td><td><code>json-name='{"x":1}'</code></td><td>Prefix the attribute name with <code>json-</code> and JSON-encode the value</td></tr>
+            <tr><td><code>[1, 2, 3]</code></td><td><code>json-name='[1,2,3]'</code></td><td>Same rule for arrays</td></tr>
+          </tbody>
+        </table>
+
+        <p>
+          The rule set is small enough that any backend can ship its own
+          helper &mdash; a single function that walks an associative array and
+          emits the right attribute syntax per value type. Reactolith itself
+          doesn't care which framework you use, only that the resulting HTML
+          follows the table above.
+        </p>
+
+        <h3>Reference helper (any language)</h3>
+        <ui-code-block lang="ts">function renderAttrs(props: Record&lt;string, unknown&gt;): string {
+  const out: string[] = [];
+  for (const [name, value] of Object.entries(props)) {
+    if (value === false || value == null) continue;
+    if (value === true) { out.push(name); continue; }
+    if (typeof value === "object") {
+      out.push(`json-${name}='${JSON.stringify(value).replace(/'/g, "&amp;#39;")}'`);
+      continue;
+    }
+    out.push(`${name}="${String(value).replace(/"/g, "&amp;quot;")}"`);
+  }
+  return out.join(" ");
+}</ui-code-block>
+
         <p>
           If a <code>json-*</code> attribute contains invalid JSON,
           <code>reactolith</code> logs a warning and passes the prop as
