@@ -4,11 +4,163 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Reactolith — HTML with React components</title>
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0a0814" />
+    <title>Reactolith — HTML with React components, like Hotwire Turbo for React</title>
     <meta
       name="description"
-      content="Reactolith hydrates HTML into React. Any tag with a hyphen becomes a React component. Works with any backend that returns HTML."
+      content="Reactolith hydrates server-rendered HTML into React. Any tag with a hyphen becomes a React component; everything else stays plain DOM. The React tree morphs in place across navigation, form submits and Mercure SSE — so component state, focus and scroll survive. Backend-driven React for Symfony, Rails, Laravel and Django without a JSON page-prop layer."
     />
+    <meta name="keywords" content="reactolith, react, html, hydration, backend-driven react, morphing react, hotwire turbo react, inertia alternative, react ssr, react server rendered, mercure, sse, symfony react, rails react, laravel react, django react, twig, erb, blade, jinja, majestic monolith, web-types, react custom elements, kebab-case components" />
+    <meta name="author" content="Franz Mayr-Wilding" />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <link rel="canonical" href="https://reactolith.github.io/" />
+    <link rel="alternate" type="application/rss+xml" title="reactolith on GitHub" href="https://github.com/reactolith/reactolith/releases.atom" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Reactolith" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content="https://reactolith.github.io/" />
+    <meta property="og:title" content="Reactolith — HTML with React components" />
+    <meta property="og:description" content="Backend-driven React: any HTML tag with a hyphen becomes a React component. The React tree morphs in place across navigation — like Hotwire Turbo, but for a React component tree." />
+    <meta property="og:image" content="https://reactolith.github.io/og-image.svg" />
+    <meta property="og:image:type" content="image/svg+xml" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Reactolith — use HTML to compose your React app." />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Reactolith — HTML with React components" />
+    <meta name="twitter:description" content="Backend-driven React: any HTML tag with a hyphen becomes a React component. The tree morphs in place — Hotwire Turbo for a React component tree." />
+    <meta name="twitter:image" content="https://reactolith.github.io/og-image.svg" />
+    <meta name="twitter:image:alt" content="Reactolith — use HTML to compose your React app." />
+
+    <!-- LLM / AI-search hints -->
+    <link rel="alternate" type="text/plain" title="LLM index (llms.txt)" href="https://reactolith.github.io/llms.txt" />
+    <link rel="alternate" type="text/plain" title="LLM full corpus (llms-full.txt)" href="https://reactolith.github.io/llms-full.txt" />
+
+    <!-- Structured data: SoftwareSourceCode + WebSite + FAQPage + BreadcrumbList -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://reactolith.github.io/#website",
+          "url": "https://reactolith.github.io/",
+          "name": "Reactolith",
+          "description": "HTML with React components. Backend-driven React via HTML hydration and tree morphing.",
+          "publisher": { "@id": "https://reactolith.github.io/#person" },
+          "inLanguage": "en"
+        },
+        {
+          "@type": "Person",
+          "@id": "https://reactolith.github.io/#person",
+          "name": "Franz Mayr-Wilding",
+          "url": "https://github.com/reactolith"
+        },
+        {
+          "@type": ["SoftwareSourceCode", "SoftwareApplication"],
+          "@id": "https://reactolith.github.io/#software",
+          "name": "reactolith",
+          "alternateName": ["Reactolith", "reactolith.js"],
+          "applicationCategory": "DeveloperApplication",
+          "applicationSubCategory": "JavaScript library",
+          "operatingSystem": "Cross-platform (Node.js 18+, modern browsers)",
+          "programmingLanguage": ["TypeScript", "JavaScript"],
+          "runtimePlatform": ["Node.js", "Browser"],
+          "codeRepository": "https://github.com/reactolith/reactolith",
+          "downloadUrl": "https://www.npmjs.com/package/reactolith",
+          "softwareVersion": "1.1.3",
+          "license": "https://opensource.org/licenses/MIT",
+          "description": "Reactolith hydrates server-rendered HTML into React. Any HTML tag with a hyphen becomes a React component; the tree morphs in place across navigation, form submits and Mercure SSE so component state survives. Works with any backend that emits HTML.",
+          "keywords": "react, html, hydration, backend-driven, hotwire turbo react, inertia alternative, mercure, sse, react 19, web-types, ssr, symfony, rails, laravel, django",
+          "url": "https://reactolith.github.io/",
+          "author": { "@id": "https://reactolith.github.io/#person" },
+          "maintainer": { "@id": "https://reactolith.github.io/#person" },
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+          "image": "https://reactolith.github.io/og-image.svg",
+          "sameAs": [
+            "https://github.com/reactolith/reactolith",
+            "https://www.npmjs.com/package/reactolith"
+          ]
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://reactolith.github.io/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "What is reactolith?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Reactolith is a React library that hydrates server-rendered HTML into React components. Any HTML tag with a hyphen (for example <my-button>) is resolved to a React component; everything else stays plain DOM. Navigation, form submits and Mercure server-sent events all flow through the same HTML-in / React-reconciler-out pipeline."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How is reactolith different from Inertia.js?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Inertia.js ships JSON page props and replaces the page-level React component on every visit. Reactolith ships HTML and morphs the existing React tree in place, the same way Hotwire Turbo morphs the DOM. Because only the diff is applied, component state, focus, scroll position, open dialogs and mounted iframes all survive navigation."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How is reactolith different from Hotwire Turbo?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Same philosophy — backend renders HTML and the page is morphed in place — but Turbo morphs the DOM via Idiomorph and pairs with Stimulus, while reactolith morphs through React's reconciler. State, refs and effects survive exactly the way they do during a normal React re-render, because that's what it is."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Which backends does reactolith work with?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Any backend that emits HTML: Symfony with Twig, Rails with ERB, Laravel with Blade, Django with Jinja, Phoenix, ASP.NET, even static files served by a CDN. Reactolith does not require a special adapter or a parallel JSON API — your existing controllers and templates are the contract."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Do I need a build step to use reactolith?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "No. Reactolith ships as ESM and CJS with no compiler step required at the consumer site. A bundler that supports import.meta.glob (Vite, Rspack, …) is recommended for the createLoader workflow, but it is not mandatory."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Does reactolith support server-side rendering?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. Import renderToString from reactolith/server for static-site generators (Astro, Eleventy, …) and progressive enhancement. Router and Mercure side effects are skipped because both rely on useEffect, which React does not run during server rendering."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Does reactolith support real-time updates?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes, via Mercure (Server-Sent Events). The pushed HTML flows through the same render path as router navigation. You can also use useMercureTopic for live JSON values, or the <mercure-live> component for scoped partial updates."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Which React version is required?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "React 19 as a peer dependency. Node 18 or newer for tooling. Reactolith itself is published as both ESM and CJS."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="reactolith-app" class="hidden">
