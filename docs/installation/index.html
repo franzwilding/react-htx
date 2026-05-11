@@ -4,11 +4,74 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Installation — Reactolith</title>
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0a0814" />
+    <title>Install reactolith — npm install for backend-driven React</title>
     <meta
       name="description"
-      content="Install reactolith and its peer dependencies."
+      content="Install reactolith from npm and add React 19 and react-dom as peer dependencies. Requires Node 18+ and a bundler that supports import.meta.glob (Vite, Rspack) for the createLoader workflow. One-command setup for backend-driven React on any HTML-emitting stack."
     />
+    <meta name="keywords" content="reactolith install, npm install reactolith, react 19 install, peer dependencies, node 18, react html hydration setup, vite reactolith" />
+    <meta name="author" content="Franz Mayr-Wilding" />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+    <link rel="canonical" href="https://reactolith.github.io/installation/" />
+    <link rel="alternate" type="text/plain" title="LLM index (llms.txt)" href="https://reactolith.github.io/llms.txt" />
+
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="Reactolith" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content="https://reactolith.github.io/installation/" />
+    <meta property="og:title" content="Install reactolith — npm install for backend-driven React" />
+    <meta property="og:description" content="One-command setup. npm install reactolith react react-dom. Requires Node 18+ and React 19." />
+    <meta property="og:image" content="https://reactolith.github.io/og-image.svg" />
+    <meta property="og:image:type" content="image/svg+xml" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Reactolith — use HTML to compose your React app." />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Install reactolith" />
+    <meta name="twitter:description" content="One-command setup for backend-driven React. npm install reactolith react react-dom." />
+    <meta name="twitter:image" content="https://reactolith.github.io/og-image.svg" />
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "TechArticle",
+          "headline": "Install reactolith",
+          "description": "Install reactolith from npm and add React 19 and react-dom as peer dependencies.",
+          "url": "https://reactolith.github.io/installation/",
+          "mainEntityOfPage": "https://reactolith.github.io/installation/",
+          "image": "https://reactolith.github.io/og-image.svg",
+          "inLanguage": "en",
+          "author": { "@type": "Person", "name": "Franz Mayr-Wilding", "url": "https://github.com/reactolith" },
+          "publisher": { "@type": "Organization", "name": "Reactolith", "url": "https://reactolith.github.io/" },
+          "isPartOf": { "@id": "https://reactolith.github.io/#website" },
+          "about": { "@type": "SoftwareSourceCode", "name": "reactolith", "codeRepository": "https://github.com/reactolith/reactolith" },
+          "proficiencyLevel": "Beginner",
+          "dependencies": "Node 18+, React 19, react-dom 19"
+        },
+        {
+          "@type": "HowTo",
+          "name": "How to install reactolith",
+          "step": [
+            { "@type": "HowToStep", "name": "Install reactolith", "text": "Run 'npm install reactolith' in your project." },
+            { "@type": "HowToStep", "name": "Install peer dependencies", "text": "Run 'npm install react react-dom' to add the React 19 peer dependencies." },
+            { "@type": "HowToStep", "name": "Verify the install", "text": "Import { App } from 'reactolith' and check that typeof App is 'function'." }
+          ]
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Reactolith", "item": "https://reactolith.github.io/" },
+            { "@type": "ListItem", "position": 2, "name": "Installation", "item": "https://reactolith.github.io/installation/" }
+          ]
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="reactolith-app" class="hidden">

@@ -1,0 +1,850 @@
+# Reactolith — complete documentation corpus
+
+> This file aggregates every documentation page on https://reactolith.github.io/ into a single Markdown stream for use by LLMs, RAG pipelines, and AI search engines. The canonical home of each section is linked at the top of that section. The short index lives at <https://reactolith.github.io/llms.txt>.
+
+Project: **reactolith**
+Tagline: HTML with React components — backend-driven React, like Hotwire Turbo but for a React tree.
+License: MIT
+Author: Franz Mayr-Wilding
+Repository: https://github.com/reactolith/reactolith
+npm: https://www.npmjs.com/package/reactolith
+Peer deps: React 19, react-dom 19. Node 18+.
+Keywords: react, html, hydration, backend-driven, server-rendered, morph, hotwire, turbo, inertia alternative, mercure, sse, symfony, rails, laravel, django, twig, erb, blade, jinja, web-types, ssr, majestic monolith.
+
+---
+
+## Overview (https://reactolith.github.io/)
+
+Reactolith hydrates server-rendered HTML into React. Any HTML tag with a hyphen (e.g. `<my-button>`) is resolved to a React component; everything else stays plain DOM. The same render pipeline handles initial load, link navigation, form submits, and Mercure server-sent events.
+
+It is **Hotwire Turbo for React**: the server returns HTML, reactolith diffs that HTML against the live React tree, and applies only the differences using React's reconciler. Component state, focus, scroll position, open dialogs and mounted iframes all survive across navigation.
+
+Compared to Inertia.js, reactolith does **not** ship JSON page props and does **not** replace the page-level component on every visit. The wire format is HTML; the controller and template are the contract. That makes the [Majestic Monolith](https://signalvnoise.com/svn3/the-majestic-monolith/) practical for teams that want React on a Rails / Symfony / Laravel / Django app.
+
+Highlights:
+- Backend-agnostic — works with any backend that emits HTML, or no backend at all.
+- Morphing navigation — like Turbo's `morph`, the tree is diffed in place.
+- Live forms — server can add/remove fields without losing input state or focus.
+- Realtime via Mercure SSE — pushed HTML flows through the same render path.
+- Scroll restoration — browser-like back/forward.
+- IDE autocomplete — generate JetBrains/VS Code web-types from your components.
+- No build step required at the consumer site.
+
+Two-file tour:
+
+```html
+<!-- index.html (rendered by your backend) -->
+<div id="reactolith-app">
+  <h1>Hello, {{ user.name }}</h1>
+  <app-counter start="3">
+    <ui-button variant="primary">Increment</ui-button>
+  </app-counter>
+  <form action="{{ path('save') }}" method="post">
+    <app-autosave-input name="title" />
+  </form>
+</div>
+```
+
+```tsx
+// app.tsx
+import { App } from "reactolith";
+
+new App(({ is }) => {
+  switch (is) {
+    case "app-counter":        return Counter;
+    case "ui-button":          return Button;
+    case "app-autosave-input": return AutosaveInput;
+  }
+});
+```
+
+Any tag with a hyphen → React component. Everything else → native DOM.
+
+---
+
+## Installation (https://reactolith.github.io/installation/)
+
+`reactolith` is published on npm. Install it alongside React and React DOM.
+
+```bash
+npm install reactolith
+npm install react react-dom
+```
+
+`react` and `react-dom` are **peer dependencies** — install them in your project too.
+
+Requirements:
+- Node 18 or newer.
+- React 19.
+- A bundler that supports `import.meta.glob` (Vite, Rspack, …) is recommended for the loader workflow.
+
+Verify the install:
+
+```ts
+import { App } from "reactolith";
+console.log(typeof App); // "function"
+```
+
+---
+
+## Quick Start (https://reactolith.github.io/quick-start/)
+
+The minimum working app:
+
+```html
+<!-- index.html (rendered by your backend) -->
+<div id="reactolith-app">
+  <h1>Hello world</h1>
+  <my-button>Click me</my-button>
+</div>
+```
+
+```tsx
+// src/main.tsx
+import { App } from "reactolith";
+import { MyButton } from "./components/my-button";
+
+function resolveComponent({ is }: { is: string }) {
+  if (is === "my-button") return MyButton;
+  throw new Error(`Unknown component: ${is}`);
+}
+
+new App(resolveComponent);
+```
+
+Any tag name with a hyphen is treated as a custom React component and resolved through the function you pass to `new App(...)`. Everything else (`<h1>`, `<div>`, `<svg>`, …) is rendered as a native HTML element.
+
+### Lazy-loading a folder of components
+
+For larger apps — including drop-in shadcn directories — `createLoader` resolves tag names to a folder of files without any per-component setup:
+
+```tsx
+import { App, createLoader } from "reactolith";
+
+const component = createLoader({
+  modules: import.meta.glob("./components/ui/*.tsx"),
+  prefix: "ui-",
+});
+
+new App(component);
+```
+
+`<ui-button>` → `./components/ui/button.tsx` (named export `Button` or `default`). Multi-segment names fall back to a parent file — `<ui-accordion-item>` finds `accordion.tsx` and picks its `AccordionItem` export.
+
+Layer custom components on top of a base set by passing multiple module maps; earlier maps win:
+
+```ts
+const component = createLoader({
+  modules: [
+    import.meta.glob("./components/custom/*.tsx"), // wins on conflict
+    import.meta.glob("./components/ui/*.tsx"),
+  ],
+  prefix: "ui-",
+});
+```
+
+`createLoader` options:
+- `modules` — `ModuleMap` or `ModuleMap[]` (output of `import.meta.glob`). Earlier maps take priority.
+- `prefix` — string prefix stripped from `is` before resolving (e.g. `"ui-"`).
+- `fallback` — `ReactNode` rendered while a component is lazy-loading. Default `null`.
+- `onMissing` — `(name, is) => ComponentType | null` called when no module resolves.
+
+### Custom root component & selector
+
+```tsx
+import { App, createLoader } from "reactolith";
+import { AppProvider } from "./providers/app-provider";
+
+const component = createLoader({
+  modules: import.meta.glob("./components/**/*.tsx"),
+});
+
+new App(component, AppProvider, "#app");
+```
+
+---
+
+## How It Works (https://reactolith.github.io/how-it-works/)
+
+1. **Initial load** — Your backend renders HTML with Twig/ERB/Blade/etc.; reactolith hydrates it into React components.
+2. **Navigation** — Clicking links fetches new HTML via AJAX; React reconciles the differences in place.
+3. **Real-time** — Mercure pushes HTML updates from the server; the UI updates automatically.
+4. **State preserved** — React component state survives both navigation and real-time updates.
+
+### Avoiding FOUC
+
+Give your root element the `hidden` class (and define `.hidden { display: none }` in your CSS). After the first React commit, reactolith removes that class to reveal the app.
+
+```html
+<div id="reactolith-app" class="hidden">
+  <h1>Hello world</h1>
+</div>
+```
+
+Configurable via `AppOptions`:
+
+```ts
+new App(component, AppProvider, "#reactolith-app", undefined, document, fetch, {
+  hideUntilHydrated: true,
+  hiddenClass: "invisible",
+});
+```
+
+Custom `appProvider` implementations should call `app.notifyHydrated()` from a `useEffect`.
+
+### Navigation without losing state
+
+Reactolith fetches the **next HTML page** and applies **only the differences** using React's reconciler. Component state — toggles, inputs, focus — is preserved.
+
+### Links inside custom components
+
+The Router only intercepts clicks on actual `<a>` elements with an `href`. Three ways to make custom components navigate:
+1. Wrap with a real anchor (`<a href="/x"><ui-button>…</ui-button></a>`).
+2. Use the `asChild` render-as-child pattern (Radix/Base UI/shadcn convention).
+3. Programmatic navigation via `useRouter()`:
+
+```tsx
+import { useRouter } from "reactolith";
+
+function SaveAndGo() {
+  const { router } = useRouter();
+  return <button onClick={() => router.visit("/done")}>Save</button>;
+}
+```
+
+Same-origin anchors are intercepted; external links, hash links, `target="_blank"`, `rel="external"`, and `download` opt out of SPA navigation.
+
+---
+
+## Props (https://reactolith.github.io/props/)
+
+Attributes on reactolith components are mapped to React props by these rules:
+
+| HTML attribute              | React prop / value                | Notes |
+|-----------------------------|-----------------------------------|-------|
+| `name="test"`               | `name: "test"`                    | Strings pass through |
+| `enabled` (no value)        | `enabled: true`                   | Empty / boolean attrs become `true` |
+| `data-foo="baa"`            | `dataFoo: "baa"`                  | Custom component: camelCased |
+| `data-foo="baa"`            | `data-foo: "baa"`                 | Native element: kept as `data-*` |
+| `aria-label="x"`            | `aria-label: "x"`                 | Native element: passed through verbatim |
+| `class="x"`                 | `className: "x"`                  | Auto-renamed |
+| `for="email"`               | `htmlFor: "email"`                | Common lowercase HTML attributes mapped to React camelCase |
+| `json-config='{"x":1}'`     | `config: { x: 1 }`                | Attributes prefixed `json-` are JSON-parsed |
+| `as="{my-other}"`           | `as: <my-other />`                | `{...}` resolves to a React component |
+| `key="abc"`                 | (used as React key)               | Reserved |
+| `#anything="…"`             | (ignored)                         | Attributes starting with `#` are dropped |
+
+Example:
+
+```html
+<my-component enabled name="test" data-foo="baa" as="{my-other-component}" json-config='{ "foo": "baa" }'></my-component>
+```
+
+```tsx
+const props = {
+  enabled: true,
+  name: "test",
+  dataFoo: "baa",
+  as: <MyOtherComponent />,
+  config: { foo: "baa" },
+};
+```
+
+### Encoding props server-side
+
+| Prop value (server)             | HTML attribute (rendered)        | Notes |
+|---------------------------------|----------------------------------|-------|
+| `"text"`                        | `name="text"`                    | Strings |
+| `42`                            | `name="42"`                      | Numbers stringified |
+| `true`                          | `name`                           | Bare attribute (not `name="true"`) |
+| `false` / `null` / `undefined`  | *(omit)*                         | Don't render the attribute |
+| `{ x: 1 }`                      | `json-name='{"x":1}'`            | `json-` prefix + JSON-encoded |
+| `[1, 2, 3]`                     | `json-name='[1,2,3]'`            | Same rule for arrays |
+
+Reference helper:
+
+```ts
+function renderAttrs(props: Record<string, unknown>): string {
+  const out: string[] = [];
+  for (const [name, value] of Object.entries(props)) {
+    if (value === false || value == null) continue;
+    if (value === true) { out.push(name); continue; }
+    if (typeof value === "object") {
+      out.push(`json-${name}='${JSON.stringify(value).replace(/'/g, "&#39;")}'`);
+      continue;
+    }
+    out.push(`${name}="${String(value).replace(/"/g, "&quot;")}"`);
+  }
+  return out.join(" ");
+}
+```
+
+Invalid JSON in a `json-*` attribute logs a warning and passes `undefined`; the App emits a `json-parse:failed` event for telemetry.
+
+---
+
+## Slots (https://reactolith.github.io/slots/)
+
+Any direct child of a custom component carrying a `slot` attribute is captured as a slot prop, with the slot's **inner content** (not the wrapping element).
+
+```html
+<my-component>
+  <template slot="header"><h1>My header content</h1></template>
+  <div slot="footer">My footer content</div>
+</my-component>
+```
+
+```tsx
+function MyComponent({ header, footer, children }) {
+  return (
+    <article>
+      <header>{header}</header>
+      <div>{children}</div>
+      <footer>{footer}</footer>
+    </article>
+  );
+}
+```
+
+Use `<template slot="…">` when you don't want the wrapping element in the rendered DOM.
+
+---
+
+## Forms (https://reactolith.github.io/forms/)
+
+Use `<Form>` for backend-driven submission. Per-field error display is `useFormErrors(name)` — no wrapper component required.
+
+```tsx
+import { Form, useFormErrors, useFormSubmitting } from "reactolith";
+
+function MyForm({ errors }) {
+  return (
+    <Form action="/users" method="POST" errors={errors}>
+      <label>Email <input name="email" /></label>
+      <FieldError name="email" />
+      <label>Password <input name="password" type="password" /></label>
+      <FieldError name="password" />
+      <SubmitButton />
+    </Form>
+  );
+}
+
+function FieldError({ name }) {
+  const errors = useFormErrors(name);
+  if (!errors.length) return null;
+  return <span role="alert">{errors[0].message}</span>;
+}
+
+function SubmitButton() {
+  const submitting = useFormSubmitting();
+  return <button type="submit" disabled={submitting}>{submitting ? "…" : "Save"}</button>;
+}
+```
+
+### Populating fields server-side
+
+| Field                                                        | Current value goes in…                                | Example |
+|--------------------------------------------------------------|-------------------------------------------------------|---------|
+| Text-like input (`text`, `email`, `number`, …)               | `value` attribute                                     | `<input name="email" value="ada@example.com">` |
+| Native `<textarea>`                                          | Element children                                      | `<textarea name="bio">Hello</textarea>` |
+| Custom textarea                                              | Component prop (often `value`)                        | `<ui-textarea name="bio" value="Hello">` |
+| Boolean (`checkbox`, switch)                                 | `json-checked` (**not** `checked="true"`)             | `<ui-checkbox name="newsletter" json-checked="true">` |
+| Select / dropdown                                            | `json-value` (or per-option `json-selected`)          | `<ui-select name="country" json-value='"DE"'>` |
+| Radio group                                                  | Group-level `json-value` with the active option       | `<ui-radio-group name="plan" json-value='"pro"'>` |
+
+The boolean row is the easy one to get wrong: `checked="true"` passes the **string** `"true"`. Always use `json-` for non-string values.
+
+### Backend validation errors
+
+Render the form and any errors on the server, then ship them through `json-errors`:
+
+```html
+<my-form action="/users" method="POST" json-errors='[{"name":"email","message":"Already taken"}]'>
+  <ui-input name="email" />
+</my-form>
+```
+
+After submission reactolith re-renders the new HTML — including new errors — without losing component state.
+
+### Round-trip after a validation error
+
+1. Server renders the form with each field's current value.
+2. User edits a field. The DOM input keeps the typed value.
+3. Submit. Reactolith intercepts and POSTs.
+4. Server validates, fails, re-renders **the same template** with the user's submitted values *and* a `json-errors` payload.
+5. Reactolith morphs the new HTML over the live tree. Focused field stays focused; cursor position survives.
+
+Symmetric template (Twig):
+
+```twig
+{# users/new.html.twig #}
+<my-form action="/users" method="POST"
+  {% if errors %} json-errors='{{ errors|json_encode|e('html_attr') }}'{% endif %}
+>
+  <ui-input name="email" value="{{ form.email|default('') }}">
+  <ui-checkbox name="newsletter" {% if form.newsletter %}json-checked="true"{% endif %}>
+  <ui-button type="submit">Sign up</ui-button>
+</my-form>
+```
+
+### Native validity & `:user-invalid`
+
+`<Form>` calls `setCustomValidity()` on matching inputs when errors are present; `:user-invalid` styles them once the user interacts. Custom validity clears automatically on the next edit.
+
+### `useFormSubmitting()` vs React 19's `useFormStatus()`
+
+`useFormSubmitting()` tracks HTML-action submissions that flow through reactolith's Router (the default in reactolith). React 19's `useFormStatus()` tracks **function-action** submissions (`<form action={fn}>`). Use `useFormSubmitting()` for backend-URL forms; `useFormStatus()` only fires for client/server function actions.
+
+### Hooks
+
+| Hook | Returns |
+|------|---------|
+| `useFormSubmitting()` | `boolean` — surrounding form is busy |
+| `useFormErrors(name?)` | Errors for the named field, or all errors when called without argument |
+
+`<Form>` accepts an optional `onSubmit`; calling `event.preventDefault()` cancels the submission.
+
+---
+
+## Scroll Restoration (https://reactolith.github.io/scroll-restoration/)
+
+| Navigation                | Behavior |
+|---------------------------|----------|
+| Link click / form submit  | Scrolls to top |
+| URL with `#hash`          | Scrolls to the hash element |
+| Browser Back / Forward    | Restores previous scroll position |
+
+Stored in `sessionStorage`, so positions survive page refresh inside the tab.
+
+Preserve scroll on a link or form:
+
+```html
+<a href="/products?page=2" data-scroll="preserve">Next Page</a>
+
+<form action="/search" method="GET" data-scroll="preserve">
+  <input type="text" name="q" />
+  <button type="submit">Search</button>
+</form>
+```
+
+Programmatic:
+
+```ts
+router.navigate("/page");
+router.navigate("/page", { scroll: "preserve" });
+router.navigate("/dashboard", { replace: true });
+router.navigate("/list?q=x", { replace: true, scroll: "preserve" });
+```
+
+Custom scroll container — auto-detected by walking up looking for `overflow-y: auto|scroll`. Override:
+
+```html
+<div id="reactolith-app" data-scroll-container="#main-content">…</div>
+```
+
+---
+
+## Mercure (real-time SSE) (https://reactolith.github.io/mercure/)
+
+Reactolith supports Server-Sent Events via [Mercure](https://mercure.rocks/). When the server publishes an update, the HTML is rendered through the same path as router navigation. Mercure auto-subscribes to the **current URL pathname** as the topic and re-subscribes on route change.
+
+### Auto-configuration (recommended)
+
+```html
+<div id="reactolith-app" data-mercure-hub-url="https://example.com/.well-known/mercure">
+  <!-- content -->
+</div>
+
+<!-- With credentials -->
+<div id="reactolith-app"
+     data-mercure-hub-url="https://example.com/.well-known/mercure"
+     data-mercure-with-credentials>
+</div>
+```
+
+```ts
+import { App, Mercure } from "reactolith";
+
+const app = new App(component);
+const mercure = new Mercure(app);
+mercure.subscribe(app.mercureConfig!);
+
+mercure.on("sse:connected", (url) => console.log("Connected", url));
+```
+
+### Manual configuration
+
+```ts
+const app = new App(component);
+const mercure = new Mercure(app);
+mercure.subscribe({
+  hubUrl: "https://example.com/.well-known/mercure",
+  withCredentials: true,
+});
+```
+
+### Auto-refetch on empty messages
+
+Pushing an empty body invalidates the current route — reactolith re-fetches it.
+
+```php
+$hub->publish(new Update('/dashboard', '')); // triggers a GET on /dashboard
+```
+
+### Events
+
+| Event | Args | Description |
+|-------|------|-------------|
+| `sse:connected` | `url` | Connection established |
+| `sse:disconnected` | `url` | Connection closed |
+| `sse:message` | `event, html` | Default `message` event received |
+| `sse:named` | `name, event, data` | Named SSE event received |
+| `render:success` | `event, html` | HTML rendered successfully |
+| `render:failed` | `event, html` | Render failed |
+| `refetch:started` | `event` | Auto-refetch triggered |
+| `refetch:success` | `event, html` | Auto-refetch completed |
+| `refetch:failed` | `event, error` | Auto-refetch failed |
+| `sse:error` | `error` | Connection error |
+
+### Named SSE events
+
+```ts
+mercure.subscribe({
+  hubUrl: "/.well-known/mercure",
+  events: ["sidebar", "notification"],
+});
+mercure.on("sse:named", (name, _event, data) => { /* … */ });
+```
+
+### `useMercureTopic` for live JSON values
+
+```tsx
+import { useMercureTopic } from "reactolith";
+
+function NotificationBadge() {
+  const count = useMercureTopic("/notifications/count", 0);
+  if (count === 0) return null;
+  return <span className="badge">{count}</span>;
+}
+
+function UserStatus({ userId }: { userId: number }) {
+  const status = useMercureTopic<"online" | "offline" | "away">(
+    `/user/${userId}/status`,
+    "offline",
+  );
+  return <span className={status}>{status}</span>;
+}
+```
+
+`app.mercureConfig` must be set first (via `data-mercure-hub-url` or manually).
+
+### Partial updates with `<mercure-live>`
+
+```ts
+import { App, Mercure, MercureLive } from "reactolith";
+import loadable from "@loadable/component";
+
+const component = loadable(
+  async ({ is }: { is: string }) => {
+    if (is === "mercure-live") return MercureLive;
+    return import(`./components/${is}.tsx`);
+  },
+  { cacheKey: ({ is }) => is, resolveComponent: (mod, { is }) => is === "mercure-live" ? mod : (mod.default || mod[is]) },
+);
+
+const app = new App(component);
+const mercure = new Mercure(app);
+app.mercureConfig = { hubUrl: "/.well-known/mercure", withCredentials: true };
+mercure.subscribe(app.mercureConfig);
+```
+
+```html
+<mercure-live topic="/sidebar">
+  <sidebar>
+    <ul><li>Initial menu item 1</li><li>Initial menu item 2</li></ul>
+  </sidebar>
+</mercure-live>
+```
+
+```php
+$html = $twig->render('_sidebar.html.twig', ['menuItems' => $updatedMenuItems]);
+$hub->publish(new Update('/sidebar', $html));
+```
+
+---
+
+## Chunk Preloading (https://reactolith.github.io/preloading/)
+
+Because reactolith resolves component tags lazily, the browser only discovers which chunks a page needs **after** parsing it. Close that gap by emitting preload hints either as response headers (`Link: rel=modulepreload`, optionally flushed early as `103 Early Hints`) or as `<link rel="modulepreload">` tags in `<head>`.
+
+HTTP/2 Server Push is not the mechanism — it has been removed from Chrome. Use `Link` preload hints or `103 Early Hints`.
+
+Two pieces:
+1. **Which tags does this page use?** Walk the rendered HTML once and collect every custom-element name (any local name containing a hyphen).
+2. **Which JS chunk implements each tag?** Read your bundler's build manifest.
+
+Vite manifest example:
+
+```ts
+// vite.config.ts
+export default { build: { manifest: true } };
+```
+
+`dist/.vite/manifest.json`:
+
+```json
+{
+  "src/components/ui-button.tsx": {
+    "file": "assets/ui-button-7f3a9d.js",
+    "imports": ["_shared-9a2c4f.js"],
+    "css": ["assets/ui-button-1c4e8b.css"]
+  },
+  "src/components/ui-input.tsx": { "file": "assets/ui-input-2b1c0e.js" }
+}
+```
+
+```php
+$manifest = json_decode(file_get_contents('dist/.vite/manifest.json'), true);
+$tags = ['ui-button', 'ui-input'];
+
+$links = [];
+foreach ($tags as $tag) {
+    $entry = $manifest["src/components/{$tag}.tsx"] ?? null;
+    if (!$entry) continue;
+    $links[] = "</{$entry['file']}>; rel=modulepreload";
+    foreach ($entry['imports'] ?? [] as $importKey) {
+        $imp = $manifest[$importKey] ?? null;
+        if ($imp) $links[] = "</{$imp['file']}>; rel=modulepreload";
+    }
+    foreach ($entry['css'] ?? [] as $css) {
+        $links[] = "</{$css}>; rel=preload; as=style";
+    }
+}
+header('Link: ' . implode(', ', $links));
+```
+
+The documentation site eats its own dogfood — a Vite plugin (`docs/vite-plugin-preload-component-chunks.ts`) scans built HTML, looks up tags in the manifest, and injects `<link rel="modulepreload">` tags into `<head>`. CSS sidecars and transitive shared chunks are followed too.
+
+---
+
+## Server-Side Rendering (https://reactolith.github.io/ssr/)
+
+For static-site generators (Astro, Eleventy, …) or progressive enhancement, import a server-safe `renderToString` from `reactolith/server`:
+
+```ts
+import { JSDOM } from "jsdom";
+import { renderToString } from "reactolith/server";
+import { resolveComponent } from "./resolve-component";
+
+const dom = new JSDOM(`<div id="root"><my-button variant="primary">Hello</my-button></div>`);
+const root = dom.window.document.getElementById("root")!;
+const html = renderToString(root, resolveComponent);
+```
+
+The helper wraps the tree in `AppProvider` (or a custom one) and pipes it through `react-dom/server.renderToString`. Router and Mercure side effects are skipped because both rely on `useEffect`, which React does not run during server rendering.
+
+---
+
+## Web Types — IDE Autocomplete (https://reactolith.github.io/web-types/)
+
+`reactolith` ships a CLI to generate [web-types](https://github.com/JetBrains/web-types) for your custom components, enabling autocomplete and validation in WebStorm, PhpStorm, IntelliJ, and VS Code (with appropriate plugins).
+
+```bash
+npx generate-web-types -c src/components/ui -o web-types.json -n my-app
+```
+
+The generator recursively scans the components directory — flat and nested structures both work.
+
+CLI options:
+
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--components` | `-c` | Components directory (repeatable / comma-separated). | `components/ui` |
+| `--tsconfig` | `-t` | TypeScript config (shared across groups). | `tsconfig.app.json`, else `tsconfig.json` |
+| `--out` | `-o` | Output file. Repeat to emit one file per group. | `web-types.json` |
+| `--name` | `-n` | Library name (repeatable per-group). | `reactolith-components` |
+| `--version` | `-v` | Library version (repeatable per-group). | `1.0.0` |
+| `--prefix` | `-p` | Element-name prefix (empty or end with `-`). | `""` |
+| `--exclude` |  | Glob to skip (e.g. `**/*.stories.tsx`). Repeatable. |  |
+| `--help` | `-h` | Show help. |  |
+
+Multi-output, multi-prefix example:
+
+```bash
+npx generate-web-types \
+  -n my-app -v 1.0.0 \
+  -c src/components/ui     -p ui-    -o web-types/ui.json \
+  -c src/components/charts -p chart- -o web-types/charts.json \
+  -c src/components/forms  -p form-  -o web-types/forms.json
+```
+
+```json
+{
+  "name": "my-app",
+  "web-types": ["./web-types/ui.json", "./web-types/charts.json", "./web-types/forms.json"]
+}
+```
+
+Or a single file:
+
+```json
+{ "name": "my-app", "web-types": "./web-types.json" }
+```
+
+Add to your build script:
+
+```json
+{ "scripts": { "build": "vite build && npx generate-web-types -c src/components/ui -o web-types.json" } }
+```
+
+After restarting your IDE you get autocomplete for custom element names, prop suggestions, slot hints, and validation.
+
+---
+
+## API Cheatsheet (https://reactolith.github.io/api/)
+
+```ts
+import {
+  App,                  // mount the app on a root element
+  Router,               // intercepts links/forms and visits URLs as HTML
+  Mercure,              // SSE client that pipes HTML updates into App.render
+  MercureLive,          // <mercure-live topic="…"> partial-update component
+  ReactolithComponent,  // converts a single DOM element into a React tree
+  ScrollRestoration,    // standalone scroll-restoration helper
+  AppProvider,          // default React provider used by App
+  RouterProvider,       // exposes useRouter() (loading, lastError, navigate)
+  useApp,               // hook → current App instance
+  useRouter,            // hook → { router, loading, lastError, clearError }
+  useMercureTopic,      // hook → live JSON value for a topic
+  useMercureEventSource,// low-level hook (raw SSE messages)
+  createLoader,         // resolve tag names against import.meta.glob() maps
+} from "reactolith";
+
+import { Form, useFormErrors, useFormSubmitting } from "reactolith";
+
+import { renderToString } from "reactolith/server";
+```
+
+CLI:
+
+```bash
+npx generate-web-types --components src/components/ui --out web-types.json
+```
+
+---
+
+## Reactolith vs Inertia.js (https://reactolith.github.io/comparisons/inertia/)
+
+**One-line difference**
+
+- Inertia.js sends **JSON page props** and re-renders a single page-level React component on every visit.
+- Reactolith sends **HTML** and **morphs the existing React tree** in place — Turbo-style — so component state survives across navigation.
+
+**What Inertia is good at**: client-side routing, page components, partial reloads, lazy props, while letting Rails/Laravel/Symfony controllers stay the source of truth. A great fit for form-heavy CRUD apps where the page-as-component model is comfortable.
+
+**What Inertia gives up**:
+1. The page component is replaced on every visit. No `morph`. State inside the previous page component does not survive to the next.
+2. You maintain a JSON page-prop contract — controllers project flash messages, signed URLs, permission checks into JSON instead of rendering them into HTML.
+
+**How reactolith does it differently** — modelled on Hotwire Turbo. HTML is the wire format end to end; React's reconciler diffs the new tree against the live one; the controller stays the contract.
+
+**When to pick reactolith over Inertia**:
+- You specifically want React, with Hotwire Turbo morph semantics for it.
+- You don't want a JSON page-prop layer — templates are the contract.
+- You want long-lived UI (persistent sidebars, stateful tables, embedded media, dialogs) that survives every navigation and form submit untouched.
+- You want the Majestic Monolith architecture with React on top, without splitting the app in two.
+
+**Migration sketch**: replace Inertia page components with regular React components; return HTML from controllers (not Inertia page props); expose ad-hoc React components as kebab-cased tags resolved via `createLoader`; mount with `new App(component, AppProvider, "#reactolith-app")`.
+
+---
+
+## Reactolith vs Hotwire Turbo (https://reactolith.github.io/comparisons/turbo/)
+
+Same philosophy — backend renders HTML, the page is morphed in place, state survives. Different runtime: Turbo morphs the DOM via Idiomorph; reactolith morphs through React's reconciler.
+
+**Why reactolith exists**: Turbo's morphing is DOM-level. When it diffs incoming HTML against the page, it has no idea your `<dialog data-controller="modal">` is actually a React-managed component with its own state. You either re-implement those widgets in vanilla + Stimulus, or fight the morph. Reactolith is the version of Turbo where the morph happens through React's reconciler — state, refs, and effects survive exactly the way they do during a normal React re-render.
+
+**Turbo concepts → reactolith equivalents**:
+
+| Turbo | Reactolith |
+|-------|------------|
+| Turbo Drive (link/form interception, page morph) | Built-in router — same behaviour, applied to a React tree |
+| `<turbo-frame>` for scoped swaps | Not needed in the same way; whole page morphs and untouched components keep their state |
+| `<turbo-stream>` over Action Cable | Mercure SSE pushes HTML through the normal render path |
+| Stimulus controllers for behaviours | Plain React components — hooks, context, refs |
+
+**Pick Turbo if** you don't need React, you're on Rails and want the whole Hotwire stack, or your existing components are vanilla/Stimulus and rewriting them in React would just be churn.
+
+**Pick reactolith if** your component library is already React (shadcn/ui, Radix, your own design system), you want React's hooks/context/refs/suspense without a SPA + JSON API, you want Turbo's morph semantics expressed through React's reconciler, and you want the Majestic Monolith architecture with React on top.
+
+---
+
+## Comparisons summary (https://reactolith.github.io/comparisons/)
+
+|                              | reactolith | Inertia.js | Hotwire Turbo | htmx |
+|------------------------------|------------|------------|---------------|------|
+| Wire format                  | HTML       | JSON page props | HTML | HTML fragments |
+| UI library                   | React      | React, Vue, Svelte | None (vanilla + Stimulus) | None (vanilla) |
+| Page navigation              | Morph React tree in place | Replace page-level component | Morph DOM in place | Swap a fragment |
+| Component state across nav   | Preserved | Reset (page swapped) | Preserved (DOM-level) | Preserved outside fragment |
+| New backend layer?           | No | Yes (Inertia adapter) | No | No |
+| Real-time updates            | Mercure SSE → same render path | Manual / external | Turbo Streams | SSE/WebSocket extensions |
+
+The Inertia / Turbo / htmx / reactolith family exists because most teams don't want to run two apps. Turbo and htmx make the Majestic Monolith viable for vanilla DOM; Inertia makes it viable for React/Vue/Svelte at the cost of a JSON page-prop boundary; reactolith makes it viable for React without that boundary.
+
+---
+
+## Development & Contributing (https://reactolith.github.io/development/)
+
+```bash
+npm install
+npm run build       # dist/index.{mjs,cjs}, dist/index.d.ts, CLI bundle
+npm test            # vitest run
+npm run typecheck   # tsc --noEmit
+npm run lint        # eslint src tests
+```
+
+CI runs `typecheck`, `lint`, `test`, `build`, and `npm audit --omit=dev` on every PR and push to `main`. The `prepublishOnly` script runs `npm run build` so published artifacts always come from a fresh build.
+
+Project structure:
+
+```
+reactolith/
+├── src/                 # library source (App, Router, Mercure, …)
+├── tests/               # vitest test suites
+├── docs/                # this documentation site
+├── rollup.config.mjs    # library build config
+└── package.json
+```
+
+Run the docs locally:
+
+```bash
+cd docs
+npm install
+npm run dev
+```
+
+The docs Vite project aliases reactolith to `../src/index.ts`, so library edits show up immediately.
+
+---
+
+## Frequently asked questions
+
+**What is reactolith?** A React library that hydrates server-rendered HTML into React components. Any hyphenated tag becomes a React component; everything else is plain DOM. Navigation, form submits, and Mercure SSE all flow through the same HTML-in / React-reconciler-out pipeline.
+
+**How is reactolith different from Inertia.js?** Reactolith sends HTML, not JSON page props, and morphs the existing React tree in place across navigation — so component state, focus, scroll, and open dialogs survive. Inertia replaces the page-level component on every visit.
+
+**How is reactolith different from Hotwire Turbo?** Same philosophy — backend HTML, morphed in place. But Turbo morphs the DOM via Idiomorph and pairs with Stimulus; reactolith morphs through React's reconciler and pairs with native React components.
+
+**Does reactolith replace my backend?** No. It works with any backend that emits HTML — Symfony, Rails, Laravel, Django, Phoenix, ASP.NET, even static files. Your existing controllers, routing, templates, permissions, and URL helpers stay in charge.
+
+**Do I need a build step?** No — `import.meta.glob` is recommended but optional. The runtime is small and ships as ESM + CJS.
+
+**Which React version is required?** React 19 (peer dependency). Node 18 or newer for tooling.
+
+**Does it support SSR?** Yes — `renderToString` from `reactolith/server` for static-site generators and progressive enhancement.
+
+**Does it support real-time updates?** Yes — via Mercure (Server-Sent Events). Pushed HTML flows through the same render path; you can also use `useMercureTopic` for live JSON values, or `<mercure-live>` for scoped partial updates.
+
+**Is there IDE autocomplete for custom tags?** Yes — the `generate-web-types` CLI generates a JetBrains web-types file for WebStorm/PhpStorm/IntelliJ; VS Code can consume it with the appropriate plugin.

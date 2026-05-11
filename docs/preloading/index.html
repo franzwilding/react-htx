@@ -4,11 +4,63 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Chunk Preloading — Reactolith</title>
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0a0814" />
+    <title>Chunk preloading — modulepreload hints from your bundler manifest</title>
     <meta
       name="description"
-      content="Emit modulepreload hints for the component chunks a page actually uses, using your bundler's build manifest."
+      content="Close the lazy-resolution gap: scan rendered HTML for custom-element tags, look each one up in your bundler's build manifest, and emit Link: rel=modulepreload hints (inline or as 103 Early Hints) so the browser fetches the component chunks a page actually needs in parallel with parsing. Includes a working Vite-manifest + PHP example."
     />
+    <meta name="keywords" content="reactolith preloading, modulepreload, 103 early hints, react component chunk preload, vite manifest preload, http link header rel=modulepreload, custom element chunk discovery" />
+    <meta name="author" content="Franz Mayr-Wilding" />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+    <link rel="canonical" href="https://reactolith.github.io/preloading/" />
+    <link rel="alternate" type="text/plain" title="LLM index (llms.txt)" href="https://reactolith.github.io/llms.txt" />
+
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="Reactolith" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content="https://reactolith.github.io/preloading/" />
+    <meta property="og:title" content="Chunk preloading for reactolith apps" />
+    <meta property="og:description" content="modulepreload hints from your bundler manifest, optionally flushed as 103 Early Hints." />
+    <meta property="og:image" content="https://reactolith.github.io/og-image.svg" />
+    <meta property="og:image:type" content="image/svg+xml" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Reactolith — use HTML to compose your React app." />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Chunk preloading for reactolith" />
+    <meta name="twitter:description" content="modulepreload the chunks a page actually needs, in parallel with HTML parsing." />
+    <meta name="twitter:image" content="https://reactolith.github.io/og-image.svg" />
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "TechArticle",
+          "headline": "Chunk preloading",
+          "description": "Emit modulepreload hints from your bundler manifest for the components a page uses.",
+          "url": "https://reactolith.github.io/preloading/",
+          "mainEntityOfPage": "https://reactolith.github.io/preloading/",
+          "image": "https://reactolith.github.io/og-image.svg",
+          "inLanguage": "en",
+          "author": { "@type": "Person", "name": "Franz Mayr-Wilding", "url": "https://github.com/reactolith" },
+          "publisher": { "@type": "Organization", "name": "Reactolith", "url": "https://reactolith.github.io/" },
+          "isPartOf": { "@id": "https://reactolith.github.io/#website" },
+          "proficiencyLevel": "Advanced"
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Reactolith", "item": "https://reactolith.github.io/" },
+            { "@type": "ListItem", "position": 2, "name": "Chunk Preloading", "item": "https://reactolith.github.io/preloading/" }
+          ]
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="reactolith-app" class="hidden">

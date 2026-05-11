@@ -4,7 +4,62 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Props — Reactolith</title>
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0a0814" />
+    <title>HTML attributes → React props — Reactolith prop encoding rules</title>
+    <meta
+      name="description"
+      content="Reference for how reactolith maps HTML attributes to React props: empty attributes become true, json-* attributes are JSON-parsed, class becomes className, for becomes htmlFor, {tag} resolves to a React component. Includes the mirror server-side encoding rules so backends can serialise prop values correctly."
+    />
+    <meta name="keywords" content="reactolith props, html attributes to react props, json-attribute, react custom element props, class to className, for to htmlFor, server-side prop encoding, json-parse:failed" />
+    <meta name="author" content="Franz Mayr-Wilding" />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+    <link rel="canonical" href="https://reactolith.github.io/props/" />
+    <link rel="alternate" type="text/plain" title="LLM index (llms.txt)" href="https://reactolith.github.io/llms.txt" />
+
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="Reactolith" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content="https://reactolith.github.io/props/" />
+    <meta property="og:title" content="HTML attributes → React props" />
+    <meta property="og:description" content="The full attribute-to-prop mapping table, plus how to encode props server-side." />
+    <meta property="og:image" content="https://reactolith.github.io/og-image.svg" />
+    <meta property="og:image:type" content="image/svg+xml" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Reactolith — use HTML to compose your React app." />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Reactolith props" />
+    <meta name="twitter:description" content="HTML attributes → React props mapping rules." />
+    <meta name="twitter:image" content="https://reactolith.github.io/og-image.svg" />
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "TechArticle",
+          "headline": "Props in Reactolith",
+          "description": "Mapping rules between HTML attributes and React props (client-side parsing and server-side serialisation).",
+          "url": "https://reactolith.github.io/props/",
+          "mainEntityOfPage": "https://reactolith.github.io/props/",
+          "image": "https://reactolith.github.io/og-image.svg",
+          "inLanguage": "en",
+          "author": { "@type": "Person", "name": "Franz Mayr-Wilding", "url": "https://github.com/reactolith" },
+          "publisher": { "@type": "Organization", "name": "Reactolith", "url": "https://reactolith.github.io/" },
+          "isPartOf": { "@id": "https://reactolith.github.io/#website" }
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Reactolith", "item": "https://reactolith.github.io/" },
+            { "@type": "ListItem", "position": 2, "name": "Props", "item": "https://reactolith.github.io/props/" }
+          ]
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="reactolith-app" class="hidden">

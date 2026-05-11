@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="reactolith — HTML with React components">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a0814"/>
+      <stop offset="1" stop-color="#1a1530"/>
+    </linearGradient>
+    <linearGradient id="ink" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c2b1ff"/>
+      <stop offset="1" stop-color="#7c6cff"/>
+    </linearGradient>
+    <linearGradient id="monolith-front" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1a1530"/>
+      <stop offset="1" stop-color="#06040e"/>
+    </linearGradient>
+    <linearGradient id="monolith-side" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#241f44"/>
+      <stop offset="1" stop-color="#0d0a1f"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#7c6cff" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#7c6cff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="950" cy="320" r="320" fill="url(#glow)"/>
+
+  <!-- Monolith -->
+  <g transform="translate(880 130)">
+    <path d="M120 0 L24 60 L20 460 L120 500 Z" fill="url(#monolith-front)"/>
+    <path d="M120 0 L216 60 L220 460 L120 500 Z" fill="url(#monolith-side)"/>
+    <path d="M24 60 L120 0 L216 60" stroke="#a594ff" stroke-width="1.2" opacity="0.55" fill="none" stroke-linejoin="round"/>
+    <path d="M120 0 L120 500" stroke="url(#ink)" stroke-width="2" stroke-linecap="round"/>
+    <g transform="translate(120 250)" fill="none">
+      <ellipse cx="0" cy="0" rx="70" ry="24" stroke="#a594ff" stroke-width="3" opacity="0.9"/>
+      <ellipse cx="0" cy="0" rx="70" ry="24" stroke="#a594ff" stroke-width="3" opacity="0.9" transform="rotate(60)"/>
+      <ellipse cx="0" cy="0" rx="70" ry="24" stroke="#a594ff" stroke-width="3" opacity="0.9" transform="rotate(-60)"/>
+      <circle cx="0" cy="0" r="8" fill="#e8e0ff"/>
+    </g>
+  </g>
+
+  <!-- Eyebrow -->
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="22" letter-spacing="3" fill="#a594ff">
+    <text x="80" y="120" opacity="0.85">REACTOLITH — v1.1.3 — MIT</text>
+  </g>
+
+  <!-- Wordmark -->
+  <g font-family="Georgia, 'Times New Roman', serif" fill="#f5efff">
+    <text x="80" y="230" font-size="84" font-weight="400">Use HTML</text>
+    <text x="80" y="320" font-size="84" font-weight="400">to compose your</text>
+    <text x="80" y="410" font-size="84" font-weight="400" fill="url(#ink)" font-style="italic">React app.</text>
+  </g>
+
+  <!-- Sub-tagline -->
+  <g font-family="-apple-system, system-ui, 'Segoe UI', sans-serif" fill="#bcb0d8">
+    <text x="80" y="475" font-size="26">Hotwire Turbo for React. Any tag with a hyphen becomes a component.</text>
+    <text x="80" y="510" font-size="26">Server returns HTML. The React tree morphs in place. State survives.</text>
+  </g>
+
+  <!-- Footer URL -->
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#7c6cff">
+    <text x="80" y="580" font-size="24" letter-spacing="1">reactolith.github.io</text>
+  </g>
+</svg>

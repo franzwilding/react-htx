@@ -1,0 +1,78 @@
+# reactolith
+
+> Reactolith is a tiny React library that **hydrates server-rendered HTML into React components**. Any HTML tag with a hyphen (e.g. `<my-button>`) is resolved to a React component; everything else stays plain DOM. It is the **Hotwire Turbo equivalent for React**: the server returns HTML, reactolith diffs and morphs the live React tree in place across navigation, form submits, and Mercure SSE pushes — so component state, focus, scroll, open dialogs and mounted iframes all survive. Works with any backend that emits HTML (Symfony / Twig, Rails / ERB, Laravel / Blade, Django / Jinja, Phoenix, ASP.NET, plain static files).
+
+## What reactolith is
+
+- **Backend-driven React**: your existing controllers and templates render HTML; reactolith hydrates it. No JSON page-prop contract, no `/api/v2` shadow API, no SPA router replacement.
+- **Morphing navigation**: like Turbo's `morph` — the next page is fetched as HTML and reconciled against the live React tree. State preserved across link clicks and form submits.
+- **Live forms**: server can add or remove fields on a checkbox click without losing input state or focus.
+- **Realtime via Mercure SSE**: server-pushed HTML flows through the same render pipeline.
+- **No build step required** at the consumer site (works with any bundler, or none).
+- **Tiny**: small runtime, peer-deps on React 19 only.
+- **License**: MIT. **Author**: Franz Mayr-Wilding. **Repo**: https://github.com/reactolith/reactolith
+
+## Why it exists
+
+Inertia.js is the closest thing in the React world to backend-driven SPAs, but it replaces the page-level component on every visit — there is no equivalent of Turbo's `morph`, so a sidebar's collapsed state, a video playing, or a half-typed form cannot survive a navigation. Reactolith takes the Turbo approach instead: HTML in, React reconciler out. That tiny difference makes the [Majestic Monolith](https://signalvnoise.com/svn3/the-majestic-monolith/) a serious option again for teams that want React on a Rails / Symfony / Laravel / Django app.
+
+## Install
+
+```
+npm install reactolith react react-dom
+```
+
+Requires Node 18+ and React 19.
+
+## Minimal example
+
+```html
+<!-- index.html (rendered by your backend) -->
+<div id="reactolith-app">
+  <h1>Hello world</h1>
+  <my-button>Click me</my-button>
+</div>
+```
+
+```tsx
+// src/main.tsx
+import { App } from "reactolith";
+import { MyButton } from "./components/my-button";
+
+new App(({ is }) => (is === "my-button" ? MyButton : null));
+```
+
+Any tag with a hyphen → React component. Everything else → native DOM.
+
+## Documentation
+
+- [Home](https://reactolith.github.io/): overview and pitch
+- [Installation](https://reactolith.github.io/installation/): npm install, peer deps, supported Node/React versions
+- [Quick Start](https://reactolith.github.io/quick-start/): minimum working app
+- [How It Works](https://reactolith.github.io/how-it-works/): mental model, hydration, morphing, SSE pipeline
+- [Props](https://reactolith.github.io/props/): HTML attributes → React props mapping rules
+- [Slots](https://reactolith.github.io/slots/): slot mechanism for HTML-defined component composition
+- [Forms](https://reactolith.github.io/forms/): `<Form>`, `useFormErrors`, `useFormSubmitting`, server validation flow
+- [Scroll Restoration](https://reactolith.github.io/scroll-restoration/): browser-like back/forward behavior
+- [Mercure](https://reactolith.github.io/mercure/): real-time SSE updates, `<mercure-live>` partial-update component
+- [Chunk Preloading](https://reactolith.github.io/preloading/): `modulepreload` hints from build manifest
+- [Server-Side Rendering](https://reactolith.github.io/ssr/): `renderToString` from `reactolith/server`
+- [Web Types (IDE autocomplete)](https://reactolith.github.io/web-types/): JetBrains/VS Code custom-tag autocomplete via the `generate-web-types` CLI
+- [API Cheatsheet](https://reactolith.github.io/api/): full public surface — `App`, `Router`, `Mercure`, `MercureLive`, `ReactolithComponent`, `ScrollRestoration`, `Form`, `useFormErrors`, `useFormSubmitting`, `createLoader`, `renderToString`
+- [Development & Contributing](https://reactolith.github.io/development/)
+
+## Comparisons
+
+- [reactolith vs Inertia.js](https://reactolith.github.io/comparisons/inertia/): why HTML beats JSON page props when you want state to survive navigation
+- [reactolith vs Hotwire Turbo](https://reactolith.github.io/comparisons/turbo/): same philosophy, but for a React component tree instead of plain DOM
+- [Comparisons index](https://reactolith.github.io/comparisons/): also covers htmx and full SPAs
+
+## Repository
+
+- Source: https://github.com/reactolith/reactolith
+- Issues: https://github.com/reactolith/reactolith/issues
+- npm: https://www.npmjs.com/package/reactolith
+
+## Full corpus for LLMs
+
+A single-file dump of all documentation content (for retrieval-augmented use) is available at <https://reactolith.github.io/llms-full.txt>.
