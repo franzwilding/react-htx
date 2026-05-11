@@ -4,7 +4,7 @@
 
 `reactolith` lets you **write React components directly in HTML** so your backend stays in charge of routing, templates, permissions, and URLs, while React stays in charge of interactivity. It is **not Inertia for the masses** — it is a different approach: instead of shipping JSON page props and re-rendering a top-level component on every navigation, reactolith fetches the next HTML page, **morphs the existing React tree in place**, and preserves component state across navigation, form submits, and live server pushes.
 
-📖 **Full documentation:** **<https://reactolith.github.io/reactolith/>**
+📖 **Full documentation:** **<https://reactolith.github.io/>**
 
 ---
 
@@ -99,7 +99,7 @@ const html = renderToString(
 ```
 
 Router and Mercure side effects are skipped on the server because both rely on
-`useEffect`. See the [SSR guide](https://reactolith.github.io/reactolith/ssr/)
+`useEffect`. See the [SSR guide](https://reactolith.github.io/ssr/)
 for the full walkthrough.
 
 ---
@@ -109,8 +109,8 @@ for the full walkthrough.
 If you came here looking for an alternative to one of these, head to the
 side-by-side comparisons:
 
-- [reactolith vs Inertia.js](https://reactolith.github.io/reactolith/comparisons/inertia/) — what Inertia gives you, what it gives up, and where reactolith fits
-- [reactolith vs Hotwire Turbo](https://reactolith.github.io/reactolith/comparisons/turbo/) — same backend-driven philosophy, but for React component trees
+- [reactolith vs Inertia.js](https://reactolith.github.io/comparisons/inertia/) — what Inertia gives you, what it gives up, and where reactolith fits
+- [reactolith vs Hotwire Turbo](https://reactolith.github.io/comparisons/turbo/) — same backend-driven philosophy, but for React component trees
 
 ---
 
@@ -118,16 +118,16 @@ side-by-side comparisons:
 
 | Topic | Link |
 |---|---|
-| Why reactolith | [Comparisons](https://reactolith.github.io/reactolith/comparisons/) |
-| Install & set up | [Installation](https://reactolith.github.io/reactolith/installation/) |
-| First app | [Quick Start](https://reactolith.github.io/reactolith/quick-start/) |
-| Mental model | [How It Works](https://reactolith.github.io/reactolith/how-it-works/) |
-| Props & slots | [Props](https://reactolith.github.io/reactolith/props/) · [Slots](https://reactolith.github.io/reactolith/slots/) |
-| Forms & validation | [Forms](https://reactolith.github.io/reactolith/forms/) |
-| Scroll | [Scroll Restoration](https://reactolith.github.io/reactolith/scroll-restoration/) |
-| Realtime | [Mercure](https://reactolith.github.io/reactolith/mercure/) |
-| SSR | [Server-Side Rendering](https://reactolith.github.io/reactolith/ssr/) |
-| Tooling | [Web Types](https://reactolith.github.io/reactolith/web-types/) · [API Cheatsheet](https://reactolith.github.io/reactolith/api/) |
+| Why reactolith | [Comparisons](https://reactolith.github.io/comparisons/) |
+| Install & set up | [Installation](https://reactolith.github.io/installation/) |
+| First app | [Quick Start](https://reactolith.github.io/quick-start/) |
+| Mental model | [How It Works](https://reactolith.github.io/how-it-works/) |
+| Props & slots | [Props](https://reactolith.github.io/props/) · [Slots](https://reactolith.github.io/slots/) |
+| Forms & validation | [Forms](https://reactolith.github.io/forms/) |
+| Scroll | [Scroll Restoration](https://reactolith.github.io/scroll-restoration/) |
+| Realtime | [Mercure](https://reactolith.github.io/mercure/) |
+| SSR | [Server-Side Rendering](https://reactolith.github.io/ssr/) |
+| Tooling | [Web Types](https://reactolith.github.io/web-types/) · [API Cheatsheet](https://reactolith.github.io/api/) |
 
 The docs site lives in [`/docs`](./docs) and is itself built with reactolith — every page is plain HTML hydrated into React.
 

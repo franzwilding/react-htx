@@ -4,8 +4,6 @@ import tailwindcss from "@tailwindcss/vite";
 import { resolve, relative, dirname, join } from "node:path";
 import { readdirSync } from "node:fs";
 
-const isPages = process.env.GITHUB_PAGES === "true";
-
 const docsRoot = dirname(new URL(import.meta.url).pathname);
 
 function findHtmlInputs(): Record<string, string> {
@@ -31,25 +29,9 @@ function findHtmlInputs(): Record<string, string> {
   return inputs;
 }
 
-const base = isPages ? "/reactolith/" : "/";
-
-// Rewrite root-relative `href` and `action` attributes in HTML so they
-// stay correct under the GitHub Pages sub-path (e.g. /reactolith/).
-// Skips fragments, external URLs, and already-prefixed paths.
-const rewriteHtmlLinks = {
-  name: "rewrite-html-links",
-  transformIndexHtml(html: string) {
-    if (base === "/") return html;
-    return html.replace(
-      /\b(href|action)="\/(?!\/|reactolith\/)([^"#?][^"]*)"/g,
-      (_m, attr, rest) => `${attr}="${base}${rest}"`,
-    );
-  },
-};
-
 export default defineConfig({
-  base,
-  plugins: [react(), tailwindcss(), rewriteHtmlLinks],
+  base: "/",
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
       "@": resolve(docsRoot, "src"),
