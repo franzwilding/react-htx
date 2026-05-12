@@ -1,0 +1,524 @@
+{#
+  shadcn/ui form theme for Symfony Forms.
+  =======================================
+
+  This theme renders every native Symfony form field type with the markup,
+  spacing, typography and ARIA wiring that shadcn/ui uses for its `<Form>`
+  composition (FormItem / FormLabel / FormControl / FormDescription /
+  FormMessage).
+
+  Conventions:
+
+  - `space-y-6` between form rows in the root form, `space-y-2` inside each
+    row (label → control → description → error), matching the spacing of
+    shadcn's `<Form>` and `<FormItem>` primitives exactly.
+  - Inputs use `h-9`, `rounded-md`, `border-input`, `bg-transparent`,
+    `text-sm`, `shadow-sm`, `focus-visible:ring-1`, etc.
+  - Errors are rendered as `<p class="text-sm font-medium text-destructive">`
+    immediately after the control, paired with `aria-invalid` on the input
+    (set automatically by `form_row`).
+  - Descriptions use `<p class="text-sm text-muted-foreground">` and are
+    wired up via `aria-describedby` (also set by `form_row`).
+  - Buttons follow the shadcn `<Button>` variants: `default` for submit,
+    `outline` for previous, `secondary` for reset / skip, `destructive` if
+    `attr.class` contains it.
+
+  Because Symfony's FormRenderer invokes each `{% block %}` directly (instead
+  of rendering the template top-to-bottom), reusable class strings are
+  exposed as their OWN blocks rather than `{% set %}` variables — that's the
+  only pattern that lets every widget block share the same vocabulary.
+
+  This file is the single source of truth: views call only `{{ form(form) }}`
+  and the resulting HTML looks like shadcn/ui — guaranteed.
+#}
+
+{# ---------------------------------------------------------------------------
+   Reusable class strings, exposed as blocks.
+   --------------------------------------------------------------------------- #}
+
+{%- block _shadcn_input_class -%}flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-destructive aria-[invalid=true]:focus-visible:ring-destructive{%- endblock -%}
+
+{%- block _shadcn_textarea_class -%}flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-destructive aria-[invalid=true]:focus-visible:ring-destructive{%- endblock -%}
+
+{%- block _shadcn_select_class -%}flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-destructive aria-[invalid=true]:focus-visible:ring-destructive{%- endblock -%}
+
+{%- block _shadcn_checkbox_class -%}peer h-4 w-4 shrink-0 rounded-sm border border-primary shadow focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 accent-primary{%- endblock -%}
+
+{%- block _shadcn_radio_class -%}peer h-4 w-4 shrink-0 rounded-full border border-primary text-primary shadow focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 accent-primary{%- endblock -%}
+
+{%- block _shadcn_label_class -%}text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70{%- endblock -%}
+
+{%- block _shadcn_description_class -%}text-sm text-muted-foreground{%- endblock -%}
+
+{%- block _shadcn_error_class -%}text-sm font-medium text-destructive{%- endblock -%}
+
+{%- block _shadcn_button_base -%}inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-4 py-2{%- endblock -%}
+
+{%- block _shadcn_button_default -%}{{ block('_shadcn_button_base') }} bg-primary text-primary-foreground shadow hover:bg-primary/90{%- endblock -%}
+{%- block _shadcn_button_outline -%}{{ block('_shadcn_button_base') }} border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground{%- endblock -%}
+{%- block _shadcn_button_secondary -%}{{ block('_shadcn_button_base') }} bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80{%- endblock -%}
+{%- block _shadcn_button_destructive -%}{{ block('_shadcn_button_base') }} bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90{%- endblock -%}
+
+{# ---------------------------------------------------------------------------
+   Row wrapper (FormItem) — every non-button, non-hidden row is rendered as a
+   <div class="space-y-2"> stack: label, control, description, error.
+   --------------------------------------------------------------------------- #}
+
+{%- block form_row -%}
+    {%- set attr = {} -%}
+    {%- set aria_describedby = [] -%}
+    {%- if help -%}
+        {%- set aria_describedby = aria_describedby|merge([id ~ '_help']) -%}
+    {%- endif -%}
+    {%- if errors|length > 0 -%}
+        {%- set aria_describedby = aria_describedby|merge(errors|map((_, index) => id ~ '_error' ~ (index + 1))) -%}
+    {%- endif -%}
+    {%- if aria_describedby|length > 0 -%}
+        {%- set attr = attr|merge({'aria-describedby': aria_describedby|join(' ')}) -%}
+    {%- endif -%}
+    {%- if errors|length > 0 -%}
+        {%- set attr = attr|merge({'aria-invalid': 'true'}) -%}
+    {%- endif -%}
+    {%- set widget_attr = {attr: attr} -%}
+    {%- set row_attr = row_attr|default({})|merge({class: ((row_attr.class|default('')) ~ ' space-y-2 shadcn-form-item')|trim, 'data-form-item': true}) -%}
+    <div{% with {attr: row_attr} %}{{ block('attributes') }}{% endwith %}>
+        {{- form_label(form) -}}
+        {{- form_widget(form, widget_attr) -}}
+        {{- form_help(form) -}}
+        {{- form_errors(form) -}}
+    </div>
+{%- endblock form_row -%}
+
+{# Buttons rendered inside the navigator row should not get the FormItem layout. #}
+{%- block button_row -%}
+    {{- form_widget(form) -}}
+{%- endblock button_row -%}
+
+{# Hidden rows render only the input, no wrapper. #}
+{%- block hidden_row -%}
+    {{- form_widget(form) -}}
+{%- endblock hidden_row -%}
+
+{# ---------------------------------------------------------------------------
+   Label (FormLabel)
+   --------------------------------------------------------------------------- #}
+
+{%- block form_label -%}
+    {%- if label is not same as(false) -%}
+        {%- if not compound -%}
+            {%- set label_attr = label_attr|merge({for: id}) -%}
+        {%- endif -%}
+        {%- set label_attr = label_attr|merge({class: ((label_attr.class|default('') ~ ' ' ~ block('_shadcn_label_class'))|trim)}) -%}
+        {%- if required -%}
+            {%- set label_attr = label_attr|merge({class: (label_attr.class ~ ' shadcn-required')|trim}) -%}
+        {%- endif -%}
+        <label{% with {attr: label_attr} %}{{ block('attributes') }}{% endwith %}>
+            {{- block('form_label_content') -}}
+            {%- if required %} <span class="ml-1 text-destructive" aria-hidden="true">*</span>{% endif -%}
+        </label>
+    {%- endif -%}
+{%- endblock form_label -%}
+
+{# ---------------------------------------------------------------------------
+   Help text (FormDescription)
+   --------------------------------------------------------------------------- #}
+
+{%- block form_help -%}
+    {%- if help -%}
+        {%- set help_attr = help_attr|merge({
+            class: ((help_attr.class|default('') ~ ' ' ~ block('_shadcn_description_class'))|trim),
+            id: id ~ '_help',
+        }) -%}
+        <p{% with {attr: help_attr} %}{{ block('attributes') }}{% endwith %}>
+            {{- block('form_help_content') -}}
+        </p>
+    {%- endif -%}
+{%- endblock form_help -%}
+
+{# ---------------------------------------------------------------------------
+   Errors (FormMessage)
+   --------------------------------------------------------------------------- #}
+
+{%- block form_errors -%}
+    {%- if errors|length > 0 -%}
+        {%- if form is rootform and compound -%}
+            <div role="alert" class="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive shadcn-form-error-summary">
+                <p class="font-semibold">Please fix the errors below:</p>
+                <ul class="mt-2 list-disc space-y-1 pl-5">
+                    {%- for error in errors -%}
+                        <li id="{{ id ~ '_error' ~ loop.index }}">{{ error.message }}</li>
+                    {%- endfor -%}
+                </ul>
+            </div>
+        {%- else -%}
+            {%- for error in errors -%}
+                <p id="{{ id ~ '_error' ~ loop.index }}" class="{{ block('_shadcn_error_class') }} shadcn-form-message">
+                    {{- error.message -}}
+                </p>
+            {%- endfor -%}
+        {%- endif -%}
+    {%- endif -%}
+{%- endblock form_errors -%}
+
+{# ---------------------------------------------------------------------------
+   Simple inputs (text / email / search / url / tel / password / number /
+   integer / hidden / week / date / time when widget='single_text')
+   --------------------------------------------------------------------------- #}
+
+{%- block form_widget_simple -%}
+    {%- set type = type|default('text') -%}
+    {%- if type == 'range' -%}
+        {%- set attr = attr|merge({class: ((attr.class|default('') ~ ' h-2 w-full cursor-pointer appearance-none rounded-lg bg-secondary accent-primary disabled:cursor-not-allowed disabled:opacity-50')|trim)}) -%}
+        {%- set required = false -%}
+    {%- elseif type == 'color' -%}
+        {%- set attr = attr|merge({class: ((attr.class|default('') ~ ' h-9 w-16 cursor-pointer rounded-md border border-input bg-transparent p-1 disabled:cursor-not-allowed disabled:opacity-50')|trim)}) -%}
+        {%- set required = false -%}
+    {%- elseif type != 'hidden' -%}
+        {%- set attr = attr|merge({class: ((attr.class|default('') ~ ' ' ~ block('_shadcn_input_class'))|trim)}) -%}
+    {%- endif -%}
+    <input type="{{ type }}" {{ block('widget_attributes') }} {% if value is not empty %}value="{{ value }}" {% endif %}/>
+{%- endblock form_widget_simple -%}
+
+{# Textarea --- #}
+{%- block textarea_widget -%}
+    {%- set attr = attr|merge({class: ((attr.class|default('') ~ ' ' ~ block('_shadcn_textarea_class'))|trim)}) -%}
+    <textarea {{ block('widget_attributes') }}>{{ value }}</textarea>
+{%- endblock textarea_widget -%}
+
+{# ---------------------------------------------------------------------------
+   Choice (select / radio group / checkbox group)
+   --------------------------------------------------------------------------- #}
+
+{%- block choice_widget_collapsed -%}
+    {%- if required and placeholder is none and not placeholder_in_choices and not multiple and (attr.size is not defined or attr.size <= 1) -%}
+        {%- set required = false -%}
+    {%- endif -%}
+    {%- set attr = attr|merge({class: ((attr.class|default('') ~ ' ' ~ block('_shadcn_select_class'))|trim)}) -%}
+    <select {{ block('widget_attributes') }}{% if multiple %} multiple="multiple"{% endif %}>
+        {%- if placeholder is not none -%}
+            <option value=""{% if placeholder_attr|default({}) %}{% with {attr: placeholder_attr} %}{{ block('attributes') }}{% endwith %}{% endif %}{% if required and value is empty %} selected="selected"{% endif %}>{{ placeholder != '' ? (translation_domain is same as(false) ? placeholder : placeholder|trans({}, translation_domain)) }}</option>
+        {%- endif -%}
+        {%- if preferred_choices|length > 0 -%}
+            {%- set options = preferred_choices -%}
+            {%- set render_preferred_choices = true -%}
+            {{- block('choice_widget_options') -}}
+            {%- if choices|length > 0 and separator is not none -%}
+                {%- if separator_html is not defined or separator_html is same as(false) -%}
+                    <option disabled="disabled">{{ separator }}</option>
+                {%- else -%}
+                    {{ separator|raw }}
+                {%- endif -%}
+            {%- endif -%}
+        {%- endif -%}
+        {%- set options = choices -%}
+        {%- set render_preferred_choices = false -%}
+        {{- block('choice_widget_options') -}}
+    </select>
+{%- endblock choice_widget_collapsed -%}
+
+{%- block choice_widget_expanded -%}
+    {%- set attr = attr|merge({class: ((attr.class|default('') ~ ' flex flex-col gap-2 shadcn-choice-group')|trim), role: multiple ? 'group' : 'radiogroup'}) -%}
+    <div {{ block('widget_container_attributes') }}>
+        {%- for child in form -%}
+            <label class="flex items-start gap-3 rounded-md border border-input bg-transparent p-3 shadow-sm transition-colors hover:bg-accent/40 has-[:checked]:border-primary has-[:checked]:bg-accent/40 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50 cursor-pointer">
+                {{- form_widget(child) -}}
+                <div class="grid gap-1 leading-none">
+                    <span class="{{ block('_shadcn_label_class') }}">
+                        {%- if choice_translation_domain is same as(false) -%}
+                            {{ child.vars.label|default(child.vars.name) }}
+                        {%- else -%}
+                            {{ (child.vars.label|default(child.vars.name))|trans(child.vars.label_translation_parameters|default({}), choice_translation_domain) }}
+                        {%- endif -%}
+                    </span>
+                </div>
+            </label>
+        {%- endfor -%}
+    </div>
+{%- endblock choice_widget_expanded -%}
+
+{# ---------------------------------------------------------------------------
+   Checkbox / radio
+   --------------------------------------------------------------------------- #}
+
+{%- block checkbox_widget -%}
+    {%- set attr = attr|merge({class: ((attr.class|default('') ~ ' ' ~ block('_shadcn_checkbox_class'))|trim)}) -%}
+    <input type="checkbox" {{ block('widget_attributes') }}{% if value is defined %} value="{{ value }}"{% endif %}{% if checked %} checked="checked"{% endif %} />
+{%- endblock checkbox_widget -%}
+
+{%- block radio_widget -%}
+    {%- set attr = attr|merge({class: ((attr.class|default('') ~ ' ' ~ block('_shadcn_radio_class'))|trim)}) -%}
+    <input type="radio" {{ block('widget_attributes') }}{% if value is defined %} value="{{ value }}"{% endif %}{% if checked %} checked="checked"{% endif %} />
+{%- endblock radio_widget -%}
+
+{# Single-row layout for top-level standalone checkboxes (e.g. "I accept terms"). #}
+{%- block checkbox_row -%}
+    {%- set row_attr = row_attr|default({})|merge({class: ((row_attr.class|default('')) ~ ' shadcn-form-item')|trim, 'data-form-item': true}) -%}
+    <div{% with {attr: row_attr} %}{{ block('attributes') }}{% endwith %}>
+        <div class="flex items-start gap-3 rounded-md border border-input bg-transparent p-3 shadow-sm has-[:checked]:border-primary has-[:checked]:bg-accent/40">
+            {{- form_widget(form) -}}
+            <div class="grid gap-1 leading-none">
+                {{- form_label(form, null, {label_attr: {class: 'cursor-pointer'}}) -}}
+                {{- form_help(form) -}}
+            </div>
+        </div>
+        {{- form_errors(form) -}}
+    </div>
+{%- endblock checkbox_row -%}
+
+{%- block radio_row -%}
+    {{- block('checkbox_row') -}}
+{%- endblock radio_row -%}
+
+{# ---------------------------------------------------------------------------
+   Money — render the currency symbol as a leading addon.
+   --------------------------------------------------------------------------- #}
+
+{%- block money_widget -%}
+    {%- set _money = money_pattern|default('{{ widget }}') -%}
+    <div class="relative flex items-center">
+        {%- set _prefix = _money|split('{{ widget }}')|first|trim -%}
+        {%- set _suffix = _money|split('{{ widget }}')|last|trim -%}
+        {%- if _prefix is not empty -%}
+            <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">{{ _prefix }}</span>
+            {%- set attr = attr|merge({class: ((attr.class|default('') ~ ' pl-7')|trim)}) -%}
+        {%- endif -%}
+        {%- if _suffix is not empty -%}
+            {%- set attr = attr|merge({class: ((attr.class|default('') ~ ' pr-7')|trim)}) -%}
+        {%- endif -%}
+        {{ block('form_widget_simple') }}
+        {%- if _suffix is not empty -%}
+            <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">{{ _suffix }}</span>
+        {%- endif -%}
+    </div>
+{%- endblock money_widget -%}
+
+{%- block percent_widget -%}
+    <div class="relative flex items-center">
+        {%- set attr = attr|merge({class: ((attr.class|default('') ~ ' pr-8')|trim)}) -%}
+        {%- set type = type|default('text') -%}
+        {{ block('form_widget_simple') }}
+        <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">{{ symbol|default('%') }}</span>
+    </div>
+{%- endblock percent_widget -%}
+
+{# ---------------------------------------------------------------------------
+   Date / Time / DateTime / Week / DateInterval — the multi-widget variants.
+   For `single_text` we fall through to `form_widget_simple` (already styled).
+   --------------------------------------------------------------------------- #}
+
+{%- block date_widget -%}
+    {%- if widget == 'single_text' -%}
+        {{ block('form_widget_simple') }}
+    {%- else -%}
+        <div class="flex flex-wrap items-center gap-2" {{ block('widget_container_attributes') }}>
+            {{- date_pattern|replace({
+                '{{ year }}': form_widget(form.year, {attr: {class: block('_shadcn_select_class') ~ ' max-w-[7rem]'}}),
+                '{{ month }}': form_widget(form.month, {attr: {class: block('_shadcn_select_class') ~ ' max-w-[9rem]'}}),
+                '{{ day }}': form_widget(form.day, {attr: {class: block('_shadcn_select_class') ~ ' max-w-[5.5rem]'}}),
+            })|raw -}}
+        </div>
+    {%- endif -%}
+{%- endblock date_widget -%}
+
+{%- block time_widget -%}
+    {%- if widget == 'single_text' -%}
+        {{ block('form_widget_simple') }}
+    {%- else -%}
+        <div class="flex items-center gap-2" {{ block('widget_container_attributes') }}>
+            {{ form_widget(form.hour, {attr: {class: block('_shadcn_select_class') ~ ' max-w-[5rem]'}}) }}
+            {%- if with_minutes -%}<span class="text-muted-foreground">:</span>{{ form_widget(form.minute, {attr: {class: block('_shadcn_select_class') ~ ' max-w-[5rem]'}}) }}{%- endif -%}
+            {%- if with_seconds -%}<span class="text-muted-foreground">:</span>{{ form_widget(form.second, {attr: {class: block('_shadcn_select_class') ~ ' max-w-[5rem]'}}) }}{%- endif -%}
+        </div>
+    {%- endif -%}
+{%- endblock time_widget -%}
+
+{%- block datetime_widget -%}
+    {%- if widget == 'single_text' -%}
+        {{ block('form_widget_simple') }}
+    {%- else -%}
+        <div class="flex flex-wrap items-center gap-3" {{ block('widget_container_attributes') }}>
+            <div class="space-y-1">{{ form_widget(form.date) }}</div>
+            <div class="space-y-1">{{ form_widget(form.time) }}</div>
+        </div>
+    {%- endif -%}
+{%- endblock datetime_widget -%}
+
+{%- block week_widget -%}
+    {%- if widget == 'single_text' -%}
+        {{ block('form_widget_simple') }}
+    {%- else -%}
+        <div class="flex items-center gap-2" {{ block('widget_container_attributes') }}>
+            {{ form_widget(form.year, {attr: {class: block('_shadcn_select_class') ~ ' max-w-[7rem]'}}) }}
+            <span class="text-muted-foreground">-</span>
+            {{ form_widget(form.week, {attr: {class: block('_shadcn_select_class') ~ ' max-w-[7rem]'}}) }}
+        </div>
+    {%- endif -%}
+{%- endblock week_widget -%}
+
+{%- block dateinterval_widget -%}
+    {%- if widget == 'single_text' -%}
+        {{- block('form_widget_simple') -}}
+    {%- else -%}
+        <div class="grid grid-flow-col gap-3" {{ block('widget_container_attributes') }}>
+            {%- if with_years %}<div class="space-y-1"><span class="{{ block('_shadcn_label_class') }} block">Years</span>{{ form_widget(form.years) }}</div>{% endif -%}
+            {%- if with_months %}<div class="space-y-1"><span class="{{ block('_shadcn_label_class') }} block">Months</span>{{ form_widget(form.months) }}</div>{% endif -%}
+            {%- if with_weeks %}<div class="space-y-1"><span class="{{ block('_shadcn_label_class') }} block">Weeks</span>{{ form_widget(form.weeks) }}</div>{% endif -%}
+            {%- if with_days %}<div class="space-y-1"><span class="{{ block('_shadcn_label_class') }} block">Days</span>{{ form_widget(form.days) }}</div>{% endif -%}
+            {%- if with_hours %}<div class="space-y-1"><span class="{{ block('_shadcn_label_class') }} block">Hours</span>{{ form_widget(form.hours) }}</div>{% endif -%}
+            {%- if with_minutes %}<div class="space-y-1"><span class="{{ block('_shadcn_label_class') }} block">Minutes</span>{{ form_widget(form.minutes) }}</div>{% endif -%}
+            {%- if with_seconds %}<div class="space-y-1"><span class="{{ block('_shadcn_label_class') }} block">Seconds</span>{{ form_widget(form.seconds) }}</div>{% endif -%}
+        </div>
+        {%- if with_invert %}<div class="mt-3">{{ form_widget(form.invert) }}</div>{% endif -%}
+    {%- endif -%}
+{%- endblock dateinterval_widget -%}
+
+{# ---------------------------------------------------------------------------
+   File input — shadcn-style with custom button.
+   --------------------------------------------------------------------------- #}
+
+{%- block file_widget -%}
+    {%- set attr = attr|merge({class: ((attr.class|default('') ~ ' ' ~ block('_shadcn_input_class') ~ ' file:mr-3 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:py-1 file:text-sm file:font-medium file:text-secondary-foreground hover:file:bg-secondary/80 pt-1.5')|trim)}) -%}
+    {{- block('form_widget_simple') -}}
+{%- endblock file_widget -%}
+
+{# ---------------------------------------------------------------------------
+   Collection (with prototype) — renders an "Add another" affordance and
+   per-row remove buttons.
+   --------------------------------------------------------------------------- #}
+
+{%- block collection_widget -%}
+    {%- if prototype is defined and not prototype.rendered -%}
+        {%- set attr = attr|merge({'data-prototype': form_row(prototype)}) -%}
+    {%- endif -%}
+    {%- set attr = attr|merge({class: ((attr.class|default('') ~ ' space-y-3 shadcn-collection')|trim), 'data-collection': true}) -%}
+    <div {{ block('widget_container_attributes') }}>
+        {%- for child in form -%}
+            <div class="rounded-md border border-input bg-transparent p-4 shadow-sm space-y-4 shadcn-collection-row" data-collection-row="true">
+                {{- form_row(child) -}}
+                {%- if allow_delete|default(false) -%}
+                    <button type="button" class="{{ block('_shadcn_button_outline') }} shadcn-collection-remove" data-collection-remove="true">Remove</button>
+                {%- endif -%}
+            </div>
+        {%- endfor -%}
+        {%- if allow_add|default(false) -%}
+            <button type="button" class="{{ block('_shadcn_button_secondary') }} shadcn-collection-add" data-collection-add="true">+ Add another</button>
+        {%- endif -%}
+    </div>
+{%- endblock collection_widget -%}
+
+{# ---------------------------------------------------------------------------
+   Buttons — Submit / Reset / generic Button
+   --------------------------------------------------------------------------- #}
+
+{%- block button_widget -%}
+    {%- set _variant = attr['data-variant']|default(null) -%}
+    {%- set _action = attr['data-action']|default(null) -%}
+    {%- set _existing_class = attr.class|default('') -%}
+    {%- if _variant is null -%}
+        {%- if _action == 'previous' or 'shadcn-previous' in _existing_class -%}
+            {%- set _variant = 'outline' -%}
+        {%- elseif _action == 'reset' or 'shadcn-reset' in _existing_class -%}
+            {%- set _variant = 'secondary' -%}
+        {%- elseif 'destructive' in _existing_class -%}
+            {%- set _variant = 'destructive' -%}
+        {%- else -%}
+            {%- set _variant = 'default' -%}
+        {%- endif -%}
+    {%- endif -%}
+    {%- set _btn_class = block('_shadcn_button_default') -%}
+    {%- if _variant == 'outline' %}{% set _btn_class = block('_shadcn_button_outline') %}{% endif -%}
+    {%- if _variant == 'secondary' %}{% set _btn_class = block('_shadcn_button_secondary') %}{% endif -%}
+    {%- if _variant == 'destructive' %}{% set _btn_class = block('_shadcn_button_destructive') %}{% endif -%}
+    {%- set attr = attr|merge({class: ((_existing_class ~ ' ' ~ _btn_class)|trim)}) -%}
+    <button type="{{ type|default('button') }}" {{ block('button_attributes') }}>
+        {{- block('form_label_content') -}}
+    </button>
+{%- endblock button_widget -%}
+
+{# ---------------------------------------------------------------------------
+   FormFlow navigator — render Previous (outline) / Next (default) / Finish
+   (default) horizontally with the correct spacing and button variants.
+   --------------------------------------------------------------------------- #}
+
+{%- block navigator_flow_widget -%}
+    <div class="mt-8 flex flex-wrap items-center justify-between gap-3 border-t pt-6 shadcn-flow-navigator">
+        <div class="flex items-center gap-2">
+            {%- if form.previous is defined and not form.previous.rendered -%}
+                {{ form_widget(form.previous, {label: 'Back', attr: {class: 'shadcn-previous', 'data-action': 'previous'}}) }}
+            {%- endif -%}
+        </div>
+        <div class="flex items-center gap-2">
+            {%- if form.next is defined and not form.next.rendered -%}
+                {{ form_widget(form.next, {label: 'Continue', attr: {'data-action': 'next'}}) }}
+            {%- endif -%}
+            {%- if form.finish is defined and not form.finish.rendered -%}
+                {{ form_widget(form.finish, {label: 'Submit application', attr: {'data-action': 'finish'}}) }}
+            {%- endif -%}
+        </div>
+    </div>
+{%- endblock navigator_flow_widget -%}
+
+{# ---------------------------------------------------------------------------
+   FormFlow root — render the progress bar above the current step.
+   --------------------------------------------------------------------------- #}
+
+{%- block form_flow_widget -%}
+    {%- if cursor is defined and visible_steps is defined -%}
+        {%- set total = visible_steps|length -%}
+        {%- set current_position = visible_steps[cursor.currentStep].position|default(1) -%}
+        <ol class="mb-8 grid grid-cols-{{ total }} gap-2 shadcn-flow-progress" aria-label="Form progress">
+            {%- for name, step in visible_steps -%}
+                {%- set is_done = step.position < current_position -%}
+                {%- set is_current = step.is_current_step -%}
+                <li class="flex flex-col items-start gap-1">
+                    <div class="flex w-full items-center gap-2">
+                        <span class="flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold {{ is_current ? 'bg-primary text-primary-foreground' : is_done ? 'bg-primary/80 text-primary-foreground' : 'bg-muted text-muted-foreground' }}">
+                            {{ is_done ? '✓' : step.position }}
+                        </span>
+                        <span class="hidden sm:block text-xs font-medium {{ is_current ? 'text-foreground' : 'text-muted-foreground' }}">
+                            {{ name|replace({'_': ' '})|capitalize }}
+                        </span>
+                    </div>
+                    <span class="block h-1 w-full rounded-full {{ is_current or is_done ? 'bg-primary' : 'bg-muted' }}"></span>
+                </li>
+            {%- endfor -%}
+        </ol>
+    {%- endif -%}
+    <div class="space-y-6 shadcn-flow-body">
+        {{- block('form_widget_compound') -}}
+    </div>
+{%- endblock form_flow_widget -%}
+
+{# ---------------------------------------------------------------------------
+   Root form layout — the entire <form> wrapper.
+   --------------------------------------------------------------------------- #}
+
+{%- block form_widget_compound -%}
+    {%- set attr = attr|merge({class: ((attr.class|default('') ~ ' space-y-6 shadcn-form')|trim)}) -%}
+    <div {{ block('widget_container_attributes') }}>
+        {%- if form is rootform -%}
+            {{ form_errors(form) }}
+        {%- endif -%}
+        {{- block('form_rows') -}}
+        {{- form_rest(form) -}}
+    </div>
+{%- endblock form_widget_compound -%}
+
+{# ---------------------------------------------------------------------------
+   Misc — form_start with shadcn-friendly defaults.
+   --------------------------------------------------------------------------- #}
+
+{%- block form_start -%}
+    {%- do form.setMethodRendered() -%}
+    {%- set method = method|upper -%}
+    {%- if method in ['GET', 'POST'] -%}
+        {%- set form_method = method -%}
+    {%- else -%}
+        {%- set form_method = 'POST' -%}
+    {%- endif -%}
+    {%- set attr = attr|merge({class: ((attr.class|default('') ~ ' shadcn-form-root')|trim), novalidate: 'novalidate'}) -%}
+    <form{% if name != '' %} name="{{ name }}"{% endif %} method="{{ form_method|lower }}"{% if action != '' %} action="{{ action }}"{% endif %}{{ block('attributes') }}{% if multipart %} enctype="multipart/form-data"{% endif %}>
+    {%- if form_method != method -%}
+        <input type="hidden" name="_method" value="{{ method }}" />
+    {%- endif -%}
+{%- endblock form_start -%}

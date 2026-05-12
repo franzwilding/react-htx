@@ -114,6 +114,17 @@ side-by-side comparisons:
 
 ---
 
+## Examples
+
+End-to-end example apps live in [`/examples`](./examples):
+
+- [**symfony-multistep-form**](./examples/symfony-multistep-form) — Symfony 7.4
+  `FormFlow` with a complete shadcn/ui form theme that covers every native
+  Symfony form field type. The Twig view is one line (`{{ form(form) }}`);
+  every visual decision lives in a single form theme file.
+
+---
+
 ## Docs map
 
 | Topic | Link |

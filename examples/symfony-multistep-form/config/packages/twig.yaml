@@ -1,0 +1,5 @@
+twig:
+    default_path: '%kernel.project_dir%/templates'
+    form_themes:
+        - 'form/shadcn_form_theme.html.twig'
+    strict_variables: true

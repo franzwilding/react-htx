@@ -1,0 +1,18 @@
+{% extends 'base.html.twig' %}
+
+{# Tell Twig to use the shadcn theme — note that this is the ONLY place forms
+   are touched in this view. The actual `<form>` and every field is rendered
+   exclusively through `form(form)`, which means every visual decision is
+   centralized in templates/form/shadcn_form_theme.html.twig. #}
+{% form_theme form 'form/shadcn_form_theme.html.twig' %}
+
+{% block title %}Apply — Step {{ form.vars.cursor.stepIndex + 1 }} of {{ form.vars.cursor.totalSteps }}{% endblock %}
+{% block heading %}Apply for an account{% endblock %}
+{% block subheading %}
+    Step {{ form.vars.cursor.stepIndex + 1 }} of {{ form.vars.cursor.totalSteps }} —
+    {{ form.vars.cursor.currentStep|replace({'_': ' '})|capitalize }}
+{% endblock %}
+
+{% block body %}
+    {{ form(form) }}
+{% endblock %}

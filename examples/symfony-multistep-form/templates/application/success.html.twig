@@ -1,0 +1,14 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Application submitted{% endblock %}
+{% block heading %}Thanks, {{ application.personal.firstName }}!{% endblock %}
+{% block subheading %}We received your application and will be in touch shortly.{% endblock %}
+
+{% block body %}
+    <div class="rounded-md border border-green-500/50 bg-green-50 px-4 py-3 text-sm text-green-900">
+        Your application <strong>{{ application.documents.accountId }}</strong> has been queued for review.
+    </div>
+    <a href="{{ path('app_application_flow') }}" class="mt-6 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline">
+        Start another application →
+    </a>
+{% endblock %}
