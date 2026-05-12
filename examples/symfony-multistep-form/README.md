@@ -1,9 +1,9 @@
 # Symfony Multi-Step Form, the shadcn/ui way
 
-A complete, working Symfony 7.4 app that demonstrates the **`FormFlow`**
-component (introduced in [Symfony 7.4](https://symfony.com/blog/new-in-symfony-7-4-multi-step-forms))
-and a single **shadcn/ui form theme** that handles every native Symfony form
-field type.
+A complete, working **Symfony 8** app that demonstrates the **`FormFlow`**
+component (introduced in [Symfony 7.4](https://symfony.com/blog/new-in-symfony-7-4-multi-step-forms)
+and rolled forward into the 8.x line) and a single **shadcn/ui form theme**
+that handles every native Symfony form field type.
 
 The view is just one line:
 
@@ -52,10 +52,18 @@ Every widget is rendered by a block in
 
 ## Run it
 
+Install the PHP and JS dependencies and build the Tailwind v4 + shadcn token
+bundle once:
+
 ```bash
 composer install
 npm install
-npm run build               # builds Tailwind v4 + shadcn tokens with Vite
+npm run build
+```
+
+Then start Symfony on the PHP built-in web server and open the form:
+
+```bash
 php -S 127.0.0.1:8000 -t public
 open http://127.0.0.1:8000/apply
 ```
@@ -64,14 +72,15 @@ Requires PHP 8.2+, Composer, and Node 18+. The example uses the PHP built-in
 web server so there's no dependency on `symfony/cli` — though `symfony serve`
 works too.
 
-For an HMR dev loop, run Vite alongside the PHP server:
+For an HMR dev loop, run Vite alongside the PHP server. `pentatrion/vite-bundle`
+switches between dev and built assets automatically based on `APP_ENV`:
 
 ```bash
-npm run dev   # Vite dev server on http://localhost:5173 — Symfony pulls assets straight from it
+npm run dev
 ```
 
-`pentatrion/vite-bundle` switches between dev and built assets automatically
-based on `APP_ENV`.
+The Vite dev server listens on `http://localhost:5173`; Symfony pulls the
+asset URLs straight from it while `APP_ENV=dev`.
 
 ## Test it
 
@@ -283,6 +292,19 @@ public function __invoke(Request $request): Response
         'form' => $flow->getStepForm(),
     ]);
 }
+```
+
+## Troubleshooting
+
+**`vite build` fails with “The project root contains the `#` character”.**
+zsh on macOS doesn't enable `interactive_comments` by default, so pasting a
+line like `npm run build # comment` passes the `#` as an extra argument to
+Vite and Vite treats it as an entry name. Run the commands without inline
+comments (the snippets in this README are already split that way) or enable
+the option in `~/.zshrc`:
+
+```zsh
+setopt interactive_comments
 ```
 
 ## Caveats worth knowing
