@@ -1,0 +1,6 @@
+pentatrion_vite:
+    build_directory: build
+    throw_on_missing_entry: true
+    script_attributes:
+        defer: true
+    preload: link-tag

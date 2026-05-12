@@ -1,14 +1,17 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-background text-foreground antialiased">
+<html lang="en">
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>{% block title %}Application{% endblock %}</title>
         {% block stylesheets %}
-            <link rel="stylesheet" href="{{ asset('css/shadcn.css') }}" />
+            {{ vite_entry_link_tags('app') }}
+        {% endblock %}
+        {% block javascripts %}
+            {{ vite_entry_script_tags('app') }}
         {% endblock %}
     </head>
-    <body class="min-h-full bg-background text-foreground">
+    <body class="min-h-full bg-background text-foreground antialiased">
         <main class="mx-auto max-w-2xl px-4 py-12">
             <header class="mb-10">
                 <h1 class="text-3xl font-semibold tracking-tight">{% block heading %}Application{% endblock %}</h1>
