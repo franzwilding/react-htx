@@ -10,6 +10,18 @@ services:
         exclude:
             - '../src/Kernel.php'
             - '../src/Model/'
+            - '../src/Preload/PreloadLink.php'
 
     App\Twig\ReactolithFormExtension:
         tags: ['twig.extension']
+
+    App\Preload\VitePreloadLinkResolver:
+        arguments:
+            $manifestPath: '%kernel.project_dir%/public/build/.vite/manifest.json'
+            $loaders:
+                - { prefix: 'ui-',   path: 'assets/components/ui' }
+                - { prefix: 'flow-', path: 'assets/components/flow' }
+            $publicBuildPath: '/build/'
+
+    App\Preload\ReactolithPreloadSubscriber:
+        tags: ['kernel.event_subscriber']

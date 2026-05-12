@@ -1,72 +1,35 @@
 import "./app.css";
 import { App, Form, createLoader } from "reactolith";
 
-import { Button } from "./components/ui/button";
-import { Checkbox } from "./components/ui/checkbox";
-import {
-  CheckboxGroup,
-  CheckboxGroupItem,
-} from "./components/ui/checkbox-group";
-import { ColorPicker } from "./components/ui/color-picker";
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from "./components/ui/field";
-import { FileInput } from "./components/ui/file-input";
-import { Input } from "./components/ui/input";
-import {
-  RadioGroup,
-  RadioGroupItem,
-} from "./components/ui/radio-group";
-import { Option, Select } from "./components/ui/select";
-import { Slider } from "./components/ui/slider";
-import { Textarea } from "./components/ui/textarea";
-
-import { Collection, CollectionRow } from "./components/flow/collection";
-import { FlowNavigator } from "./components/flow/navigator";
-import { FlowProgress } from "./components/flow/progress";
-
 /**
- * Mount reactolith on the page root. Every `<ui-*>`, `<flow-*>`, `<my-form>`
- * tag in the server-rendered HTML is resolved to one of the React components
- * imported above. Anything else stays plain DOM (`<div>`, `<ol>`, `<p>` …).
+ * Lazy-load every shadcn-style component from its own chunk. `import.meta.glob`
+ * defaults to dynamic imports, so Vite emits one chunk per `.tsx` file — that's
+ * what makes per-component HTTP/2 preloading actually mean something.
  *
- * We don't use `createLoader` here on purpose: this example deliberately
- * ships every component up-front so the demo is a single bundle that's easy
- * to read. In a real app `createLoader({ modules: import.meta.glob(...) })`
- * gives you lazy-loaded components without any per-tag wiring.
+ * `createLoader` resolves a kebab-case tag to a file using the rules from the
+ * reactolith Quick Start:
+ *
+ *   <ui-input>               → ./components/ui/input.tsx (named `Input` or default)
+ *   <ui-checkbox-group>      → ./components/ui/checkbox-group.tsx
+ *   <ui-checkbox-group-item> → falls back to checkbox-group.tsx (named `CheckboxGroupItem`)
+ *   <ui-field-label>         → falls back to field.tsx (named `FieldLabel`)
+ *
+ * `<my-form>` resolves to reactolith's own `Form` export (eager — included in
+ * the main app bundle because every page uses it).
  */
-const registry: Record<string, React.ComponentType<Record<string, unknown>>> = {
-  "my-form": Form,
+const uiLoader = createLoader({
+  modules: import.meta.glob("./components/ui/*.tsx"),
+  prefix: "ui-",
+  onMissing: () => null,
+});
 
-  // Form layout primitives.
-  "ui-field": Field,
-  "ui-field-label": FieldLabel,
-  "ui-field-description": FieldDescription,
-  "ui-field-error": FieldError,
+const flowLoader = createLoader({
+  modules: import.meta.glob("./components/flow/*.tsx"),
+  prefix: "flow-",
+  onMissing: () => null,
+});
 
-  // Controls.
-  "ui-input": Input,
-  "ui-textarea": Textarea,
-  "ui-button": Button,
-  "ui-checkbox": Checkbox,
-  "ui-checkbox-group": CheckboxGroup,
-  "ui-checkbox-group-item": CheckboxGroupItem,
-  "ui-radio-group": RadioGroup,
-  "ui-radio-group-item": RadioGroupItem,
-  "ui-select": Select,
-  "ui-option": Option,
-  "ui-slider": Slider,
-  "ui-color": ColorPicker,
-  "ui-file": FileInput,
-
-  // FormFlow integration components.
-  "flow-progress": FlowProgress,
-  "flow-navigator": FlowNavigator,
-  "flow-collection": Collection,
-  "flow-collection-row": CollectionRow,
-};
-
-new App(({ is }) => registry[is] ?? null);
+new App(({ is }) => {
+  if (is === "my-form") return Form;
+  return uiLoader({ is }) ?? flowLoader({ is });
+});

@@ -29,6 +29,35 @@ class ApplicationFlowControllerTest extends WebTestCase
         $this->assertSelectorExists('script[src^="/build/"]');
     }
 
+    public function testResponseAdvertisesPerComponentModulepreloadLinks(): void
+    {
+        $client = static::createClient();
+        $client->request('GET', '/apply');
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $client->getResponse()->getContent();
+
+        // Every `<ui-*>` / `<flow-*>` tag on the page should yield a
+        // `<link rel="modulepreload">` for its chunk.
+        $this->assertMatchesRegularExpression(
+            '#<link rel="modulepreload"[^>]*assets/input-[^"]+\.js"#',
+            $body,
+            'Expected the `<ui-input>` chunk to be preloaded.',
+        );
+        $this->assertMatchesRegularExpression(
+            '#<link rel="modulepreload"[^>]*assets/progress-[^"]+\.js"#',
+            $body,
+            'Expected the `<flow-progress>` chunk to be preloaded.',
+        );
+
+        // Same hints are also exposed as HTTP `Link:` headers so an HTTP/2
+        // server can flush them via `103 Early Hints`.
+        $linkHeaders = $client->getResponse()->headers->all('link');
+        $this->assertNotEmpty($linkHeaders, 'Link headers must be emitted.');
+        $joined = implode(', ', $linkHeaders);
+        $this->assertStringContainsString('rel=modulepreload', $joined);
+    }
+
     public function testInvalidSubmissionEmitsJsonErrorsOnMyForm(): void
     {
         $client = static::createClient();

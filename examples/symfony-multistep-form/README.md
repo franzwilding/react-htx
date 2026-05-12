@@ -121,9 +121,15 @@ The example is **fully TDD** with 54 PHPUnit tests / 189 assertions:
   and that `<flow-progress>` serializes the cursor state.
 - **Flow walkthrough** ([`tests/Form/ApplicationFlowWalkthroughTest.php`](tests/Form/ApplicationFlowWalkthroughTest.php))
   drives every step end-to-end and asserts the cursor advances.
+- **Preload tests** ([`tests/Preload/`](tests/Preload/)) cover the manifest
+  resolver (tag → chunk, multi-segment fallback, transitive imports, CSS
+  sidecars) and the kernel.response subscriber (head injection ordering,
+  Link header emission, no-op cases for non-HTML / subrequests / pages with
+  no custom elements).
 - **Controller tests** ([`tests/Controller/ApplicationFlowControllerTest.php`](tests/Controller/ApplicationFlowControllerTest.php))
-  boot the Symfony kernel, GET `/apply`, POST valid + invalid data, and
-  assert the response markup.
+  boot the Symfony kernel, GET `/apply`, POST valid + invalid data, assert
+  the response markup, and verify per-component modulepreload links are
+  injected into the live HTML.
 
 ```bash
 composer install
@@ -393,6 +399,60 @@ public function __invoke(Request $request): Response
 ```
 
 ---
+
+## Chunk preloading
+
+Because each `<ui-*>` / `<flow-*>` tag is resolved by `createLoader` lazily,
+the browser only discovers which JS chunks the page needs **after** parsing
+the document. The [reactolith preloading guide](https://reactolith.github.io/preloading/)
+closes that gap by emitting `<link rel="modulepreload">` (and matching HTTP
+`Link:` headers, so an HTTP/2 server can flush them as `103 Early Hints`).
+
+This example ships a Symfony event subscriber that does exactly that at
+runtime:
+
+```
+src/Preload/
+├── PreloadLink.php                  # value object: URL + rel + as
+├── VitePreloadLinkResolver.php      # tag → manifest entry → file + transitive imports + CSS
+└── ReactolithPreloadSubscriber.php  # kernel.response → scan body, inject <link>, emit Link: headers
+```
+
+On every HTML response the subscriber:
+
+1. Walks the response body once with a regex that picks up every hyphenated
+   tag name (`<my-form>`, `<ui-input>`, `<flow-progress>` …).
+2. Looks each tag up in Vite's `public/build/.vite/manifest.json` using the
+   same fall-back rule as `createLoader` — `ui-radio-group-item` →
+   `radio-group.tsx`.
+3. Follows every entry's `imports` array transitively so shared chunks
+   (`_chunk-…`, `_jsx-runtime-…`) and the entry chunk get preloaded too.
+4. Adds each entry's `css` sidecar as `<link rel="preload" as="style">`.
+5. Injects the `<link>` tags right after `<head>` so they're discoverable
+   even by browsers that don't see HTTP/2 hints, **and** emits the same
+   directives as `Link:` headers.
+
+A typical first response to `/apply` carries roughly ten `<link rel="modulepreload">`
+tags plus one CSS preload — one per visible component, the shared Vite
+chunk, the shared `jsx-runtime` chunk, and the entry. The browser starts
+fetching every chunk while still parsing the HTML body, eliminating the
+component-discovery waterfall.
+
+The mapping between loaders and source paths lives in
+[`config/services.yaml`](config/services.yaml):
+
+```yaml
+App\Preload\VitePreloadLinkResolver:
+    arguments:
+        $manifestPath: '%kernel.project_dir%/public/build/.vite/manifest.json'
+        $loaders:
+            - { prefix: 'ui-',   path: 'assets/components/ui' }
+            - { prefix: 'flow-', path: 'assets/components/flow' }
+        $publicBuildPath: '/build/'
+```
+
+Add a new prefix here whenever you add another component family (e.g. an
+`<icons-…>` set) and the resolver picks it up automatically.
 
 ## Troubleshooting
 

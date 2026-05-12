@@ -161,7 +161,7 @@ class ShadcnFormThemeTest extends ShadcnFormThemeTestCase
         $form = $this->factory->createNamed('color', ColorType::class);
         $html = $this->renderWidget($form->createView());
 
-        $this->assertContainsTag($html, 'ui-color');
+        $this->assertContainsTag($html, 'ui-color-picker');
     }
 
     public function testHiddenWidgetStaysAsNativeInput(): void
@@ -256,7 +256,7 @@ class ShadcnFormThemeTest extends ShadcnFormThemeTestCase
         $form = $this->factory->createNamed('resume', FileType::class);
         $html = $this->renderWidget($form->createView());
 
-        $this->assertContainsTag($html, 'ui-file');
+        $this->assertContainsTag($html, 'ui-file-input');
     }
 
     public function testFileWidgetMultipleAppendsBracketsToName(): void

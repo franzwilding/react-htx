@@ -185,11 +185,11 @@
 {%- endblock range_widget -%}
 
 {%- block color_widget -%}
-    <ui-color name="{{ full_name }}" id="{{ id }}"{% if value is not empty %} value="{{ value }}"{% endif %}{% if disabled %} disabled{% endif %}></ui-color>
+    <ui-color-picker name="{{ full_name }}" id="{{ id }}"{% if value is not empty %} value="{{ value }}"{% endif %}{% if disabled %} disabled{% endif %}></ui-color>
 {%- endblock color_widget -%}
 
 {%- block file_widget -%}
-    <ui-file name="{{ full_name }}{% if multiple|default(false) %}[]{% endif %}" id="{{ id }}"{% if multiple|default(false) %} multiple{% endif %}{% if disabled %} disabled{% endif %}{% if required %} required{% endif %}{% for k, v in attr %} {{ k }}="{{ v }}"{% endfor %}></ui-file>
+    <ui-file-input name="{{ full_name }}{% if multiple|default(false) %}[]{% endif %}" id="{{ id }}"{% if multiple|default(false) %} multiple{% endif %}{% if disabled %} disabled{% endif %}{% if required %} required{% endif %}{% for k, v in attr %} {{ k }}="{{ v }}"{% endfor %}></ui-file-input>
 {%- endblock file_widget -%}
 
 {%- block money_widget -%}
