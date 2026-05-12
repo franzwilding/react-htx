@@ -6,6 +6,7 @@ namespace App\Tests\FormTheme;
 
 use App\Form\Flow\ApplicationFlowType;
 use App\Model\Application;
+use App\Twig\ReactolithFormExtension;
 use Symfony\Bridge\Twig\Extension\FormExtension;
 use Symfony\Bridge\Twig\Extension\TranslationExtension;
 use Symfony\Bridge\Twig\Form\TwigRendererEngine;
@@ -14,7 +15,6 @@ use Symfony\Component\Form\Extension\Validator\ValidatorExtension as FormValidat
 use Symfony\Component\Form\Flow\DataStorage\InMemoryDataStorage;
 use Symfony\Component\Form\Flow\FormFlowInterface;
 use Symfony\Component\Form\FormRenderer;
-use Symfony\Component\Form\Forms;
 use Symfony\Component\Form\Test\FormIntegrationTestCase;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Security\Csrf\CsrfTokenManager;
@@ -24,9 +24,9 @@ use Twig\Environment;
 use Twig\Loader\FilesystemLoader;
 
 /**
- * Renders the full ApplicationFlowType through the shadcn theme and verifies
- * that the FormFlow navigator widget is wired up exactly as the navigator
- * block in shadcn_form_theme.html.twig promises.
+ * Renders the full ApplicationFlowType through the reactolith theme and
+ * asserts that the FormFlow navigator becomes a `<flow-navigator>` with the
+ * right buttons forwarded as `<ui-button data-action="…">`.
  */
 class ShadcnFlowNavigatorTest extends FormIntegrationTestCase
 {
@@ -60,6 +60,7 @@ class ShadcnFlowNavigatorTest extends FormIntegrationTestCase
         $env = new Environment($loader, ['strict_variables' => true]);
         $env->addExtension(new TranslationExtension(new Translator('en')));
         $env->addExtension(new FormExtension());
+        $env->addExtension(new ReactolithFormExtension());
 
         $themes = ['form_div_layout.html.twig', 'form/shadcn_form_theme.html.twig'];
         $this->renderer = new FormRenderer(new TwigRendererEngine($themes, $env), new CsrfTokenManager());
@@ -71,13 +72,16 @@ class ShadcnFlowNavigatorTest extends FormIntegrationTestCase
         $flow = $this->createFlow();
         $view = $flow->createView();
 
-        $html = $this->renderer->searchAndRenderBlock($view->children['navigator'], 'widget');
+        $html = $this->renderer->searchAndRenderBlock(
+            $view->children['navigator'],
+            'widget',
+        );
 
-        $this->assertStringContainsString('shadcn-flow-navigator', $html);
-        $this->assertStringContainsString('Continue', $html);
-        $this->assertStringNotContainsString('Back', $html);
-        $this->assertStringNotContainsString('Submit application', $html);
-        $this->assertStringContainsString('bg-primary', $html);
+        $this->assertStringContainsString('<flow-navigator', $html);
+        $this->assertStringContainsString('data-action="next"', $html);
+        $this->assertStringContainsString('>Continue<', $html);
+        $this->assertStringNotContainsString('data-action="previous"', $html);
+        $this->assertStringNotContainsString('data-action="finish"', $html);
     }
 
     public function testNavigatorOnLastStepShowsBackAndFinishButtons(): void
@@ -85,29 +89,45 @@ class ShadcnFlowNavigatorTest extends FormIntegrationTestCase
         $app = new Application();
         $app->currentStep = Application::STEP_CONFIRM;
         $flow = $this->createFlow($app);
-        $view = $flow->createView();
 
-        $html = $this->renderer->searchAndRenderBlock($view->children['navigator'], 'widget');
+        $html = $this->renderer->searchAndRenderBlock(
+            $flow->createView()->children['navigator'],
+            'widget',
+        );
 
-        $this->assertStringContainsString('Back', $html);
-        $this->assertStringContainsString('Submit application', $html);
-        $this->assertStringNotContainsString('Continue', $html);
-        // Back button uses the outline variant.
-        $this->assertStringContainsString('shadcn-previous', $html);
-        $this->assertStringContainsString('border-input', $html);
+        $this->assertStringContainsString('<flow-navigator', $html);
+        $this->assertStringContainsString('data-action="previous"', $html);
+        $this->assertStringContainsString('data-action="finish"', $html);
+        $this->assertStringContainsString('variant="outline"', $html);
+        $this->assertStringNotContainsString('data-action="next"', $html);
     }
 
-    public function testProgressBarRendersOneStepPerVisibleStep(): void
+    public function testProgressStepsAreSerialisedAsJsonSteps(): void
     {
         $flow = $this->createFlow();
-        $view = $flow->createView();
+        $html = $this->renderer->searchAndRenderBlock($flow->createView(), 'widget');
 
-        $html = $this->renderer->searchAndRenderBlock($view, 'widget');
+        $this->assertStringContainsString('<flow-progress', $html);
+        $this->assertStringContainsString('json-steps=', $html);
+        foreach (Application::STEPS as $step) {
+            $this->assertStringContainsString(
+                '&quot;name&quot;&#x3A;&quot;'.$step.'&quot;',
+                $html,
+                \sprintf('Expected step "%s" in json-steps payload.', $step),
+            );
+        }
+    }
 
-        $this->assertStringContainsString('shadcn-flow-progress', $html);
-        $this->assertStringContainsString('aria-label="Form progress"', $html);
-        // 6 steps × one progress item each.
-        $this->assertSame(6, substr_count($html, '<li class="flex flex-col items-start gap-1">'));
+    public function testWholeFormRendersInsideMyForm(): void
+    {
+        $flow = $this->createFlow();
+        $html = $this->renderer->renderBlock($flow->createView(), 'form');
+
+        $this->assertStringContainsString('<my-form', $html);
+        $this->assertStringContainsString('</my-form>', $html);
+        $this->assertStringContainsString('<flow-progress', $html);
+        $this->assertStringContainsString('<flow-navigator', $html);
+        $this->assertStringContainsString('<ui-field', $html);
     }
 
     private function createFlow(?Application $app = null): FormFlowInterface

@@ -10,3 +10,6 @@ services:
         exclude:
             - '../src/Kernel.php'
             - '../src/Model/'
+
+    App\Twig\ReactolithFormExtension:
+        tags: ['twig.extension']

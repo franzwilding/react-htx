@@ -1,11 +1,14 @@
-# Symfony Multi-Step Form, the shadcn/ui way
+# Symfony Multi-Step Form, the reactolith way
 
-A complete, working **Symfony 8** app that demonstrates the **`FormFlow`**
-component (introduced in [Symfony 7.4](https://symfony.com/blog/new-in-symfony-7-4-multi-step-forms)
-and rolled forward into the 8.x line) and a single **shadcn/ui form theme**
-that handles every native Symfony form field type.
+A complete, working **Symfony 8** application that demonstrates how to drive
+[reactolith](https://github.com/reactolith/reactolith) from a server-rendered
+multi-step form. Symfony's native [`FormFlow`](https://symfony.com/blog/new-in-symfony-7-4-multi-step-forms)
+component handles the steps, validation groups and cursor; the Twig form theme
+emits **kebab-case custom tags** (`<my-form>`, `<ui-input>`, `<ui-field>`,
+`<flow-progress>` …) that reactolith resolves to **shadcn/ui-style React
+components** on the client.
 
-The view is just one line:
+The Twig view is one line:
 
 ```twig
 {# templates/application/flow.html.twig #}
@@ -13,55 +16,79 @@ The view is just one line:
 {{ form(form) }}
 ```
 
-That's it. The form theme does the rest: label, control, description, errors,
-ARIA wiring, spacing, button variants, and progress bar — all matching the
-exact tokens and proportions shadcn/ui uses for its `<Form>` composition
-(FormItem / FormLabel / FormControl / FormDescription / FormMessage).
+That emits HTML like this:
+
+```html
+<my-form action="/apply" method="post"
+         json-errors='[{"name":"application_flow[personal][email]","message":"Already taken"}]'>
+  <flow-progress json-steps='[{"name":"personal","label":"Personal","position":1,"isCurrent":true}, …]'></flow-progress>
+
+  <ui-field name="application_flow[personal][email]">
+    <ui-field-label html-for="application_flow_personal_email" required>Email address</ui-field-label>
+    <ui-input name="application_flow[personal][email]" id="…" type="email" value="ada@example.com" required></ui-input>
+    <ui-field-description id="…_help">We will never share this with anyone.</ui-field-description>
+    <ui-field-error name="application_flow[personal][email]"></ui-field-error>
+  </ui-field>
+
+  <flow-navigator>
+    <ui-button type="submit" variant="default" data-action="next">Continue</ui-button>
+  </flow-navigator>
+</my-form>
+```
+
+reactolith hydrates every hyphenated tag into the matching React component.
+`<my-form>` is the reactolith `<Form>` (intercepts submits, exposes
+`useFormErrors(name)` / `useFormSubmitting()`); `<ui-input>` is a shadcn-style
+input that auto-flips to `aria-invalid` when its field has an error;
+`<flow-progress>` reads `json-steps` and draws the progress bar; everything
+that isn't a hyphenated tag (`<div>`, `<p>`, `<option>`) stays plain DOM.
+
+When the user submits an invalid step, Symfony re-renders the same template
+with new values *and* a `json-errors` payload on `<my-form>`. reactolith
+morphs the new HTML over the live React tree — focus, scroll, and any open
+dropdown state survive untouched.
 
 ---
 
-## Why this example exists
+## What's in this example
 
-Symfony's stock form theme is fine, but every team ends up writing the same
-shim to make it look like a modern design system. This example is meant to be
-**the reference implementation** for anyone who wants forms that look like
-shadcn while keeping all of Symfony's superpowers — validation groups, data
-mappers, transformers, type extensions, and the new `FormFlow` cursor.
+The form is split into 6 steps; collectively they exercise **every native
+Symfony form field type**, each mapped to a custom reactolith tag:
 
-Everything is centralized in
-[`templates/form/shadcn_form_theme.html.twig`](templates/form/shadcn_form_theme.html.twig).
-Copy that one file into your own Symfony project and you're done.
+| Symfony type | Twig theme emits | React component |
+| --- | --- | --- |
+| `TextType`, `EmailType`, `TelType`, `UrlType`, `SearchType`, `PasswordType`, `IntegerType`, `NumberType`, `BirthdayType`, `DateType` (single_text), `TimeType`, `DateTimeType`, `WeekType`, `MoneyType`, `PercentType`, `UuidType`, `UlidType` | `<ui-input type="…">` | `Input` |
+| `TextareaType` | `<ui-textarea value="…">` | `Textarea` |
+| `ChoiceType` (collapsed), `CountryType`, `LanguageType`, `LocaleType`, `TimezoneType`, `CurrencyType`, `EnumType` | `<ui-select json-value='…'>` + `<option>` | `Select` |
+| `ChoiceType` (expanded, single) | `<ui-radio-group json-value='…'>` + `<ui-radio-group-item>` | `RadioGroup` / `RadioGroupItem` |
+| `ChoiceType` (expanded, multiple) | `<ui-checkbox-group json-value='[…]'>` + `<ui-checkbox-group-item>` | `CheckboxGroup` / `CheckboxGroupItem` |
+| `CheckboxType` (standalone) | `<ui-field>` + `<ui-checkbox json-checked="true">` card | `Checkbox` |
+| `RangeType` | `<ui-slider min max step>` | `Slider` (with live readout) |
+| `ColorType` | `<ui-color value="#…">` | `ColorPicker` |
+| `FileType` (single + multiple) | `<ui-file>` | `FileInput` |
+| `CollectionType` (with `data-prototype`) | `<flow-collection>` + `<flow-collection-row>` | `Collection` (client-side add/remove) |
+| `DateIntervalType` (multi-widget) | nested `<ui-input>`s + `<ui-field-label>`s | composed inline |
+| `HiddenType` | native `<input type="hidden">` | (stays plain DOM) |
+| Buttons (`SubmitType`, `ButtonType`, `ResetType`, FormFlow nav) | `<ui-button variant="…" data-action="…">` | `Button` (uses `useFormSubmitting`) |
+| FormFlow navigator | `<flow-navigator>` | `FlowNavigator` |
+| FormFlow cursor | `<flow-progress json-steps='[…]'>` | `FlowProgress` |
+| Root `<form>` | `<my-form action="…" method="…" json-errors='[…]'>` | reactolith `Form` |
 
-## What the form covers
+Errors are flattened to a single list of `{name, id, message}` and attached
+as `json-errors` on `<my-form>`. Each `<ui-field-error name="…">` picks up its
+errors via `useFormErrors(name)`.
 
-The example splits a fictitious account-application flow into 6 steps. Across
-the steps **every native Symfony form field type** is exercised at least
-once:
-
-| Step | Field types used |
-| --- | --- |
-| **Personal** | `TextType`, `EmailType`, `TelType`, `BirthdayType`, `ChoiceType` (expanded radios), `UrlType` |
-| **Address** | `TextType`, `CountryType`, `LanguageType`, `LocaleType`, `TimezoneType` |
-| **Employment** | `TextType`, `ChoiceType` (select), `MoneyType`, `CurrencyType`, `PercentType`, `IntegerType`, `RangeType`, `DateType`, `TimeType`, `DateTimeType`, `DateIntervalType`, `WeekType` |
-| **Preferences** | `ChoiceType` (multi checkbox + expanded radio), `CheckboxType`, `ColorType`, `SearchType`, `PasswordType`, `RepeatedType`, `TextareaType`, `EnumType`, `HiddenType` |
-| **Documents** | `FileType` (single + multiple), `CollectionType` (with prototype), `UuidType`, `UlidType` |
-| **Confirm** | A standalone `CheckboxType` with an `IsTrue` constraint, plus the FormFlow navigator buttons (`PreviousFlowType`, `NextFlowType`, `FinishFlowType`) |
-
-Every widget is rendered by a block in
-[`shadcn_form_theme.html.twig`](templates/form/shadcn_form_theme.html.twig).
+---
 
 ## Run it
 
-Install the PHP and JS dependencies and build the Tailwind v4 + shadcn token
-bundle once:
+Install the PHP and JS dependencies, build the bundle, then serve:
 
 ```bash
 composer install
 npm install
 npm run build
 ```
-
-Then start Symfony on the PHP built-in web server and open the form:
 
 ```bash
 php -S 127.0.0.1:8000 -t public
@@ -73,47 +100,119 @@ web server so there's no dependency on `symfony/cli` — though `symfony serve`
 works too.
 
 For an HMR dev loop, run Vite alongside the PHP server. `pentatrion/vite-bundle`
-switches between dev and built assets automatically based on `APP_ENV`:
+automatically switches between dev and built assets based on `APP_ENV`:
 
 ```bash
 npm run dev
 ```
 
-The Vite dev server listens on `http://localhost:5173`; Symfony pulls the
-asset URLs straight from it while `APP_ENV=dev`.
+---
 
 ## Test it
 
-The example is **fully TDD** with 57 PHPUnit tests / 164 assertions covering:
+The example is **fully TDD** with 54 PHPUnit tests / 189 assertions:
 
-- **Widget rendering**: one test per field type, asserting the exact shadcn
-  Tailwind classes, ARIA attributes, spacing wrappers, and structure
-  ([`tests/FormTheme/ShadcnFormThemeTest.php`](tests/FormTheme/ShadcnFormThemeTest.php))
-- **Flow wiring**: cursor ordering, navigator visibility per step,
-  validation-group scoping ([`tests/Form/ApplicationFlowTypeTest.php`](tests/Form/ApplicationFlowTypeTest.php))
-- **End-to-end walkthrough**: submit each step with valid data and assert the
-  cursor advances; finally press Finish and assert the flow is marked
-  `isFinished()` ([`tests/Form/ApplicationFlowWalkthroughTest.php`](tests/Form/ApplicationFlowWalkthroughTest.php))
-- **HTTP integration**: boot the Symfony kernel, GET `/apply`, submit the
-  first step, and assert the response markup
-  ([`tests/Controller/ApplicationFlowControllerTest.php`](tests/Controller/ApplicationFlowControllerTest.php))
+- **Theme tests** ([`tests/FormTheme/ShadcnFormThemeTest.php`](tests/FormTheme/ShadcnFormThemeTest.php))
+  render each Symfony form type through the theme and assert the right
+  custom tag is emitted, that error payloads are correctly encoded, and that
+  boolean values are propagated as `json-checked` / `json-value`.
+- **FormFlow navigator tests** ([`tests/FormTheme/ShadcnFlowNavigatorTest.php`](tests/FormTheme/ShadcnFlowNavigatorTest.php))
+  confirm the navigator buttons render with the right `data-action` attribute
+  and that `<flow-progress>` serializes the cursor state.
+- **Flow walkthrough** ([`tests/Form/ApplicationFlowWalkthroughTest.php`](tests/Form/ApplicationFlowWalkthroughTest.php))
+  drives every step end-to-end and asserts the cursor advances.
+- **Controller tests** ([`tests/Controller/ApplicationFlowControllerTest.php`](tests/Controller/ApplicationFlowControllerTest.php))
+  boot the Symfony kernel, GET `/apply`, POST valid + invalid data, and
+  assert the response markup.
 
 ```bash
 composer install
 vendor/bin/phpunit
 ```
 
+---
+
+## How the pieces fit together
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│  Symfony 8 backend                                             │
+│                                                                │
+│  Application (model, 6 sub-objects, validation groups)         │
+│         │                                                      │
+│         ▼                                                      │
+│  ApplicationFlowType extends AbstractFlowType                  │
+│         │ addStep('personal', PersonalStepType::class)         │
+│         │ addStep('address',  AddressStepType::class) …        │
+│         │ add('navigator',    NavigatorFlowType::class)        │
+│         ▼                                                      │
+│  ApplicationFlowController                                     │
+│         │ $flow = $this->createForm(ApplicationFlowType::…)    │
+│         │ $flow->handleRequest($request)                       │
+│         │ return $this->render('application/flow.html.twig',   │
+│         │   ['form' => $flow->getStepForm()])                  │
+│         ▼                                                      │
+│  templates/application/flow.html.twig                          │
+│         │ {{ form(form) }}                                     │
+│         ▼                                                      │
+│  templates/form/shadcn_form_theme.html.twig                    │
+│         │ emits <my-form>, <ui-field>, <ui-input>, …           │
+│         │ flattens errors → json-errors='…'                    │
+│                                                                │
+└────────────────────────────────────────────────────────────────┘
+                                  │ HTML
+                                  ▼
+┌────────────────────────────────────────────────────────────────┐
+│  Browser                                                       │
+│                                                                │
+│  assets/app.tsx                                                │
+│      new App(({ is }) => registry[is] ?? null);                │
+│                                                                │
+│  registry maps:                                                │
+│    "my-form"            → reactolith.Form                      │
+│    "ui-input"           → ./components/ui/input.tsx            │
+│    "ui-field-error"     → ./components/ui/field.tsx            │
+│    "flow-progress"      → ./components/flow/progress.tsx       │
+│    "flow-collection"    → ./components/flow/collection.tsx     │
+│    …                                                           │
+│                                                                │
+│  reactolith hydrates the server HTML, intercepts form submits, │
+│  morphs each response in place. Component state survives.      │
+│                                                                │
+└────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## File map
 
 ```
 symfony-multistep-form/
 ├── assets/
-│   ├── app.css                  # Tailwind v4 + verbatim shadcn globals.css
-│   └── app.js                   # Vite entrypoint (CSS-only by default)
+│   ├── app.tsx                            # reactolith mount + component registry
+│   ├── app.css                            # Tailwind v4 + official shadcn tokens
+│   ├── lib/utils.ts                       # shadcn's `cn(…)` helper
+│   └── components/
+│       ├── ui/                            # shadcn-style React primitives
+│       │   ├── button.tsx
+│       │   ├── checkbox.tsx
+│       │   ├── checkbox-group.tsx
+│       │   ├── color-picker.tsx
+│       │   ├── field.tsx                  # FormItem / Label / Description / Error
+│       │   ├── file-input.tsx
+│       │   ├── input.tsx
+│       │   ├── radio-group.tsx
+│       │   ├── select.tsx
+│       │   ├── slider.tsx
+│       │   └── textarea.tsx
+│       └── flow/                          # FormFlow-specific UI
+│           ├── collection.tsx             # client-side add/remove rows
+│           ├── navigator.tsx              # Back / Continue / Finish toolbar
+│           └── progress.tsx               # step progress bar
 ├── bin/console
 ├── composer.json
 ├── config/
-│   ├── bundles.php
+│   ├── bundles.php                        # FrameworkBundle, TwigBundle, PentatrionViteBundle
 │   ├── packages/
 │   │   ├── framework.yaml
 │   │   ├── pentatrion_vite.yaml
@@ -122,20 +221,19 @@ symfony-multistep-form/
 │   │   ├── twig.yaml
 │   │   └── validator.yaml
 │   ├── routes.yaml
-│   ├── routes/
-│   │   └── pentatrion_vite.yaml
-│   └── services.yaml
-├── package.json                 # vite + tailwindcss v4 + vite-plugin-symfony + tw-animate-css
-├── vite.config.js
+│   ├── routes/pentatrion_vite.yaml
+│   └── services.yaml                      # registers ReactolithFormExtension
+├── package.json                           # reactolith, react@19, react-dom@19, vite, tailwind
+├── vite.config.js                         # @vitejs/plugin-react + @tailwindcss/vite + vite-plugin-symfony
+├── tsconfig.json
 ├── public/
-│   ├── build/                   # generated by `npm run build` (gitignored)
+│   ├── build/                             # generated by `npm run build` (gitignored)
 │   └── index.php
 ├── src/
-│   ├── Controller/
-│   │   └── ApplicationFlowController.php
+│   ├── Controller/ApplicationFlowController.php
 │   ├── Form/
 │   │   ├── Flow/ApplicationFlowType.php   # extends AbstractFlowType
-│   │   ├── SkillType.php                  # collection-row sub-form
+│   │   ├── SkillType.php                  # collection sub-form
 │   │   └── Step/
 │   │       ├── PersonalStepType.php
 │   │       ├── AddressStepType.php
@@ -144,87 +242,88 @@ symfony-multistep-form/
 │   │       ├── DocumentsStepType.php
 │   │       └── ConfirmStepType.php
 │   ├── Kernel.php
-│   └── Model/
-│       ├── Application.php       # aggregate root; validation groups = step names
-│       ├── Address.php
-│       ├── Documents.php
-│       ├── Employment.php
-│       ├── MembershipTier.php    # backed enum used by EnumType
-│       ├── Personal.php
-│       ├── Preferences.php
-│       └── Skill.php
+│   ├── Model/                             # aggregate + sub-models, validation groups per step
+│   │   ├── Application.php
+│   │   ├── Address.php
+│   │   ├── Documents.php
+│   │   ├── Employment.php
+│   │   ├── MembershipTier.php             # backed enum used by EnumType
+│   │   ├── Personal.php
+│   │   ├── Preferences.php
+│   │   └── Skill.php
+│   └── Twig/ReactolithFormExtension.php   # `reactolith_form_errors`, `reactolith_progress_steps`
 ├── templates/
 │   ├── application/
-│   │   ├── flow.html.twig        # ONLY calls {{ form(form) }}
+│   │   ├── flow.html.twig                 # ONLY {{ form(form) }}
 │   │   └── success.html.twig
-│   ├── base.html.twig            # vite_entry_link_tags / vite_entry_script_tags
-│   └── form/
-│       └── shadcn_form_theme.html.twig   # ⭐ THE form theme
+│   ├── base.html.twig                     # vite_entry_link_tags / vite_entry_script_tags
+│   └── form/shadcn_form_theme.html.twig   # ⭐ THE form theme
 └── tests/
     ├── Controller/ApplicationFlowControllerTest.php
-    ├── Form/ApplicationFlowTypeTest.php
-    ├── Form/ApplicationFlowWalkthroughTest.php
-    ├── Form/PersonalStepTypeTest.php
-    ├── Form/PreferencesStepTypeTest.php
-    ├── FormTheme/ShadcnFlowNavigatorTest.php
-    ├── FormTheme/ShadcnFormThemeTest.php
-    ├── FormTheme/ShadcnFormThemeTestCase.php
+    ├── Form/
+    │   ├── ApplicationFlowTypeTest.php
+    │   ├── ApplicationFlowWalkthroughTest.php
+    │   ├── PersonalStepTypeTest.php
+    │   └── PreferencesStepTypeTest.php
+    ├── FormTheme/
+    │   ├── ShadcnFlowNavigatorTest.php
+    │   ├── ShadcnFormThemeTest.php
+    │   └── ShadcnFormThemeTestCase.php
     ├── Model/ApplicationTest.php
     └── bootstrap.php
 ```
 
-## Drop the form theme into your own project
+---
 
-1. Make sure you have Tailwind v4 and the shadcn tokens. The example follows
-   the [official shadcn manual install](https://ui.shadcn.com/docs/installation/manual):
+## Drop this into your own project
 
+1. **Install the dependencies.** Composer pulls in Symfony FormFlow + the Vite
+   bundle, npm pulls in reactolith, React 19, Tailwind v4 with the official
+   shadcn tokens:
    ```bash
    composer require pentatrion/vite-bundle
-   npm install -D vite vite-plugin-symfony tailwindcss @tailwindcss/vite tw-animate-css
+   npm install reactolith react react-dom
+   npm install -D vite @vitejs/plugin-react vite-plugin-symfony tailwindcss @tailwindcss/vite tw-animate-css clsx tailwind-merge
    ```
 
-   `vite.config.js` only needs the Symfony plugin and Tailwind plugin:
-   ```js
-   import { defineConfig } from "vite";
-   import symfonyPlugin from "vite-plugin-symfony";
-   import tailwindcss from "@tailwindcss/vite";
+2. **Copy** [`assets/app.css`](assets/app.css) (verbatim from the [official shadcn manual
+   install](https://ui.shadcn.com/docs/installation/manual)) and [`vite.config.js`](vite.config.js).
 
-   export default defineConfig({
-       plugins: [tailwindcss(), symfonyPlugin()],
-       build: { rollupOptions: { input: { app: "./assets/app.js" } } },
-   });
-   ```
-
-   Copy [`assets/app.css`](assets/app.css) — that file is the verbatim
-   [shadcn globals.css](https://ui.shadcn.com/docs/installation/manual)
-   with two extra `@source` lines telling Tailwind to scan your Twig
-   templates and PHP sources.
-
-2. Copy
-   [`templates/form/shadcn_form_theme.html.twig`](templates/form/shadcn_form_theme.html.twig)
-   into your project's `templates/form/` directory.
-
-3. Register it globally in `config/packages/twig.yaml`:
+3. **Copy** [`templates/form/shadcn_form_theme.html.twig`](templates/form/shadcn_form_theme.html.twig)
+   and register it globally in `config/packages/twig.yaml`:
    ```yaml
    twig:
        form_themes:
            - 'form/shadcn_form_theme.html.twig'
    ```
 
-4. Wire the entrypoint into your base layout:
-   ```twig
-   {{ vite_entry_link_tags('app') }}
-   {{ vite_entry_script_tags('app') }}
+4. **Copy** [`assets/components/ui`](assets/components/ui) and [`assets/components/flow`](assets/components/flow);
+   adjust them to taste.
+
+5. **Copy** [`src/Twig/ReactolithFormExtension.php`](src/Twig/ReactolithFormExtension.php) and register it as a Twig
+   extension service. It exposes `reactolith_form_errors(form)` and
+   `reactolith_progress_steps(form)` which the form theme uses to fill the
+   `json-errors` and `json-steps` attributes.
+
+6. **Wire up reactolith** in your entrypoint:
+   ```tsx
+   import { App, Form } from "reactolith";
+   import { Input } from "./components/ui/input";
+   // … the rest of the registry from assets/app.tsx
+
+   new App(({ is }) => registry[is] ?? null);
    ```
 
-That's the whole integration. Your views can render any form with
-`{{ form(form) }}` and it will come out looking like a shadcn form.
+Your Symfony views can now render any form with `{{ form(form) }}` and they'll
+appear as reactolith-resolved React components, with state preserved across
+every navigation and form submit.
+
+---
 
 ## How the FormFlow is wired
 
 The aggregate root is [`Application`](src/Model/Application.php). Each step
-in the flow corresponds to one sub-object on the aggregate and one validation
-group:
+corresponds to one sub-object and one validation group:
 
 ```php
 class Application
@@ -242,7 +341,7 @@ class Application
 }
 ```
 
-The flow type just lists the steps in order:
+The flow type lists steps in order:
 
 ```php
 final class ApplicationFlowType extends AbstractFlowType
@@ -275,7 +374,7 @@ final class ApplicationFlowType extends AbstractFlowType
 current step run on every submission. Data between steps is persisted in the
 session via `SessionDataStorage`.
 
-The controller is barely more than three lines:
+The controller is barely three lines:
 
 ```php
 public function __invoke(Request $request): Response
@@ -284,7 +383,6 @@ public function __invoke(Request $request): Response
     $flow->handleRequest($request);
 
     if ($flow->isSubmitted() && $flow->isValid() && $flow->isFinished()) {
-        // persist / queue / email …
         return $this->redirectToRoute('app_application_success');
     }
 
@@ -293,6 +391,8 @@ public function __invoke(Request $request): Response
     ]);
 }
 ```
+
+---
 
 ## Troubleshooting
 
@@ -307,19 +407,23 @@ the option in `~/.zshrc`:
 setopt interactive_comments
 ```
 
+---
+
 ## Caveats worth knowing
 
+- **`<my-form>` is not a `<form>` until reactolith hydrates it.** Server-side
+  it's a custom element, so non-JS form submissions don't work. WebTestCase
+  tests POST directly to the route rather than using `$crawler->filter('my-form')->form(...)`
+  for that reason. Disable CSRF in your `when@test:` block — the example
+  ships with `csrf_protection: false` for the test env only.
 - **Step names that shadow Application properties are fine** — Symfony routes
-  submissions by step name, and step names map straight onto Application
+  submissions by step name and step names map straight onto Application
   properties. But a step name must **not** collide with a child field name
   inside its own form. That's why the `confirm` step's checkbox is named
-  `accepted`, not `confirm`. The form theme works fine either way, but the
-  flow's `isCurrentStepSubmitted()` check would otherwise misroute the POST.
-- **`UrlType` renders as `<input type="text" inputmode="url">` in Symfony 7.4+**
-  — the theme handles either, but worth knowing if you write your own
-  selector-based tests.
-- **`DateIntervalType` cannot enable `with_weeks` and `with_days`
-  simultaneously** — the example shows months + days + hours, which is the
-  most common notice-period shape.
-
-Have fun. PRs that add fields or polish the theme are welcome.
+  `accepted`, not `confirm`. Otherwise the flow's `isCurrentStepSubmitted()`
+  check would misroute the POST.
+- **Boolean and structured field values use the `json-` prefix.** Boolean
+  attributes like `checked="true"` would arrive as the literal *string*
+  `"true"`; reactolith uses `json-checked="true"` to mean the boolean.
+  Same rule for `json-value='"de"'` (string) vs `json-value='["a","b"]'`
+  (array). The form theme handles all of that.

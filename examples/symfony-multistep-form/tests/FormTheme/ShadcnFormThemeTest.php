@@ -20,6 +20,7 @@ use Symfony\Component\Form\Extension\Core\Type\DateType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\EnumType;
 use Symfony\Component\Form\Extension\Core\Type\FileType;
+use Symfony\Component\Form\Extension\Core\Type\FormType;
 use Symfony\Component\Form\Extension\Core\Type\HiddenType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\LanguageType;
@@ -45,14 +46,16 @@ use Symfony\Component\Form\Extension\Core\Type\WeekType;
 use Symfony\Component\Form\FormError;
 
 /**
- * Exhaustive widget tests for the shadcn form theme.
+ * Asserts that every native Symfony form type renders as the correct
+ * kebab-case custom tag(s) so the reactolith client picks them up.
  *
- * One test per native Symfony form type. Every test focuses on the class
- * strings and structural HTML that shadcn/ui uses for that exact widget.
+ * The tests are intentionally string-based — the HTML is *not* XHTML, and
+ * its only consumer is reactolith's parser, which is happy with hyphenated
+ * tag names and `json-*` attributes that DOMDocument would refuse.
  */
 class ShadcnFormThemeTest extends ShadcnFormThemeTestCase
 {
-    public function testFormRowProducesShadcnFormItemStructure(): void
+    public function testFormRowWrapsEveryFieldInUiField(): void
     {
         $form = $this->factory->createNamed('first_name', TextType::class, null, [
             'label' => 'First name',
@@ -61,38 +64,25 @@ class ShadcnFormThemeTest extends ShadcnFormThemeTestCase
 
         $html = $this->renderRow($form->createView());
 
-        $this->assertMatchesXpath($html, '//div[contains(@class, "space-y-2") and contains(@class, "shadcn-form-item")]');
-        $this->assertMatchesXpath($html, '//div/label[contains(@class, "text-sm") and contains(@class, "font-medium")]');
-        $this->assertMatchesXpath($html, '//div/input[@type="text" and contains(@class, "h-9") and contains(@class, "rounded-md")]');
-        $this->assertMatchesXpath($html, '//div/p[contains(@class, "text-sm") and contains(@class, "text-muted-foreground") and @id="first_name_help"]');
+        $this->assertContainsTag($html, 'ui-field');
+        $this->assertContainsTag($html, 'ui-field-label');
+        $this->assertContainsTag($html, 'ui-input');
+        $this->assertContainsTag($html, 'ui-field-description');
+        $this->assertContainsTag($html, 'ui-field-error');
+        $this->assertStringContainsString('name="first_name"', $html);
+        $this->assertStringContainsString('How should we address you?', $html);
     }
 
-    public function testRequiredFieldGetsAsteriskAndAriaDescribedby(): void
+    public function testRequiredFieldLabelCarriesRequiredAttribute(): void
     {
         $form = $this->factory->createNamed('email', EmailType::class, null, [
             'label' => 'Email',
-            'help' => 'We never share this.',
             'required' => true,
         ]);
 
         $html = $this->renderRow($form->createView());
 
-        $this->assertMatchesXpath($html, '//label[contains(@class, "shadcn-required")]/span[@aria-hidden="true" and text()="*"]');
-        $this->assertMatchesXpath($html, '//input[@type="email" and contains(@aria-describedby, "email_help")]');
-    }
-
-    public function testFieldWithErrorsGetsAriaInvalidAndShadcnMessage(): void
-    {
-        $form = $this->factory->createNamed('username', TextType::class, null, [
-            'label' => 'Username',
-        ]);
-        $form->submit('a');
-        $form->addError(new FormError('This value is too short.'));
-
-        $html = $this->renderRow($form->createView());
-
-        $this->assertMatchesXpath($html, '//input[@type="text" and @aria-invalid="true"]');
-        $this->assertMatchesXpath($html, '//p[contains(@class, "text-destructive") and contains(@class, "shadcn-form-message")]');
+        $this->assertMatchesRegularExpression('#<ui-field-label[^>]+required#', $html);
     }
 
     public function testTextWidget(): void
@@ -100,7 +90,9 @@ class ShadcnFormThemeTest extends ShadcnFormThemeTestCase
         $form = $this->factory->createNamed('name', TextType::class, 'Ada');
         $html = $this->renderWidget($form->createView());
 
-        $this->assertMatchesXpath($html, '//input[@type="text" and @value="Ada" and contains(@class, "h-9") and contains(@class, "border-input") and contains(@class, "rounded-md")]');
+        $this->assertContainsTag($html, 'ui-input');
+        $this->assertStringContainsString('type="text"', $html);
+        $this->assertStringContainsString('value="Ada"', $html);
     }
 
     public function testEmailWidget(): void
@@ -108,32 +100,17 @@ class ShadcnFormThemeTest extends ShadcnFormThemeTestCase
         $form = $this->factory->createNamed('email', EmailType::class);
         $html = $this->renderWidget($form->createView());
 
-        $this->assertMatchesXpath($html, '//input[@type="email" and contains(@class, "h-9")]');
+        $this->assertStringContainsString('type="email"', $html);
     }
 
-    public function testSearchWidget(): void
+    public function testSearchTelUrlWidgets(): void
     {
-        $form = $this->factory->createNamed('q', SearchType::class);
-        $html = $this->renderWidget($form->createView());
+        foreach ([SearchType::class, TelType::class, UrlType::class] as $type) {
+            $form = $this->factory->createNamed('q', $type);
+            $html = $this->renderWidget($form->createView());
 
-        $this->assertMatchesXpath($html, '//input[@type="search" and contains(@class, "h-9")]');
-    }
-
-    public function testTelWidget(): void
-    {
-        $form = $this->factory->createNamed('phone', TelType::class);
-        $html = $this->renderWidget($form->createView());
-
-        $this->assertMatchesXpath($html, '//input[@type="tel" and contains(@class, "h-9")]');
-    }
-
-    public function testUrlWidget(): void
-    {
-        $form = $this->factory->createNamed('site', UrlType::class);
-        $html = $this->renderWidget($form->createView());
-
-        // Symfony 7.4 renders URL inputs as <input type="text" inputmode="url">.
-        $this->assertMatchesXpath($html, '//input[(@type="url" or @type="text") and contains(@class, "h-9")]');
+            $this->assertContainsTag($html, 'ui-input', 1);
+        }
     }
 
     public function testPasswordWidget(): void
@@ -141,94 +118,88 @@ class ShadcnFormThemeTest extends ShadcnFormThemeTestCase
         $form = $this->factory->createNamed('pwd', PasswordType::class);
         $html = $this->renderWidget($form->createView());
 
-        $this->assertMatchesXpath($html, '//input[@type="password" and contains(@class, "h-9")]');
+        $this->assertStringContainsString('type="password"', $html);
     }
 
-    public function testIntegerWidget(): void
+    public function testIntegerAndNumberWidgets(): void
     {
-        $form = $this->factory->createNamed('age', IntegerType::class);
-        $html = $this->renderWidget($form->createView());
+        foreach ([IntegerType::class, NumberType::class] as $type) {
+            $form = $this->factory->createNamed('n', $type);
+            $html = $this->renderWidget($form->createView());
 
-        $this->assertMatchesXpath($html, '//input[@type="number" and contains(@class, "h-9")]');
+            $this->assertContainsTag($html, 'ui-input', 1);
+        }
     }
 
-    public function testNumberWidget(): void
-    {
-        $form = $this->factory->createNamed('amount', NumberType::class);
-        $html = $this->renderWidget($form->createView());
-
-        // NumberType deliberately uses type=text to support localized formats.
-        $this->assertMatchesXpath($html, '//input[@type="text" and contains(@class, "h-9")]');
-    }
-
-    public function testMoneyWidgetWrapsInputWithCurrencyAddon(): void
+    public function testMoneyWidgetExposesPrefixSuffixAsDataAttrs(): void
     {
         $form = $this->factory->createNamed('salary', MoneyType::class, null, ['currency' => 'EUR']);
         $html = $this->renderWidget($form->createView());
 
-        $this->assertMatchesXpath($html, '//div[contains(@class, "relative")]/input[contains(@class, "h-9") and contains(@class, "pl-7")]');
-        $this->assertMatchesXpath($html, '//div/span[contains(@class, "absolute") and contains(@class, "text-muted-foreground")]');
+        $this->assertContainsTag($html, 'ui-input');
+        $this->assertMatchesRegularExpression('#data-(prefix|suffix)="#', $html);
     }
 
-    public function testPercentWidgetShowsTrailingPercentSign(): void
+    public function testPercentWidgetExposesPercentSign(): void
     {
         $form = $this->factory->createNamed('rate', PercentType::class);
         $html = $this->renderWidget($form->createView());
 
-        $this->assertMatchesXpath($html, '//div[contains(@class, "relative")]/input[contains(@class, "pr-8")]');
-        $this->assertMatchesXpath($html, '//div/span[contains(@class, "right-3") and (text()="%" or contains(., "%"))]');
+        $this->assertStringContainsString('data-suffix="%"', $html);
     }
 
-    public function testRangeWidgetUsesShadcnRangeClasses(): void
+    public function testRangeWidgetRendersAsUiSlider(): void
     {
         $form = $this->factory->createNamed('hours', RangeType::class);
         $html = $this->renderWidget($form->createView());
 
-        $this->assertMatchesXpath($html, '//input[@type="range" and contains(@class, "accent-primary") and contains(@class, "cursor-pointer")]');
+        $this->assertContainsTag($html, 'ui-slider');
     }
 
-    public function testColorWidgetUsesShadcnColorClasses(): void
+    public function testColorWidgetRendersAsUiColor(): void
     {
         $form = $this->factory->createNamed('color', ColorType::class);
         $html = $this->renderWidget($form->createView());
 
-        $this->assertMatchesXpath($html, '//input[@type="color" and contains(@class, "w-16") and contains(@class, "h-9")]');
+        $this->assertContainsTag($html, 'ui-color');
     }
 
-    public function testHiddenWidgetHasNoExtraClasses(): void
+    public function testHiddenWidgetStaysAsNativeInput(): void
     {
         $form = $this->factory->createNamed('token', HiddenType::class, 'abc');
         $html = $this->renderWidget($form->createView());
 
-        $this->assertMatchesXpath($html, '//input[@type="hidden" and @value="abc"]');
-        // Ensure no shadcn input class string leaked onto the hidden input.
-        $this->assertStringNotContainsString('h-9', $html);
+        $this->assertStringContainsString('type="hidden"', $html);
+        $this->assertStringContainsString('value="abc"', $html);
     }
 
     public function testTextareaWidget(): void
     {
-        $form = $this->factory->createNamed('bio', TextareaType::class);
+        $form = $this->factory->createNamed('bio', TextareaType::class, 'Hello');
         $html = $this->renderWidget($form->createView());
 
-        $this->assertMatchesXpath($html, '//textarea[contains(@class, "min-h-[80px]") and contains(@class, "rounded-md") and contains(@class, "border-input")]');
+        $this->assertContainsTag($html, 'ui-textarea');
+        $this->assertStringContainsString('value="Hello"', $html);
     }
 
-    public function testCollapsedChoiceWidget(): void
+    public function testCollapsedChoiceRendersAsUiSelectWithJsonValue(): void
     {
-        $form = $this->factory->createNamed('country', ChoiceType::class, null, [
+        $form = $this->factory->createNamed('country', ChoiceType::class, 'fr', [
             'choices' => ['Germany' => 'de', 'France' => 'fr'],
             'placeholder' => 'Pick one',
         ]);
         $html = $this->renderWidget($form->createView());
 
-        $this->assertMatchesXpath($html, '//select[contains(@class, "h-9") and contains(@class, "rounded-md") and contains(@class, "border-input")]');
-        $this->assertMatchesXpath($html, '//select/option[@value=""]');
-        $this->assertMatchesXpath($html, '//select/option[@value="de" and text()="Germany"]');
+        $this->assertContainsTag($html, 'ui-select');
+        $this->assertStringContainsString("json-value='&quot;fr&quot;'", $html);
+        $this->assertStringContainsString('placeholder="Pick one"', $html);
+        $this->assertStringContainsString('<option value="de">Germany</option>', $html);
+        $this->assertStringContainsString('<option value="fr">France</option>', $html);
     }
 
-    public function testExpandedRadioChoiceWidgetUsesCardLayout(): void
+    public function testExpandedRadioChoiceRendersAsUiRadioGroup(): void
     {
-        $form = $this->factory->createNamed('plan', ChoiceType::class, null, [
+        $form = $this->factory->createNamed('plan', ChoiceType::class, 'pro', [
             'choices' => ['Free' => 'free', 'Pro' => 'pro'],
             'expanded' => true,
             'multiple' => false,
@@ -236,26 +207,28 @@ class ShadcnFormThemeTest extends ShadcnFormThemeTestCase
         ]);
         $html = $this->renderWidget($form->createView());
 
-        $this->assertMatchesXpath($html, '//div[contains(@class, "shadcn-choice-group") and @role="radiogroup"]');
-        $this->assertMatchesXpath($html, '//div//input[@type="radio" and contains(@class, "rounded-full") and contains(@class, "accent-primary")]', 2);
-        $this->assertMatchesXpath($html, '//div//label[contains(@class, "cursor-pointer") and contains(@class, "has-[:checked]:border-primary")]', 2);
-        $this->assertMatchesXpath($html, '//div//div[contains(@class, "leading-none")]', 2);
+        $this->assertContainsTag($html, 'ui-radio-group');
+        $this->assertContainsTag($html, 'ui-radio-group-item', 2);
+        $this->assertStringContainsString("json-value='&quot;pro&quot;'", $html);
     }
 
-    public function testExpandedMultipleChoiceWidgetUsesCheckboxes(): void
+    public function testExpandedMultipleChoiceRendersAsUiCheckboxGroup(): void
     {
-        $form = $this->factory->createNamed('interests', ChoiceType::class, null, [
-            'choices' => ['Frontend' => 'fe', 'Backend' => 'be'],
+        $form = $this->factory->createNamed('interests', ChoiceType::class, ['frontend', 'backend'], [
+            'choices' => ['Frontend' => 'frontend', 'Backend' => 'backend', 'Data' => 'data'],
             'expanded' => true,
             'multiple' => true,
         ]);
         $html = $this->renderWidget($form->createView());
 
-        $this->assertMatchesXpath($html, '//div[contains(@class, "shadcn-choice-group") and @role="group"]');
-        $this->assertMatchesXpath($html, '//div//input[@type="checkbox" and contains(@class, "rounded-sm") and contains(@class, "accent-primary")]', 2);
+        $this->assertContainsTag($html, 'ui-checkbox-group');
+        $this->assertContainsTag($html, 'ui-checkbox-group-item', 3);
+        $this->assertStringContainsString('json-value=', $html);
+        $this->assertStringContainsString('frontend', $html);
+        $this->assertStringContainsString('backend', $html);
     }
 
-    public function testStandaloneCheckboxRowUsesCardLayout(): void
+    public function testStandaloneCheckboxRowUsesCardLayoutWithUiCheckbox(): void
     {
         $form = $this->factory->createNamed('terms', CheckboxType::class, null, [
             'label' => 'I accept the terms',
@@ -263,20 +236,39 @@ class ShadcnFormThemeTest extends ShadcnFormThemeTestCase
         ]);
         $html = $this->renderRow($form->createView());
 
-        $this->assertMatchesXpath($html, '//div[contains(@class, "shadcn-form-item")]/div[contains(@class, "rounded-md") and contains(@class, "border-input")]/input[@type="checkbox"]');
-        $this->assertMatchesXpath($html, '//div/div/div[contains(@class, "leading-none")]/label[contains(@class, "cursor-pointer")]');
-        $this->assertMatchesXpath($html, '//div/div/div/p[contains(@class, "text-muted-foreground")]');
+        $this->assertContainsTag($html, 'ui-field');
+        $this->assertContainsTag($html, 'ui-checkbox');
+        $this->assertContainsTag($html, 'ui-field-label');
+        $this->assertContainsTag($html, 'ui-field-description');
+        $this->assertContainsTag($html, 'ui-field-error');
     }
 
-    public function testFileWidgetUsesShadcnFileButtonStyles(): void
+    public function testCheckedCheckboxUsesJsonChecked(): void
+    {
+        $form = $this->factory->createNamed('terms', CheckboxType::class, true);
+        $html = $this->renderWidget($form->createView());
+
+        $this->assertStringContainsString('json-checked="true"', $html);
+    }
+
+    public function testFileWidgetRendersAsUiFile(): void
     {
         $form = $this->factory->createNamed('resume', FileType::class);
         $html = $this->renderWidget($form->createView());
 
-        $this->assertMatchesXpath($html, '//input[@type="file" and contains(@class, "file:bg-secondary") and contains(@class, "file:rounded-md")]');
+        $this->assertContainsTag($html, 'ui-file');
     }
 
-    public function testDateWidgetSingleText(): void
+    public function testFileWidgetMultipleAppendsBracketsToName(): void
+    {
+        $form = $this->factory->createNamed('portfolio', FileType::class, null, ['multiple' => true]);
+        $html = $this->renderWidget($form->createView());
+
+        $this->assertStringContainsString('name="portfolio[]"', $html);
+        $this->assertStringContainsString(' multiple', $html);
+    }
+
+    public function testDateWidgetSingleTextRendersAsUiInput(): void
     {
         $form = $this->factory->createNamed('dob', DateType::class, null, [
             'widget' => 'single_text',
@@ -284,51 +276,23 @@ class ShadcnFormThemeTest extends ShadcnFormThemeTestCase
         ]);
         $html = $this->renderWidget($form->createView());
 
-        $this->assertMatchesXpath($html, '//input[@type="date" and contains(@class, "h-9")]');
+        $this->assertContainsTag($html, 'ui-input');
+        $this->assertStringContainsString('type="date"', $html);
     }
 
-    public function testDateWidgetChoiceVariantUsesSelectClass(): void
+    public function testTimeAndDateTimeSingleTextWidgets(): void
     {
-        $form = $this->factory->createNamed('dob', DateType::class, null, [
-            'widget' => 'choice',
-            'input' => 'datetime_immutable',
-        ]);
-        $html = $this->renderWidget($form->createView());
-
-        $this->assertMatchesXpath($html, '//div[contains(@class, "flex-wrap")]/select[contains(@class, "h-9") and contains(@class, "rounded-md")]', 3);
-    }
-
-    public function testBirthdayWidget(): void
-    {
-        $form = $this->factory->createNamed('dob', BirthdayType::class, null, [
+        $time = $this->factory->createNamed('t', TimeType::class, null, [
             'widget' => 'single_text',
             'input' => 'datetime_immutable',
         ]);
-        $html = $this->renderWidget($form->createView());
+        $this->assertStringContainsString('type="time"', $this->renderWidget($time->createView()));
 
-        $this->assertMatchesXpath($html, '//input[@type="date" and contains(@class, "h-9")]');
-    }
-
-    public function testTimeWidgetSingleText(): void
-    {
-        $form = $this->factory->createNamed('t', TimeType::class, null, [
+        $dt = $this->factory->createNamed('dt', DateTimeType::class, null, [
             'widget' => 'single_text',
             'input' => 'datetime_immutable',
         ]);
-        $html = $this->renderWidget($form->createView());
-
-        $this->assertMatchesXpath($html, '//input[@type="time" and contains(@class, "h-9")]');
-    }
-
-    public function testDateTimeWidgetSingleText(): void
-    {
-        $form = $this->factory->createNamed('dt', DateTimeType::class, null, [
-            'widget' => 'single_text',
-            'input' => 'datetime_immutable',
-        ]);
-        $html = $this->renderWidget($form->createView());
-
-        $this->assertMatchesXpath($html, '//input[@type="datetime-local" and contains(@class, "h-9")]');
+        $this->assertStringContainsString('type="datetime-local"', $this->renderWidget($dt->createView()));
     }
 
     public function testWeekWidgetSingleText(): void
@@ -337,12 +301,19 @@ class ShadcnFormThemeTest extends ShadcnFormThemeTestCase
             'widget' => 'single_text',
             'input' => 'string',
         ]);
-        $html = $this->renderWidget($form->createView());
-
-        $this->assertMatchesXpath($html, '//input[@type="week" and contains(@class, "h-9")]');
+        $this->assertStringContainsString('type="week"', $this->renderWidget($form->createView()));
     }
 
-    public function testDateIntervalWidgetIntegerVariant(): void
+    public function testBirthdayWidget(): void
+    {
+        $form = $this->factory->createNamed('dob', BirthdayType::class, null, [
+            'widget' => 'single_text',
+            'input' => 'datetime_immutable',
+        ]);
+        $this->assertStringContainsString('type="date"', $this->renderWidget($form->createView()));
+    }
+
+    public function testDateIntervalIntegerVariantUsesLabeledUiInputs(): void
     {
         $form = $this->factory->createNamed('notice', DateIntervalType::class, null, [
             'widget' => 'integer',
@@ -357,48 +328,44 @@ class ShadcnFormThemeTest extends ShadcnFormThemeTestCase
         ]);
         $html = $this->renderWidget($form->createView());
 
-        $this->assertMatchesXpath($html, '//div[contains(@class, "grid")]/div[contains(@class, "space-y-1")]', 3);
-        $this->assertMatchesXpath($html, '//div/div/input[@type="number" and contains(@class, "h-9")]', 3);
+        $this->assertContainsTag($html, 'ui-input', 3);
+        $this->assertContainsTag($html, 'ui-field-label', 3);
     }
 
-    public function testCountryLanguageLocaleTimezoneCurrencyRenderAsSelect(): void
+    public function testCountryLanguageLocaleTimezoneCurrencyRenderAsUiSelect(): void
     {
         foreach ([CountryType::class, LanguageType::class, LocaleType::class, TimezoneType::class, CurrencyType::class] as $type) {
-            $form = $this->factory->createNamed('country', $type, null, ['placeholder' => 'Pick one']);
+            $form = $this->factory->createNamed('field', $type, null, ['placeholder' => 'Pick one']);
             $html = $this->renderWidget($form->createView());
 
-            $this->assertMatchesXpath(
-                $html,
-                '//select[contains(@class, "h-9") and contains(@class, "rounded-md")]',
-                1,
-            );
+            $this->assertContainsTag($html, 'ui-select', 1);
             $this->assertStringContainsString('<option', $html);
         }
     }
 
     public function testEnumWidget(): void
     {
-        $form = $this->factory->createNamed('tier', EnumType::class, null, [
+        $form = $this->factory->createNamed('tier', EnumType::class, MembershipTier::Pro, [
             'class' => MembershipTier::class,
             'placeholder' => 'Pick one',
         ]);
         $html = $this->renderWidget($form->createView());
 
-        $this->assertMatchesXpath($html, '//select[contains(@class, "h-9") and contains(@class, "rounded-md")]');
-        $this->assertMatchesXpath($html, '//select/option[@value="free"]');
-        $this->assertMatchesXpath($html, '//select/option[@value="pro"]');
-        $this->assertMatchesXpath($html, '//select/option[@value="enterprise"]');
+        $this->assertContainsTag($html, 'ui-select');
+        $this->assertStringContainsString("json-value='&quot;pro&quot;'", $html);
+        $this->assertStringContainsString('<option value="free">', $html);
     }
 
-    public function testRepeatedPasswordRendersTwoFields(): void
+    public function testRepeatedPasswordRendersTwoUiInputs(): void
     {
         $form = $this->factory->createNamed('pwd', RepeatedType::class, null, ['type' => PasswordType::class]);
         $html = $this->renderRow($form->createView());
 
-        $this->assertMatchesXpath($html, '//input[@type="password" and contains(@class, "h-9")]', 2);
+        $this->assertContainsTag($html, 'ui-input', 2);
+        $this->assertSame(2, substr_count($html, 'type="password"'));
     }
 
-    public function testCollectionWidgetRendersAddAndRemoveAffordances(): void
+    public function testCollectionWidgetRendersAsFlowCollectionWithPrototype(): void
     {
         $form = $this->factory->createNamed('skills', CollectionType::class, [new Skill('TS', 7)], [
             'entry_type' => SkillType::class,
@@ -408,61 +375,70 @@ class ShadcnFormThemeTest extends ShadcnFormThemeTestCase
         ]);
         $html = $this->renderWidget($form->createView());
 
-        $this->assertMatchesXpath($html, '//div[contains(@class, "shadcn-collection") and @data-collection="data-collection"]');
-        $this->assertMatchesXpath($html, '//div/div[contains(@class, "shadcn-collection-row")]', 1);
-        $this->assertMatchesXpath($html, '//button[contains(@class, "shadcn-collection-remove")]', 1);
-        $this->assertMatchesXpath($html, '//button[contains(@class, "shadcn-collection-add") and contains(text(), "Add another")]');
+        $this->assertContainsTag($html, 'flow-collection');
+        $this->assertContainsTag($html, 'flow-collection-row');
+        $this->assertMatchesRegularExpression('#prototype="#', $html);
     }
 
-    public function testUuidAndUlidWidgets(): void
+    public function testUuidAndUlidWidgetsRenderAsUiInputs(): void
     {
         foreach ([UuidType::class, UlidType::class] as $type) {
             $form = $this->factory->createNamed('id', $type);
             $html = $this->renderWidget($form->createView());
 
-            $this->assertMatchesXpath($html, '//input[@type="text" and contains(@class, "h-9")]');
+            $this->assertContainsTag($html, 'ui-input');
         }
     }
 
-    public function testSubmitButtonGetsDefaultVariantClasses(): void
+    public function testSubmitButtonGetsDefaultVariant(): void
     {
         $form = $this->factory->createNamed('save', SubmitType::class, null, ['label' => 'Save']);
         $html = $this->renderWidget($form->createView());
 
-        $this->assertMatchesXpath($html, '//button[@type="submit" and contains(@class, "bg-primary") and contains(@class, "text-primary-foreground") and contains(@class, "h-9")]');
+        $this->assertContainsTag($html, 'ui-button');
+        $this->assertStringContainsString('variant="default"', $html);
+        $this->assertStringContainsString('type="submit"', $html);
+        $this->assertStringContainsString('>Save<', $html);
     }
 
-    public function testButtonWithOutlineVariantViaAttribute(): void
+    public function testButtonWithPreviousActionUsesOutlineVariant(): void
     {
         $form = $this->factory->createNamed('back', SubmitType::class, null, [
             'label' => 'Back',
-            'attr' => ['data-variant' => 'outline'],
+            'attr' => ['data-action' => 'previous'],
         ]);
         $html = $this->renderWidget($form->createView());
 
-        $this->assertMatchesXpath($html, '//button[contains(@class, "border-input") and contains(@class, "bg-background")]');
+        $this->assertStringContainsString('variant="outline"', $html);
+        $this->assertStringContainsString('data-action="previous"', $html);
     }
 
-    public function testResetButtonGetsSecondaryStylingByDefault(): void
+    public function testResetButton(): void
     {
-        $form = $this->factory->createNamed('reset', ResetType::class, null, [
-            'label' => 'Reset',
-            'attr' => ['class' => 'shadcn-reset'],
-        ]);
+        $form = $this->factory->createNamed('reset', ResetType::class, null, ['label' => 'Reset']);
         $html = $this->renderWidget($form->createView());
 
-        $this->assertMatchesXpath($html, '//button[@type="reset" and contains(@class, "bg-secondary")]');
+        $this->assertContainsTag($html, 'ui-button');
+        $this->assertStringContainsString('type="reset"', $html);
     }
 
-    public function testRootFormErrorsRenderAsSummaryBlock(): void
+    public function testRootFormErrorsAreSerialisedToJsonErrorsAttribute(): void
     {
-        $form = $this->factory->createNamed('app', \Symfony\Component\Form\Extension\Core\Type\FormType::class);
-        $form->add('name', TextType::class);
-        $form->addError(new FormError('Something is wrong.'));
+        $form = $this->factory->createNamed('app', FormType::class);
+        $form->add('email', EmailType::class);
+        $form->submit(['email' => 'not-an-email']);
+        $form->get('email')->addError(new FormError('This is not a valid email address.'));
 
         $html = $this->renderForm($form->createView());
 
-        $this->assertMatchesXpath($html, '//div[contains(@class, "shadcn-form-error-summary")]');
-        $this->assertStringContainsString('Something is wrong.', $html);
+        $this->assertStringContainsString('<my-form', $html);
+        $this->assertStringContainsString('json-errors=', $html);
+        // Twig's `html_attr` escaper encodes spaces as `&#x20;` inside attribute
+        // values; reactolith's HTML parser undoes the escaping before parsing
+        // the JSON, so the original message round-trips intact on the client.
+        $this->assertStringContainsString(
+            'This&#x20;is&#x20;not&#x20;a&#x20;valid&#x20;email&#x20;address.',
+            $html,
+        );
     }
 }

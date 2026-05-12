@@ -14,6 +14,7 @@
 
 @source "../templates/**/*.html.twig";
 @source "../src/**/*.php";
+@source "./components/**/*.tsx";
 
 @custom-variant dark (&:is(.dark *));
 

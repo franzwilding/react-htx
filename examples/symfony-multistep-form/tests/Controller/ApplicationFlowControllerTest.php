@@ -8,63 +8,79 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 class ApplicationFlowControllerTest extends WebTestCase
 {
-    public function testFirstStepRendersThroughTheShadcnFormTheme(): void
+    public function testFirstStepRendersThroughTheReactolithFormTheme(): void
     {
         $client = static::createClient();
-        $crawler = $client->request('GET', '/apply');
+        $client->request('GET', '/apply');
 
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('h1', 'Apply for an account');
-        $this->assertSelectorExists('form.shadcn-form-root');
-        $this->assertSelectorExists('div.shadcn-form');
-        $this->assertSelectorExists('ol.shadcn-flow-progress');
-        $this->assertSelectorExists('input[type="email"].h-9');
-        $this->assertSelectorExists('label.shadcn-required');
-        $this->assertSelectorExists('div.shadcn-flow-navigator button');
+        $body = (string) $client->getResponse()->getContent();
+
+        // Every visual element is now a reactolith-resolved custom tag.
+        $this->assertStringContainsString('<my-form', $body);
+        $this->assertStringContainsString('<flow-progress', $body);
+        $this->assertStringContainsString('<ui-field', $body);
+        $this->assertStringContainsString('<ui-input', $body);
+        $this->assertStringContainsString('<flow-navigator', $body);
+        $this->assertStringContainsString('<ui-button', $body);
+
+        // Vite asset URLs are emitted by pentatrion/vite-bundle.
+        $this->assertSelectorExists('link[rel="stylesheet"][href^="/build/"]');
+        $this->assertSelectorExists('script[src^="/build/"]');
     }
 
-    public function testSubmittingValidFirstStepAdvancesToAddress(): void
+    public function testInvalidSubmissionEmitsJsonErrorsOnMyForm(): void
     {
         $client = static::createClient();
-        $crawler = $client->request('GET', '/apply');
 
-        $form = $crawler->selectButton('Continue')->form([
-            'application_flow[personal][firstName]' => 'Ada',
-            'application_flow[personal][lastName]' => 'Lovelace',
-            'application_flow[personal][email]' => 'ada@example.com',
-            'application_flow[personal][phone]' => '+44 20 7946 0958',
-            'application_flow[personal][dateOfBirth]' => '1990-12-10',
-            'application_flow[personal][gender]' => 'female',
-            'application_flow[personal][website]' => 'https://ada.example.com',
+        // We POST manually rather than crawling because the server emits
+        // `<my-form>` (a reactolith custom tag), not a native `<form>` —
+        // pre-hydration, DomCrawler's `->form()` doesn't know how to drive it.
+        // The client still gets the same submission Symfony would parse from
+        // a browser-submitted form.
+        $client->request('POST', '/apply', [
+            'application_flow' => [
+                'personal' => [
+                    'firstName' => '',
+                    'email' => 'not-an-email',
+                ],
+                'navigator' => ['next' => ''],
+            ],
         ]);
 
-        $client->submit($form);
-
-        $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('p.text-muted-foreground, header p', 'Address');
-        $this->assertSelectorExists('select[name="application_flow[address][country]"]');
-    }
-
-    public function testInvalidSubmissionRendersInlineShadcnFormMessages(): void
-    {
-        $client = static::createClient();
-        $crawler = $client->request('GET', '/apply');
-
-        $form = $crawler->selectButton('Continue')->form([
-            'application_flow[personal][firstName]' => '',
-            'application_flow[personal][email]' => 'not-an-email',
-        ]);
-
-        $client->submit($form);
-
-        // Symfony returns 422 for invalid form submissions; the HTML still
-        // contains the re-rendered form with inline shadcn error messages.
         $this->assertResponseStatusCodeSame(422);
-        $this->assertSelectorExists('input[aria-invalid="true"]');
-        $this->assertSelectorExists('p.shadcn-form-message');
+        $body = (string) $client->getResponse()->getContent();
+        $this->assertStringContainsString('<my-form', $body);
+        $this->assertStringContainsString('json-errors=', $body);
+        // Error message arrives `html_attr`-encoded inside the json-errors
+        // attribute; reactolith's HTML parser decodes it before parsing JSON.
         $this->assertStringContainsString(
-            'This value is not a valid email address',
-            (string) $client->getResponse()->getContent(),
+            'This&#x20;value&#x20;is&#x20;not&#x20;a&#x20;valid&#x20;email&#x20;address.',
+            $body,
         );
+    }
+
+    public function testFlowAdvancesToAddressOnValidSubmission(): void
+    {
+        $client = static::createClient();
+        $client->request('POST', '/apply', [
+            'application_flow' => [
+                'personal' => [
+                    'firstName' => 'Ada',
+                    'lastName' => 'Lovelace',
+                    'email' => 'ada@example.com',
+                    'phone' => '+44 20 7946 0958',
+                    'dateOfBirth' => '1990-12-10',
+                    'gender' => 'female',
+                    'website' => 'https://ada.example.com',
+                ],
+                'navigator' => ['next' => ''],
+            ],
+        ]);
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $client->getResponse()->getContent();
+        $this->assertStringContainsString('Address', $body);
+        $this->assertStringContainsString('application_flow[address][country]', $body);
     }
 }

@@ -13,7 +13,6 @@ framework:
     validation:
         email_validation_mode: html5
     csrf_protection: true
-    annotations: false
     router:
         utf8: true
 
@@ -22,3 +21,7 @@ when@test:
         test: true
         session:
             storage_factory_id: session.storage.factory.mock_file
+        # Disable CSRF in tests: the WebTestCase posts payloads directly and
+        # cannot run reactolith's client-side token injector. CSRF stays on in
+        # dev / prod because that's where it matters.
+        csrf_protection: false

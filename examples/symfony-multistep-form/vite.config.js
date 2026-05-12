@@ -1,16 +1,14 @@
 import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 import symfonyPlugin from "vite-plugin-symfony";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
-    plugins: [
-        tailwindcss(),
-        symfonyPlugin(),
-    ],
+    plugins: [react(), tailwindcss(), symfonyPlugin()],
     build: {
         rollupOptions: {
             input: {
-                app: "./assets/app.js",
+                app: "./assets/app.tsx",
             },
         },
     },
