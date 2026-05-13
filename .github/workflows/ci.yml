@@ -19,7 +19,7 @@ jobs:
           node-version: 22
           cache: npm
 
-      - run: npm ci
+      - run: npm ci --dev
 
       - run: npm run typecheck
 
@@ -39,7 +39,7 @@ jobs:
           node-version: 22
           cache: npm
 
-      - run: npm ci
+      - run: npm ci --dev
 
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=moderate
