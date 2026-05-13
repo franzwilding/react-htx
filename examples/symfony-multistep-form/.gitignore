@@ -5,6 +5,7 @@
 !/var/log/.gitkeep
 /public/build/
 /node_modules/
+.idea/
 .env.local
 .env.local.php
 .env.*.local
