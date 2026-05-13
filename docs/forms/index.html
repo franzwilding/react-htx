@@ -233,10 +233,12 @@ function SubmitButton() {
 }</ui-code-block>
         <p>
           The first time the user edits a field, its custom validity is
-          cleared automatically &mdash; no React touched-state machinery
-          needed. The full error array remains accessible via
-          <code>useFormErrors(name)</code> if you want to render messages
-          unconditionally until the next submit.
+          cleared automatically and the field's entries disappear from
+          <code>useFormErrors(name)</code> &mdash; so any inline message
+          you render conditionally on that hook vanishes as the user
+          types. No React touched-state machinery needed. The cleared
+          set resets the moment a fresh <code>errors</code> payload
+          arrives from the server.
         </p>
 
         <h2>Submitting state</h2>
