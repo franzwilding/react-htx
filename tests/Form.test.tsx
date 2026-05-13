@@ -235,6 +235,65 @@ describe("Form errors via context", () => {
     });
   });
 
+  it("drops a field's errors from useFormErrors as soon as the user edits it", async () => {
+    const errors: FormError[] = [
+      { name: "email", message: "Invalid email" },
+      { name: "password", message: "Too short" },
+    ];
+
+    function Page({ is }: { is: string }) {
+      if (is !== "my-page") return null;
+      return (
+        <Form errors={errors} action="/submit" method="POST">
+          <input data-testid="email-input" name="email" />
+          <FieldErrors name="email" />
+          <FieldErrors name="password" />
+          <SummaryErrors />
+        </Form>
+      );
+    }
+
+    function FieldErrors({ name }: { name: string }) {
+      const errs = useFormErrors(name);
+      return (
+        <div data-testid={`${name}-errors`}>
+          {errs.map((e) => e.message).join("|")}
+        </div>
+      );
+    }
+
+    function SummaryErrors() {
+      const all = useFormErrors();
+      return <div data-testid="summary">{all.length}</div>;
+    }
+
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app"><my-page></my-page></div>`;
+    mountApp(Page);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("email-errors")).toHaveTextContent(
+        "Invalid email",
+      );
+    });
+    expect(screen.getByTestId("password-errors")).toHaveTextContent(
+      "Too short",
+    );
+    expect(screen.getByTestId("summary")).toHaveTextContent("2");
+
+    const input = screen.getByTestId("email-input") as HTMLInputElement;
+    fireEvent.input(input, { target: { value: "user@example.com" } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("email-errors")).toHaveTextContent("");
+    });
+    // Untouched field keeps its error.
+    expect(screen.getByTestId("password-errors")).toHaveTextContent(
+      "Too short",
+    );
+    // Summary collapses to just the remaining error.
+    expect(screen.getByTestId("summary")).toHaveTextContent("1");
+  });
+
   it("wires errors to native constraint validation and clears them on input", async () => {
     const errors: FormError[] = [{ name: "email", message: "Invalid email" }];
 

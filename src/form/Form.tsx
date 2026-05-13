@@ -69,7 +69,31 @@ export function Form({
   children,
   ...rest
 }: PropsWithChildren<FormProps>) {
-  const errors = useMemo<FormError[]>(() => propErrors ?? [], [propErrors]);
+  const incomingErrors = useMemo<FormError[]>(
+    () => propErrors ?? [],
+    [propErrors],
+  );
+  // Names the user has edited since the current `errors` prop arrived.
+  // Tracked alongside the errors identity so a new payload from the
+  // backend resets the cleared set during render — without that, a field
+  // re-flagged by a fresh submission would flicker for one frame.
+  const [clearedState, setClearedState] = useState<{
+    source: FormError[];
+    cleared: Set<string>;
+  }>(() => ({ source: incomingErrors, cleared: new Set() }));
+  if (clearedState.source !== incomingErrors) {
+    setClearedState({ source: incomingErrors, cleared: new Set() });
+  }
+  const errors = useMemo<FormError[]>(() => {
+    const cleared =
+      clearedState.source === incomingErrors
+        ? clearedState.cleared
+        : new Set<string>();
+    if (cleared.size === 0) return incomingErrors;
+    return incomingErrors.filter(
+      (e) => !(e.name && cleared.has(e.name)) && !(e.id && cleared.has(e.id)),
+    );
+  }, [incomingErrors, clearedState]);
   const [submitting, setSubmitting] = useState(false);
   const { router } = useRouter();
   const internalRef = useRef<HTMLFormElement | null>(null);
@@ -139,13 +163,38 @@ export function Form({
     [onSubmit, router],
   );
 
-  // Clear a field's custom validity as soon as the user edits it.
-  // Without this, setCustomValidity would persist until new errors
-  // arrive from the server and the field would stay `:invalid`.
+  // Clear a field's custom validity AND drop its backend errors from the
+  // context as soon as the user edits it. Otherwise the field would stay
+  // `:invalid` and `useFormErrors(name)` consumers would keep rendering
+  // a stale message that contradicts the user's new input.
   const handleFormInput: FormEventHandler<HTMLFormElement> = useCallback(
     (event) => {
       const target = event.target;
       if (hasSetCustomValidity(target)) target.setCustomValidity("");
+      const name =
+        target && typeof target === "object" && "name" in target
+          ? (target as { name?: unknown }).name
+          : undefined;
+      const id =
+        target && typeof target === "object" && "id" in target
+          ? (target as { id?: unknown }).id
+          : undefined;
+      const hasName = typeof name === "string" && name.length > 0;
+      const hasId = typeof id === "string" && id.length > 0;
+      if (!hasName && !hasId) return;
+      setClearedState((prev) => {
+        const prevSet = prev.cleared;
+        if (
+          (!hasName || prevSet.has(name as string)) &&
+          (!hasId || prevSet.has(id as string))
+        ) {
+          return prev;
+        }
+        const next = new Set(prevSet);
+        if (hasName) next.add(name as string);
+        if (hasId) next.add(id as string);
+        return { source: prev.source, cleared: next };
+      });
     },
     [],
   );
