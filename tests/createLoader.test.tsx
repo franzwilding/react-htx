@@ -435,6 +435,105 @@ describe("createLoader", () => {
     expect(container).toBeInTheDocument();
   });
 
+  it("dispatches to the matching group by prefix", async () => {
+    const Loader = createLoader({
+      groups: [
+        {
+          modules: {
+            "/src/components/ui/button.tsx": () =>
+              Promise.resolve({
+                Button: () => <button data-testid="ui-btn">ui</button>,
+              }),
+          },
+          prefix: "ui-",
+        },
+        {
+          modules: {
+            "/src/components/flow/node.tsx": () =>
+              Promise.resolve({
+                Node: () => <div data-testid="flow-node">flow</div>,
+              }),
+          },
+          prefix: "flow-",
+        },
+      ],
+    });
+
+    await renderLoader(Loader, "flow-node");
+    await waitFor(() => {
+      expect(screen.getByTestId("flow-node")).toBeInTheDocument();
+    });
+
+    await renderLoader(Loader, "ui-button");
+    await waitFor(() => {
+      expect(screen.getByTestId("ui-btn")).toBeInTheDocument();
+    });
+  });
+
+  it("treats a group without prefix as a catch-all", async () => {
+    const Loader = createLoader({
+      groups: [
+        {
+          modules: {
+            "/src/components/ui/button.tsx": () =>
+              Promise.resolve({
+                Button: () => <button data-testid="ui-btn">ui</button>,
+              }),
+          },
+          prefix: "ui-",
+        },
+        {
+          modules: {
+            "/src/components/widget.tsx": () =>
+              Promise.resolve({
+                Widget: () => <div data-testid="catch-all">widget</div>,
+              }),
+          },
+        },
+      ],
+    });
+
+    await renderLoader(Loader, "widget");
+    await waitFor(() => {
+      expect(screen.getByTestId("catch-all")).toBeInTheDocument();
+    });
+  });
+
+  it("calls onMissing when no group prefix matches", async () => {
+    const Missing = ({ is }: { is?: string }) => (
+      <span data-testid="group-miss">{is}</span>
+    );
+    const Loader = createLoader({
+      groups: [
+        {
+          modules: {
+            "/src/components/ui/button.tsx": () =>
+              Promise.resolve({
+                Button: () => <button>btn</button>,
+              }),
+          },
+          prefix: "ui-",
+        },
+      ],
+      onMissing: () => Missing,
+    });
+
+    await renderLoader(Loader, "flow-node");
+    await waitFor(() => {
+      expect(screen.getByTestId("group-miss")).toBeInTheDocument();
+    });
+    expect(screen.getByTestId("group-miss")).toHaveTextContent("flow-node");
+  });
+
+  it("rejects mixing `modules` and `groups`", () => {
+    expect(() =>
+      createLoader({
+        modules: {},
+        groups: [{ modules: {}, prefix: "ui-" }],
+      }),
+    ).toThrow(/mutually exclusive/);
+  });
+
   it("renders the fallback while loading and resolves afterwards", async () => {
     let resolveFn: ((m: Record<string, unknown>) => void) | null = null;
     const slow = () =>

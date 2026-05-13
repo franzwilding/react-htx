@@ -3,15 +3,33 @@ import React, { ComponentType, ElementType, ReactNode, Suspense } from "react";
 export type ModuleLoader = () => Promise<Record<string, unknown>>;
 export type ModuleMap = Record<string, ModuleLoader>;
 
+export interface LoaderGroup {
+  /** One or many module maps from `import.meta.glob`. */
+  modules: ModuleMap | ModuleMap[];
+  /** Tag prefix this group handles (e.g. "ui-"). Required and non-empty
+   *  except for at most one catch-all group. */
+  prefix?: string;
+}
+
 export interface LoaderOptions {
   /**
    * One or many module maps from `import.meta.glob`. When multiple are
    * provided, earlier maps take priority — useful for overriding
    * shadcn components with custom ones.
+   *
+   * Mutually exclusive with `groups`.
    */
-  modules: ModuleMap | ModuleMap[];
-  /** Tag prefix to strip before resolving (e.g. "ui-"). Default: ""  */
+  modules?: ModuleMap | ModuleMap[];
+  /** Tag prefix to strip before resolving (e.g. "ui-"). Default: "" */
   prefix?: string;
+  /**
+   * Multiple module-map groups, each with its own prefix. Groups are
+   * tried in order; the first whose prefix matches the `is` wins.
+   * A group without `prefix` is a catch-all (use as the last entry).
+   *
+   * Mutually exclusive with `modules` / `prefix`.
+   */
+  groups?: LoaderGroup[];
   /**
    * Fallback rendered while a component is being lazy-loaded.
    * Default: null
@@ -107,14 +125,67 @@ async function resolveComponent(
   );
 }
 
+interface NormalizedGroup {
+  moduleMaps: ModuleMap[];
+  prefix: string;
+  /** When false (legacy single-group), a non-matching prefix falls through
+   *  with `name = is` instead of skipping the group. */
+  strict: boolean;
+}
+
+function normalizeGroups(options: LoaderOptions): NormalizedGroup[] {
+  if (options.groups) {
+    if (options.modules !== undefined || options.prefix !== undefined) {
+      throw new Error(
+        "[reactolith] createLoader: `groups` is mutually exclusive with " +
+          "`modules`/`prefix`.",
+      );
+    }
+    if (!options.groups.length) {
+      throw new Error("[reactolith] createLoader: `groups` must not be empty.");
+    }
+    return options.groups.map((g) => ({
+      moduleMaps: Array.isArray(g.modules) ? g.modules : [g.modules],
+      prefix: g.prefix ?? "",
+      strict: true,
+    }));
+  }
+  if (!options.modules) {
+    throw new Error(
+      "[reactolith] createLoader: provide `modules` or `groups`.",
+    );
+  }
+  return [
+    {
+      moduleMaps: Array.isArray(options.modules)
+        ? options.modules
+        : [options.modules],
+      prefix: options.prefix ?? "",
+      strict: false,
+    },
+  ];
+}
+
+function matchGroup(
+  groups: NormalizedGroup[],
+  is: string,
+): { group: NormalizedGroup; name: string } | null {
+  for (const g of groups) {
+    if (is.startsWith(g.prefix)) {
+      return { group: g, name: is.slice(g.prefix.length) };
+    }
+  }
+  if (groups.length === 1 && !groups[0].strict) {
+    return { group: groups[0], name: is };
+  }
+  return null;
+}
+
 export function createLoader(options: LoaderOptions): ElementType<{
   is: string;
   [key: string]: unknown;
 }> {
-  const moduleMaps = Array.isArray(options.modules)
-    ? options.modules
-    : [options.modules];
-  const prefix = options.prefix ?? "";
+  const groups = normalizeGroups(options);
   const fallback = options.fallback ?? null;
   const onMissing = options.onMissing;
   const cache = new Map<string, ComponentType<unknown>>();
@@ -123,13 +194,19 @@ export function createLoader(options: LoaderOptions): ElementType<{
     is,
     ...rest
   }) => {
-    const name = is.startsWith(prefix) ? is.slice(prefix.length) : is;
-
-    let Component = cache.get(name);
+    let Component = cache.get(is);
     if (!Component) {
       Component = React.lazy(async () => {
+        const match = matchGroup(groups, is);
+        const name = match ? match.name : is;
         try {
-          return await resolveComponent(name, moduleMaps);
+          if (!match) {
+            throw new Error(
+              `[reactolith] Could not resolve component "${is}". ` +
+                `No group prefix matched.`,
+            );
+          }
+          return await resolveComponent(name, match.group.moduleMaps);
         } catch (err) {
           if (onMissing) {
             const Fallback = onMissing(name, is);
@@ -139,11 +216,11 @@ export function createLoader(options: LoaderOptions): ElementType<{
           // Without this, React.lazy caches the rejection internally and
           // re-throws forever, leaving the consumer stuck behind an Error
           // Boundary with no recovery path.
-          cache.delete(name);
+          cache.delete(is);
           throw err;
         }
       }) as ComponentType<unknown>;
-      cache.set(name, Component);
+      cache.set(is, Component);
     }
 
     const Resolved = Component as ComponentType<{
