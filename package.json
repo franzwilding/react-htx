@@ -63,7 +63,7 @@
     "lint": "eslint src tests",
     "lint:fix": "eslint src tests --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\"",
-    "build:release": "npm install && npm ci && npm run typecheck && npm run lint && npm test -- --run && npm run build --if-present",
+    "build:release": "npm install && npm ci --dev && npm run typecheck && npm run lint && npm test -- --run && npm run build --if-present",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest run --coverage",
