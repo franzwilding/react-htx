@@ -17,3 +17,5 @@ export { createLoader } from "./createLoader";
 export type { LoaderOptions, ModuleLoader, ModuleMap } from "./createLoader";
 export { Form, useFormErrors, useFormSubmitting } from "./form";
 export type { FormProps, FormError } from "./form";
+export { RouteProgress } from "./RouteProgress";
+export type { RouteProgressProps } from "./RouteProgress";
