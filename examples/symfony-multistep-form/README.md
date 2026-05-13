@@ -5,7 +5,7 @@ A complete, working **Symfony 8** application that demonstrates how to drive
 multi-step form. Symfony's native [`FormFlow`](https://symfony.com/blog/new-in-symfony-7-4-multi-step-forms)
 component handles the steps, validation groups and cursor; the Twig form theme
 emits **kebab-case custom tags** (`<my-form>`, `<ui-input>`, `<ui-field>`,
-`<flow-progress>` …) that reactolith resolves to **shadcn/ui-style React
+`<ui-progress>` …) that reactolith resolves to **shadcn/ui-style React
 components** on the client.
 
 The Twig view is one line:
@@ -21,7 +21,7 @@ That emits HTML like this:
 ```html
 <my-form action="/apply" method="post"
          json-errors='[{"name":"application_flow[personal][email]","message":"Already taken"}]'>
-  <flow-progress json-steps='[{"name":"personal","label":"Personal","position":1,"isCurrent":true}, …]'></flow-progress>
+  <ui-progress json-steps='[{"name":"personal","label":"Personal","position":1,"isCurrent":true}, …]'></ui-progress>
 
   <ui-field name="application_flow[personal][email]">
     <ui-field-label html-for="application_flow_personal_email" required>Email address</ui-field-label>
@@ -30,9 +30,9 @@ That emits HTML like this:
     <ui-field-error name="application_flow[personal][email]"></ui-field-error>
   </ui-field>
 
-  <flow-navigator>
+  <ui-navigator>
     <ui-button type="submit" variant="default" data-action="next">Continue</ui-button>
-  </flow-navigator>
+  </ui-navigator>
 </my-form>
 ```
 
@@ -40,7 +40,7 @@ reactolith hydrates every hyphenated tag into the matching React component.
 `<my-form>` is the reactolith `<Form>` (intercepts submits, exposes
 `useFormErrors(name)` / `useFormSubmitting()`); `<ui-input>` is a shadcn-style
 input that auto-flips to `aria-invalid` when its field has an error;
-`<flow-progress>` reads `json-steps` and draws the progress bar; everything
+`<ui-progress>` reads `json-steps` and draws the progress bar; everything
 that isn't a hyphenated tag (`<div>`, `<p>`, `<option>`) stays plain DOM.
 
 When the user submits an invalid step, Symfony re-renders the same template
@@ -66,12 +66,12 @@ Symfony form field type**, each mapped to a custom reactolith tag:
 | `RangeType` | `<ui-slider min max step>` | `Slider` (with live readout) |
 | `ColorType` | `<ui-color value="#…">` | `ColorPicker` |
 | `FileType` (single + multiple) | `<ui-file>` | `FileInput` |
-| `CollectionType` (with `data-prototype`) | `<flow-collection>` + `<flow-collection-row>` | `Collection` (client-side add/remove) |
+| `CollectionType` (with `data-prototype`) | `<ui-collection>` + `<ui-collection-row>` | `Collection` (client-side add/remove) |
 | `DateIntervalType` (multi-widget) | nested `<ui-input>`s + `<ui-field-label>`s | composed inline |
 | `HiddenType` | native `<input type="hidden">` | (stays plain DOM) |
 | Buttons (`SubmitType`, `ButtonType`, `ResetType`, FormFlow nav) | `<ui-button variant="…" data-action="…">` | `Button` (uses `useFormSubmitting`) |
-| FormFlow navigator | `<flow-navigator>` | `FlowNavigator` |
-| FormFlow cursor | `<flow-progress json-steps='[…]'>` | `FlowProgress` |
+| FormFlow navigator | `<ui-navigator>` | `FlowNavigator` |
+| FormFlow cursor | `<ui-progress json-steps='[…]'>` | `FlowProgress` |
 | Root `<form>` | `<my-form action="…" method="…" json-errors='[…]'>` | reactolith `Form` |
 
 Errors are flattened to a single list of `{name, id, message}` and attached
@@ -118,7 +118,7 @@ The example is **fully TDD** with 54 PHPUnit tests / 189 assertions:
   boolean values are propagated as `json-checked` / `json-value`.
 - **FormFlow navigator tests** ([`tests/FormTheme/ShadcnFlowNavigatorTest.php`](tests/FormTheme/ShadcnFlowNavigatorTest.php))
   confirm the navigator buttons render with the right `data-action` attribute
-  and that `<flow-progress>` serializes the cursor state.
+  and that `<ui-progress>` serializes the cursor state.
 - **Flow walkthrough** ([`tests/Form/ApplicationFlowWalkthroughTest.php`](tests/Form/ApplicationFlowWalkthroughTest.php))
   drives every step end-to-end and asserts the cursor advances.
 - **Preload tests** ([`tests/Preload/`](tests/Preload/)) cover the manifest
@@ -402,7 +402,7 @@ public function __invoke(Request $request): Response
 
 ## Chunk preloading
 
-Because each `<ui-*>` / `<flow-*>` tag is resolved by `createLoader` lazily,
+Because each `<ui-*>` / `<ui-*>` tag is resolved by `createLoader` lazily,
 the browser only discovers which JS chunks the page needs **after** parsing
 the document. The [reactolith preloading guide](https://reactolith.github.io/preloading/)
 closes that gap by emitting `<link rel="modulepreload">` (and matching HTTP
@@ -421,7 +421,7 @@ src/Preload/
 On every HTML response the subscriber:
 
 1. Walks the response body once with a regex that picks up every hyphenated
-   tag name (`<my-form>`, `<ui-input>`, `<flow-progress>` …).
+   tag name (`<my-form>`, `<ui-input>`, `<ui-progress>` …).
 2. Looks each tag up in Vite's `public/build/.vite/manifest.json` using the
    same fall-back rule as `createLoader` — `ui-radio-group-item` →
    `radio-group.tsx`.

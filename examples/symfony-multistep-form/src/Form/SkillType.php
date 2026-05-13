@@ -21,10 +21,12 @@ class SkillType extends AbstractType
         $builder
             ->add('name', TextType::class, [
                 'label' => 'Skill',
+                'required' => false,
                 'attr' => ['placeholder' => 'TypeScript'],
             ])
             ->add('level', IntegerType::class, [
                 'label' => 'Level',
+                'required' => false,
                 'attr' => ['min' => 1, 'max' => 10],
                 'help' => '1 = beginner, 10 = expert.',
             ]);

@@ -21,7 +21,7 @@
     interprets `checked="true"` as the literal string `"true"` (see
     https://reactolith.github.io/forms/ for the full table).
   - Buttons that participate in the FormFlow navigator carry a
-    `data-action` attribute so the `<flow-navigator>` component knows
+    `data-action` attribute so the `<ui-navigator>` component knows
     whether to put them on the back or the forward side.
 
   Views call only `{{ form(form) }}` — every visual + behavioural choice
@@ -85,7 +85,7 @@
         id: id,
         type: type,
     } -%}
-    {%- if value is not empty %}{% set _attrs = _attrs|merge({value: value}) %}{% endif -%}
+    {%- if value is not empty %}{% set _attrs = _attrs|merge({'default-value': value}) %}{% endif -%}
     {%- if required %}{% set _attrs = _attrs|merge({required: 'required'}) %}{% endif -%}
     {%- if disabled %}{% set _attrs = _attrs|merge({disabled: 'disabled'}) %}{% endif -%}
     {%- for k, v in attr %}{% set _attrs = _attrs|merge({(k): v}) %}{% endfor -%}
@@ -93,7 +93,7 @@
 {%- endblock form_widget_simple -%}
 
 {%- block textarea_widget -%}
-    <ui-textarea name="{{ full_name }}" id="{{ id }}"{% if required %} required{% endif %}{% if disabled %} disabled{% endif %}{% if value is not empty %} value="{{ value }}"{% endif %}{% for k, v in attr %} {{ k }}="{{ v }}"{% endfor %}></ui-textarea>
+    <ui-textarea name="{{ full_name }}" id="{{ id }}"{% if required %} required{% endif %}{% if disabled %} disabled{% endif %}{% if value is not empty %} default-value="{{ value }}"{% endif %}{% for k, v in attr %} {{ k }}="{{ v }}"{% endfor %}></ui-textarea>
 {%- endblock textarea_widget -%}
 
 {# ---------------------------------------------------------------------------
@@ -115,19 +115,25 @@
 
 {%- block choice_widget_collapsed -%}
     {%- set _values = data is iterable ? data : (data is null ? [] : [data]) -%}
-    <ui-select name="{{ full_name }}{% if multiple %}[]{% endif %}" id="{{ id }}"{% if multiple %} multiple{% endif %}{% if disabled %} disabled{% endif %} json-value='{{ multiple ? _values|json_encode|e('html_attr') : (_values|first|default(''))|json_encode|e('html_attr') }}'{% if placeholder is not none %} placeholder="{{ placeholder|default('') }}"{% endif %}>
-        {%- for choiceValue, choice in choices -%}
-            {%- if choice is iterable -%}
-                <optgroup label="{{ choiceValue }}">
-                    {%- for c in choice -%}
-                        <option value="{{ c.value }}">{{ c.label }}</option>
-                    {%- endfor -%}
-                </optgroup>
-            {%- else -%}
-                <option value="{{ choice.value }}">{{ choice.label }}</option>
-            {%- endif -%}
-        {%- endfor -%}
-    </ui-select>
+    {%- set _options = [] -%}
+    {%- for choiceValue, choice in choices -%}
+        {%- if choice is iterable -%}
+            {%- for c in choice -%}
+                {%- set _options = _options|merge([{value: c.value, label: c.label, group: choiceValue}]) -%}
+            {%- endfor -%}
+        {%- else -%}
+            {%- set _options = _options|merge([{value: choice.value, label: choice.label}]) -%}
+        {%- endif -%}
+    {%- endfor -%}
+    <ui-select
+        name="{{ full_name }}{% if multiple %}[]{% endif %}"
+        id="{{ id }}"
+        {% if multiple %}multiple{% endif %}
+        {% if disabled %}disabled{% endif %}
+        json-value='{{ multiple ? _values|json_encode|e('html_attr') : (_values|first|default(''))|json_encode|e('html_attr') }}'
+        json-options='{{ _options|json_encode|e('html_attr') }}'
+        {% if placeholder is not none %}placeholder="{{ placeholder|default('') }}"{% endif %}
+    ></ui-select>
 {%- endblock choice_widget_collapsed -%}
 
 {%- block choice_widget_expanded_single -%}
@@ -189,7 +195,25 @@
 {%- endblock color_widget -%}
 
 {%- block file_widget -%}
-    <ui-file-input name="{{ full_name }}{% if multiple|default(false) %}[]{% endif %}" id="{{ id }}"{% if multiple|default(false) %} multiple{% endif %}{% if disabled %} disabled{% endif %}{% if required %} required{% endif %}{% for k, v in attr %} {{ k }}="{{ v }}"{% endfor %}></ui-file-input>
+    {%- set _existing = [] -%}
+    {%- if form.vars.data is iterable -%}
+        {%- for f in form.vars.data -%}
+            {%- if f is not null -%}
+                {%- set _existing = _existing|merge([{name: f.basename, size: f.size}]) -%}
+            {%- endif -%}
+        {%- endfor -%}
+    {%- elseif form.vars.data is not null -%}
+        {%- set _existing = [{name: form.vars.data.basename, size: form.vars.data.size}] -%}
+    {%- endif -%}
+    <ui-file-input
+        name="{{ full_name }}{% if multiple|default(false) %}[]{% endif %}"
+        id="{{ id }}"
+        {% if multiple|default(false) %}multiple{% endif %}
+        {% if disabled %}disabled{% endif %}
+        {% if required %}required{% endif %}
+        {% if _existing|length > 0 %}json-existing='{{ _existing|json_encode|e('html_attr') }}'{% endif %}
+        {% for k, v in attr %} {{ k }}="{{ v }}"{% endfor %}
+    ></ui-file-input>
 {%- endblock file_widget -%}
 
 {%- block money_widget -%}
@@ -273,7 +297,7 @@
 
 {# ---------------------------------------------------------------------------
    Collection — render the prototype on the server, pass the prototype HTML
-   to `<flow-collection>` so it can add new rows client-side.
+   to `<ui-collection>` so it can add new rows client-side.
    --------------------------------------------------------------------------- #}
 
 {%- block collection_widget -%}
@@ -282,18 +306,18 @@
     {%- else -%}
         {%- set _prototype = '' -%}
     {%- endif -%}
-    <flow-collection id="{{ id }}"{% if _prototype is not empty %} prototype="{{ _prototype|e('html_attr') }}"{% endif %} prototype-name="__name__">
+    <ui-collection id="{{ id }}"{% if _prototype is not empty %} prototype="{{ _prototype|e('html_attr') }}"{% endif %} prototype-name="__name__">
         {%- for child in form -%}
-            <flow-collection-row>
+            <ui-collection-row>
                 {{- form_row(child) -}}
-            </flow-collection-row>
+            </ui-collection-row>
         {%- endfor -%}
-    </flow-collection>
+    </ui-collection>
 {%- endblock collection_widget -%}
 
 {# ---------------------------------------------------------------------------
    Buttons — `<ui-button>` with shadcn variants. FormFlow buttons forward
-   `data-action` so `<flow-navigator>` knows where to put them.
+   `data-action` so `<ui-navigator>` knows where to put them.
    --------------------------------------------------------------------------- #}
 
 {%- block button_widget -%}
@@ -317,28 +341,34 @@
 {%- endblock reset_widget -%}
 
 {# ---------------------------------------------------------------------------
-   FormFlow integration — the navigator becomes `<flow-navigator>`, which
+   FormFlow integration — the navigator becomes `<ui-navigator>`, which
    reads `data-action` on each button to split them into back vs forward.
    --------------------------------------------------------------------------- #}
 
 {%- block navigator_flow_widget -%}
-    <flow-navigator>
-        {%- if form.previous is defined and not form.previous.rendered -%}
-            {{ form_widget(form.previous, {label: 'Back', attr: {'data-action': 'previous'}}) }}
-        {%- endif -%}
+    <ui-navigator>
         {%- if form.next is defined and not form.next.rendered -%}
             {{ form_widget(form.next, {label: 'Continue', attr: {'data-action': 'next'}}) }}
         {%- endif -%}
         {%- if form.finish is defined and not form.finish.rendered -%}
             {{ form_widget(form.finish, {label: 'Submit application', attr: {'data-action': 'finish'}}) }}
         {%- endif -%}
-    </flow-navigator>
+        {%- if form.previous is defined and not form.previous.rendered -%}
+            {{ form_widget(form.previous, {label: 'Back', attr: {'data-action': 'previous'}}) }}
+        {%- endif -%}
+    </ui-navigator>
 {%- endblock navigator_flow_widget -%}
 
 {%- block form_flow_widget -%}
     {%- set _errors = reactolith_form_errors(form) -%}
-    <flow-progress json-steps='{{ reactolith_progress_steps(form)|json_encode|e('html_attr') }}'></flow-progress>
-    {{- block('form_widget_compound') -}}
+    {%- set _previousName = (form.navigator is defined and form.navigator.previous is defined) ? form.navigator.previous.vars.full_name : '' -%}
+    <ui-progress
+        json-steps='{{ reactolith_progress_steps(form)|json_encode|e('html_attr') }}'
+        {% if _previousName %}previous-name="{{ _previousName }}"{% endif %}
+    ></ui-progress>
+    <div key="{{ form.vars.cursor.currentStep }}">
+        {{- block('form_widget_compound') -}}
+    </div>
 {%- endblock form_flow_widget -%}
 
 {# ---------------------------------------------------------------------------
@@ -351,7 +381,7 @@
     {%- set method = method|upper -%}
     {%- set form_method = method in ['GET', 'POST'] ? method : 'POST' -%}
     {%- set _errors = reactolith_form_errors(form) -%}
-    <my-form action="{{ action }}" method="{{ form_method|lower }}"{% if multipart %} enctype="multipart/form-data"{% endif %}{% if _errors|length > 0 %} json-errors='{{ _errors|json_encode|e('html_attr') }}'{% endif %}>
+    <ui-form action="{{ action }}" method="{{ form_method|lower }}"{% if multipart %} enctype="multipart/form-data"{% endif %}{% if _errors|length > 0 %} json-errors='{{ _errors|json_encode|e('html_attr') }}'{% endif %}>
     {%- if form_method != method -%}
         <input type="hidden" name="_method" value="{{ method }}" />
     {%- endif -%}
@@ -361,7 +391,7 @@
     {%- if not render_rest is defined or render_rest -%}
         {{ form_rest(form) }}
     {%- endif -%}
-    </my-form>
+    </ui-form>
 {%- endblock form_end -%}
 
 {%- block form_widget_compound -%}

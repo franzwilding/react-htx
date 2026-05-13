@@ -25,7 +25,7 @@ use Twig\Loader\FilesystemLoader;
 
 /**
  * Renders the full ApplicationFlowType through the reactolith theme and
- * asserts that the FormFlow navigator becomes a `<flow-navigator>` with the
+ * asserts that the FormFlow navigator becomes a `<ui-navigator>` with the
  * right buttons forwarded as `<ui-button data-action="…">`.
  */
 class ShadcnFlowNavigatorTest extends FormIntegrationTestCase
@@ -77,7 +77,7 @@ class ShadcnFlowNavigatorTest extends FormIntegrationTestCase
             'widget',
         );
 
-        $this->assertStringContainsString('<flow-navigator', $html);
+        $this->assertStringContainsString('<ui-navigator', $html);
         $this->assertStringContainsString('data-action="next"', $html);
         $this->assertStringContainsString('>Continue<', $html);
         $this->assertStringNotContainsString('data-action="previous"', $html);
@@ -95,7 +95,7 @@ class ShadcnFlowNavigatorTest extends FormIntegrationTestCase
             'widget',
         );
 
-        $this->assertStringContainsString('<flow-navigator', $html);
+        $this->assertStringContainsString('<ui-navigator', $html);
         $this->assertStringContainsString('data-action="previous"', $html);
         $this->assertStringContainsString('data-action="finish"', $html);
         $this->assertStringContainsString('variant="outline"', $html);
@@ -107,7 +107,7 @@ class ShadcnFlowNavigatorTest extends FormIntegrationTestCase
         $flow = $this->createFlow();
         $html = $this->renderer->searchAndRenderBlock($flow->createView(), 'widget');
 
-        $this->assertStringContainsString('<flow-progress', $html);
+        $this->assertStringContainsString('<ui-progress', $html);
         $this->assertStringContainsString('json-steps=', $html);
         foreach (Application::STEPS as $step) {
             $this->assertStringContainsString(
@@ -125,8 +125,8 @@ class ShadcnFlowNavigatorTest extends FormIntegrationTestCase
 
         $this->assertStringContainsString('<my-form', $html);
         $this->assertStringContainsString('</my-form>', $html);
-        $this->assertStringContainsString('<flow-progress', $html);
-        $this->assertStringContainsString('<flow-navigator', $html);
+        $this->assertStringContainsString('<ui-progress', $html);
+        $this->assertStringContainsString('<ui-navigator', $html);
         $this->assertStringContainsString('<ui-field', $html);
     }
 

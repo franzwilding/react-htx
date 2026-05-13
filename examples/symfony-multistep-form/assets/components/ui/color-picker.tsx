@@ -7,9 +7,11 @@ export function ColorPicker({
   value,
   defaultValue,
   className,
+  children: _,
   ...rest
 }: Omit<React.InputHTMLAttributes<HTMLInputElement>, "type"> & {
   name: string;
+  children?: React.ReactNode;
 }) {
   const errors = useFormErrors(name);
   const invalid = errors.length > 0;

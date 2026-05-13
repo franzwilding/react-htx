@@ -12,11 +12,9 @@ use Symfony\Component\Validator\Constraints as Assert;
 class Skill
 {
     public function __construct(
-        #[Assert\NotBlank(groups: ['documents'])]
         #[Assert\Length(min: 2, max: 64, groups: ['documents'])]
         public ?string $name = null,
 
-        #[Assert\NotNull(groups: ['documents'])]
         #[Assert\Range(min: 1, max: 10, groups: ['documents'])]
         public ?int $level = null,
     ) {

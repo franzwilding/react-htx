@@ -20,14 +20,18 @@ export function Input({
   className,
   type = "text",
   name,
+  value,
+  defaultValue,
+  children: _children,
   ...rest
-}: InputProps) {
+}: InputProps & { children?: React.ReactNode }) {
   const errors = useFormErrors(name);
   const invalid = errors.length > 0;
   return (
     <input
       type={type}
       name={name}
+      defaultValue={value ?? defaultValue}
       aria-invalid={invalid || undefined}
       className={cn(
         "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors",

@@ -32,6 +32,7 @@ class PreferencesStepType extends AbstractType
         $builder
             ->add('interests', ChoiceType::class, [
                 'label' => 'Interests',
+                'required' => false,
                 'choices' => [
                     'Frontend engineering' => 'frontend',
                     'Backend engineering' => 'backend',
@@ -46,6 +47,7 @@ class PreferencesStepType extends AbstractType
             ])
             ->add('newsletterFrequency', ChoiceType::class, [
                 'label' => 'Newsletter frequency',
+                'required' => false,
                 'choices' => [
                     'Daily digest' => 'daily',
                     'Weekly roundup' => 'weekly',
@@ -58,7 +60,7 @@ class PreferencesStepType extends AbstractType
             ])
             ->add('acceptsTerms', CheckboxType::class, [
                 'label' => 'I accept the Terms of Service and Privacy Policy.',
-                'required' => true,
+                'required' => false,
             ])
             ->add('subscribesToTips', CheckboxType::class, [
                 'label' => 'Send me product tips and feature announcements.',
@@ -67,6 +69,7 @@ class PreferencesStepType extends AbstractType
             ])
             ->add('favoriteColor', ColorType::class, [
                 'label' => 'Favorite color',
+                'required' => false,
                 'help' => 'Used as the accent color on your profile page.',
             ])
             ->add('searchQuery', SearchType::class, [
@@ -76,6 +79,7 @@ class PreferencesStepType extends AbstractType
             ])
             ->add('password', RepeatedType::class, [
                 'type' => PasswordType::class,
+                'required' => false,
                 'invalid_message' => 'The password fields must match.',
                 'first_options' => [
                     'label' => 'Password',
@@ -96,6 +100,7 @@ class PreferencesStepType extends AbstractType
             ])
             ->add('membership', EnumType::class, [
                 'label' => 'Membership tier',
+                'required' => false,
                 'class' => MembershipTier::class,
                 'expanded' => true,
                 'multiple' => false,

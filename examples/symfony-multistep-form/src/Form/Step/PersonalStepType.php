@@ -29,29 +29,35 @@ class PersonalStepType extends AbstractType
             ->add('firstName', TextType::class, [
                 'label' => 'First name',
                 'help' => 'How should we address you in emails?',
+                'data' => 'Ada',
                 'attr' => ['autocomplete' => 'given-name', 'placeholder' => 'Ada'],
             ])
             ->add('lastName', TextType::class, [
                 'label' => 'Last name',
+                'required' => false,
                 'attr' => ['autocomplete' => 'family-name', 'placeholder' => 'Lovelace'],
             ])
             ->add('email', EmailType::class, [
                 'label' => 'Email address',
+                'required' => false,
                 'help' => 'We will never share this with anyone.',
                 'attr' => ['autocomplete' => 'email', 'placeholder' => 'ada@example.com'],
             ])
             ->add('phone', TelType::class, [
                 'label' => 'Phone number',
+                'required' => false,
                 'attr' => ['autocomplete' => 'tel', 'placeholder' => '+44 20 7946 0958'],
             ])
             ->add('dateOfBirth', BirthdayType::class, [
                 'label' => 'Date of birth',
+                'required' => false,
                 'help' => 'You must be at least 18 years old.',
                 'widget' => 'single_text',
                 'input' => 'datetime_immutable',
             ])
             ->add('gender', ChoiceType::class, [
                 'label' => 'Gender',
+                'required' => false,
                 'choices' => [
                     'Female' => 'female',
                     'Male' => 'male',

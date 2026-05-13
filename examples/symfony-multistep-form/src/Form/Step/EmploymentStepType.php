@@ -36,10 +36,12 @@ class EmploymentStepType extends AbstractType
         $builder
             ->add('company', TextType::class, [
                 'label' => 'Current employer',
+                'required' => false,
                 'attr' => ['placeholder' => 'Acme Inc.'],
             ])
             ->add('status', ChoiceType::class, [
                 'label' => 'Employment status',
+                'required' => false,
                 'choices' => [
                     'Employed' => 'employed',
                     'Self-employed' => 'self_employed',
@@ -51,31 +53,37 @@ class EmploymentStepType extends AbstractType
             ])
             ->add('annualSalary', MoneyType::class, [
                 'label' => 'Annual gross salary',
+                'required' => false,
                 'currency' => 'EUR',
                 'divisor' => 1,
                 'help' => 'Used to calculate plan eligibility.',
             ])
             ->add('salaryCurrency', CurrencyType::class, [
                 'label' => 'Salary currency',
+                'required' => false,
                 'placeholder' => '— select currency —',
             ])
             ->add('taxRate', PercentType::class, [
                 'label' => 'Effective tax rate',
+                'required' => false,
                 'type' => 'fractional',
                 'scale' => 2,
                 'help' => 'Enter a percentage, e.g. 32.5%.',
             ])
             ->add('yearsOfExperience', IntegerType::class, [
                 'label' => 'Years of experience',
+                'required' => false,
                 'attr' => ['min' => 0, 'max' => 60],
             ])
             ->add('weeklyHours', RangeType::class, [
                 'label' => 'Weekly working hours',
+                'required' => false,
                 'attr' => ['min' => 0, 'max' => 80, 'step' => 1],
                 'help' => 'Drag the slider to your average weekly hours.',
             ])
             ->add('startDate', DateType::class, [
                 'label' => 'Start date',
+                'required' => false,
                 'widget' => 'single_text',
                 'input' => 'datetime_immutable',
                 'help' => 'When did you join your current employer?',

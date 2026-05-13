@@ -8,7 +8,7 @@ export default defineConfig({
     build: {
         rollupOptions: {
             input: {
-                app: "./assets/app.tsx",
+                app: "./assets/app.ts",
             },
         },
     },

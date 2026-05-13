@@ -13,7 +13,7 @@ export type SliderProps = Omit<
  * Range slider rendered as a styled native `<input type="range">`. The live
  * value is mirrored to a small badge next to the slider as the user drags.
  */
-export function Slider({ className, name, defaultValue, value, ...rest }: SliderProps) {
+export function Slider({ className, name, defaultValue, value, children: _, ...rest }: SliderProps & { children?: React.ReactNode }) {
   const errors = useFormErrors(name);
   const invalid = errors.length > 0;
   const initial =

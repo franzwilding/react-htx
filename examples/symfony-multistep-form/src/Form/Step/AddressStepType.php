@@ -26,33 +26,40 @@ class AddressStepType extends AbstractType
         $builder
             ->add('street', TextType::class, [
                 'label' => 'Street address',
+                'required' => false,
                 'attr' => ['autocomplete' => 'street-address', 'placeholder' => '221B Baker Street'],
             ])
             ->add('city', TextType::class, [
                 'label' => 'City',
+                'required' => false,
                 'attr' => ['autocomplete' => 'address-level2', 'placeholder' => 'London'],
             ])
             ->add('postalCode', TextType::class, [
                 'label' => 'Postal / ZIP code',
+                'required' => false,
                 'attr' => ['autocomplete' => 'postal-code', 'placeholder' => 'NW1 6XE'],
             ])
             ->add('country', CountryType::class, [
                 'label' => 'Country',
+                'required' => false,
                 'placeholder' => '— select a country —',
                 'attr' => ['autocomplete' => 'country'],
             ])
             ->add('preferredLanguage', LanguageType::class, [
                 'label' => 'Preferred language',
+                'required' => false,
                 'placeholder' => '— select a language —',
                 'help' => 'Used for email notifications.',
             ])
             ->add('locale', LocaleType::class, [
                 'label' => 'Locale',
+                'required' => false,
                 'placeholder' => '— select a locale —',
                 'help' => 'Drives number, date and currency formatting.',
             ])
             ->add('timezone', TimezoneType::class, [
                 'label' => 'Timezone',
+                'required' => false,
                 'placeholder' => '— select a timezone —',
                 'help' => 'All scheduled events are shown in this timezone.',
             ]);

@@ -16,7 +16,7 @@ use Twig\TwigFunction;
  *  - `reactolith_form_errors(FormView)`     → list of {name, id, message}
  *     destined for the `json-errors` attribute on `<my-form>`.
  *  - `reactolith_progress_steps(FormView)`  → list of {name, label, position,
- *     isCurrent} for `<flow-progress>`.
+ *     isCurrent} for `<ui-progress>`.
  *
  * Both helpers are pure (no side effects on the form), so they're safe to
  * call as many times as the template wants.

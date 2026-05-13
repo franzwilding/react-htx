@@ -4,10 +4,10 @@ import { cn } from "../../lib/utils";
 /**
  * Wraps the FormFlow navigator buttons (Back / Continue / Finish) into the
  * shadcn-style toolbar. The Symfony form theme just emits this component as
- * `<flow-navigator>`; its children come from `form_widget` calls so the
+ * `<ui-navigator>`; its children come from `form_widget` calls so the
  * actual buttons can be customised per step without touching this layout.
  */
-export function FlowNavigator({
+export function Navigator({
   className,
   children,
 }: React.HTMLAttributes<HTMLDivElement>) {

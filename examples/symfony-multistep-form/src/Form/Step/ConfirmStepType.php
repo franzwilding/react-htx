@@ -29,10 +29,7 @@ class ConfirmStepType extends AbstractType
             ->add('accepted', CheckboxType::class, [
                 'label' => 'I confirm that the information above is accurate.',
                 'mapped' => false,
-                'required' => true,
-                'constraints' => [
-                    new IsTrue(message: 'Please confirm your application before submitting.', groups: ['confirm']),
-                ],
+                'required' => false,
             ]);
     }
 

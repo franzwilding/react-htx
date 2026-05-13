@@ -11,7 +11,7 @@ use Symfony\Component\HttpKernel\KernelEvents;
 /**
  * Closes the discoverability gap reactolith mentions in its [chunk-preloading
  * docs](https://reactolith.github.io/preloading/): because each `<ui-*>` /
- * `<flow-*>` tag is resolved lazily, the browser only learns which chunks the
+ * `<ui-*>` tag is resolved lazily, the browser only learns which chunks the
  * page needs after parsing the document. This subscriber walks the response
  * HTML once, looks every custom-element name up in the Vite manifest via
  * `VitePreloadLinkResolver`, and injects `<link rel="modulepreload">` /

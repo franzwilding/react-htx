@@ -45,7 +45,7 @@ class ReactolithPreloadSubscriberTest extends TestCase
     {
         $subscriber = $this->createSubscriber();
         $tags = $subscriber->extractCustomElementTags(
-            '<head></head><body><my-form><ui-field><ui-input/><UI-FIELD-LABEL/></ui-field><flow-progress></flow-progress><div>plain</div></my-form></body>',
+            '<head></head><body><my-form><ui-field><ui-input/><UI-FIELD-LABEL/></ui-field><ui-progress></ui-progress><div>plain</div></my-form></body>',
         );
         sort($tags);
 
@@ -60,7 +60,7 @@ class ReactolithPreloadSubscriberTest extends TestCase
         $html = <<<HTML
         <!doctype html>
         <html><head><title>x</title></head>
-        <body><my-form><ui-field><ui-input/></ui-field><flow-progress></flow-progress></my-form></body></html>
+        <body><my-form><ui-field><ui-input/></ui-field><ui-progress></ui-progress></my-form></body></html>
         HTML;
 
         $event = $this->makeResponseEvent($html, 'text/html; charset=UTF-8');

@@ -36,12 +36,12 @@ class ApplicationFlowType extends AbstractFlowType
     public function buildFormFlow(FormFlowBuilderInterface $builder, array $options): void
     {
         $builder
-            ->addStep(Application::STEP_PERSONAL, PersonalStepType::class)
-            ->addStep(Application::STEP_ADDRESS, AddressStepType::class)
-            ->addStep(Application::STEP_EMPLOYMENT, EmploymentStepType::class)
-            ->addStep(Application::STEP_PREFERENCES, PreferencesStepType::class)
-            ->addStep(Application::STEP_DOCUMENTS, DocumentsStepType::class)
-            ->addStep(Application::STEP_CONFIRM, ConfirmStepType::class)
+            ->addStep(Application::STEP_PERSONAL, PersonalStepType::class, ['label' => false])
+            ->addStep(Application::STEP_ADDRESS, AddressStepType::class, ['label' => false])
+            ->addStep(Application::STEP_EMPLOYMENT, EmploymentStepType::class, ['label' => false])
+            ->addStep(Application::STEP_PREFERENCES, PreferencesStepType::class, ['label' => false])
+            ->addStep(Application::STEP_DOCUMENTS, DocumentsStepType::class, ['label' => false])
+            ->addStep(Application::STEP_CONFIRM, ConfirmStepType::class, ['label' => false])
             ->add('navigator', NavigatorFlowType::class);
     }
 

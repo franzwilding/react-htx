@@ -18,10 +18,10 @@ class ApplicationFlowControllerTest extends WebTestCase
 
         // Every visual element is now a reactolith-resolved custom tag.
         $this->assertStringContainsString('<my-form', $body);
-        $this->assertStringContainsString('<flow-progress', $body);
+        $this->assertStringContainsString('<ui-progress', $body);
         $this->assertStringContainsString('<ui-field', $body);
         $this->assertStringContainsString('<ui-input', $body);
-        $this->assertStringContainsString('<flow-navigator', $body);
+        $this->assertStringContainsString('<ui-navigator', $body);
         $this->assertStringContainsString('<ui-button', $body);
 
         // Vite asset URLs are emitted by pentatrion/vite-bundle.
@@ -37,7 +37,7 @@ class ApplicationFlowControllerTest extends WebTestCase
         $this->assertResponseIsSuccessful();
         $body = (string) $client->getResponse()->getContent();
 
-        // Every `<ui-*>` / `<flow-*>` tag on the page should yield a
+        // Every `<ui-*>` / `<ui-*>` tag on the page should yield a
         // `<link rel="modulepreload">` for its chunk.
         $this->assertMatchesRegularExpression(
             '#<link rel="modulepreload"[^>]*assets/input-[^"]+\.js"#',
@@ -47,7 +47,7 @@ class ApplicationFlowControllerTest extends WebTestCase
         $this->assertMatchesRegularExpression(
             '#<link rel="modulepreload"[^>]*assets/progress-[^"]+\.js"#',
             $body,
-            'Expected the `<flow-progress>` chunk to be preloaded.',
+            'Expected the `<ui-progress>` chunk to be preloaded.',
         );
 
         // Same hints are also exposed as HTTP `Link:` headers so an HTTP/2
