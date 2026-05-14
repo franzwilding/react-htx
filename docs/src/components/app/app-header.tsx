@@ -64,16 +64,16 @@ export function AppHeader({
               Idea
             </a>
             <a
-              href="#example"
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Example
-            </a>
-            <a
               href="#compare"
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               Compare
+            </a>
+            <a
+              href={`${BASE}examples/`}
+              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Examples
             </a>
             <a
               href={`${BASE}installation/`}
