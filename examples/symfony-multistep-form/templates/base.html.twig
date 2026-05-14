@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{% block title %}Application{% endblock %}</title>
+        {# Apply the saved theme before the first paint so users in dark mode
+           don't get flashed with the light palette while React boots. #}
+        <script>
+            (function () {
+                try {
+                    var stored = localStorage.getItem('ui.theme');
+                    var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    var theme = stored === 'light' || stored === 'dark' ? stored : (prefersDark ? 'dark' : 'light');
+                    if (theme === 'dark') document.documentElement.classList.add('dark');
+                } catch (e) {}
+            })();
+        </script>
+        {% block stylesheets %}
+            {{ vite_entry_link_tags('app') }}
+        {% endblock %}
+        {% block javascripts %}
+            {{ vite_entry_script_tags('app', { dependency: 'react' }) }}
+        {% endblock %}
+    </head>
+    <body class="min-h-full bg-background text-foreground antialiased">
+        <main class="mx-auto max-w-2xl px-4 py-12">
+            <header class="mb-10">
+                <h1 class="text-3xl font-semibold tracking-tight">{% block heading %}Application{% endblock %}</h1>
+                <p class="mt-2 text-sm text-muted-foreground">{% block subheading %}{% endblock %}</p>
+            </header>
+            <div id="reactolith-app">
+                <div class="fixed right-4 top-4 z-50">
+                    <ui-theme-toggle></ui-theme-toggle>
+                </div>
+                {% block body %}{% endblock %}
+            </div>
+        </main>
+    </body>
+</html>

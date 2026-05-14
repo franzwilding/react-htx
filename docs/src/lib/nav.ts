@@ -44,6 +44,13 @@ export const NAV: NavGroup[] = [
       { label: "Development", href: "/development/" },
     ],
   },
+  {
+    label: "Examples",
+    items: [
+      { label: "Overview", href: "/examples/" },
+      { label: "Symfony FormFlow", href: "/examples/symfony-multistep-form/" },
+    ],
+  },
 ];
 
 export function normalizePath(path: string): string {

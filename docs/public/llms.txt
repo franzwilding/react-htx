@@ -61,6 +61,11 @@ Any tag with a hyphen → React component. Everything else → native DOM.
 - [API Cheatsheet](https://reactolith.github.io/api/): full public surface — `App`, `Router`, `Mercure`, `MercureLive`, `ReactolithComponent`, `ScrollRestoration`, `Form`, `useFormErrors`, `useFormSubmitting`, `createLoader`, `renderToString`
 - [Development & Contributing](https://reactolith.github.io/development/)
 
+## Examples
+
+- [Overview](https://reactolith.github.io/examples/): runnable example apps integrating reactolith with real backend frameworks
+- [Symfony FormFlow multi-step form](https://reactolith.github.io/examples/symfony-multistep-form/): six-step Symfony FormFlow wizard with shadcn/ui, file uploads that survive back-navigation (with delete and replace), CollectionType prototypes hydrated through reactolith, and a click-to-go-back step indicator
+
 ## Comparisons
 
 - [reactolith vs Inertia.js](https://reactolith.github.io/comparisons/inertia/): why HTML beats JSON page props when you want state to survive navigation
