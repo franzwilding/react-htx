@@ -50,6 +50,20 @@ function fileIcon(file: File): React.ReactNode {
   );
 }
 
+/**
+ * Derives the hidden "keep" field name from the file field name.
+ * Symfony's form names look like `application_flow[documents][resume]` or
+ * `application_flow[documents][portfolio][]` — we rewrite the last segment
+ * to `<basename>_keep[]` so the parent compound form picks them up as
+ * unmapped data.
+ */
+function deriveKeepName(fileName: string): string {
+  const base = fileName.replace(/\[\]$/, "");
+  const m = base.match(/^(.*)\[([^[\]]+)\]$/);
+  if (m) return `${m[1]}[${m[2]}_keep][]`;
+  return `${base}_keep[]`;
+}
+
 export function FileInput({
   name,
   id,
@@ -65,6 +79,26 @@ export function FileInput({
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [files, setFiles] = React.useState<File[]>([]);
   const [dragOver, setDragOver] = React.useState(false);
+  // Indexes (into `existing`) the user has chosen to keep. We track keeps
+  // rather than removes so the server-side default for the unmapped
+  // `<field>_keep[]` array is "no files kept" — clicking X just drops the
+  // matching hidden input from the DOM and the server stops persisting it.
+  const [keptIndexes, setKeptIndexes] = React.useState<number[]>(() =>
+    existing.map((_, i) => i),
+  );
+  const keepName = React.useMemo(() => deriveKeepName(name), [name]);
+
+  const removeExisting = (idx: number) => {
+    setKeptIndexes((prev) => prev.filter((i) => i !== idx));
+  };
+
+  const removeFile = (index: number) => {
+    if (!inputRef.current) return;
+    const dt = new DataTransfer();
+    files.forEach((f, i) => { if (i !== index) dt.items.add(f); });
+    inputRef.current.files = dt.files;
+    setFiles(Array.from(dt.files));
+  };
 
   const setNativeFiles = (list: FileList | null) => {
     if (!inputRef.current) return;
@@ -72,14 +106,6 @@ export function FileInput({
     if (list) {
       for (const f of Array.from(list)) dt.items.add(f);
     }
-    inputRef.current.files = dt.files;
-    setFiles(Array.from(dt.files));
-  };
-
-  const removeFile = (index: number) => {
-    if (!inputRef.current) return;
-    const dt = new DataTransfer();
-    files.forEach((f, i) => { if (i !== index) dt.items.add(f); });
     inputRef.current.files = dt.files;
     setFiles(Array.from(dt.files));
   };
@@ -98,30 +124,14 @@ export function FileInput({
     }
   };
 
+  const visibleExisting = existing
+    .map((file, i) => ({ file, i }))
+    .filter(({ i }) => keptIndexes.includes(i));
+
+  const hasExistingKept = visibleExisting.length > 0;
+
   return (
     <div className={cn("space-y-2", className)}>
-      {existing.length > 0 && (
-        <ul className="space-y-1.5">
-          {existing.map((file, i) => (
-            <li
-              key={`existing-${file.name}-${i}`}
-              className="flex items-center gap-3 rounded-md border border-input bg-muted/40 px-3 py-2 text-sm"
-            >
-              <svg className="h-5 w-5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <path d="M14 2v6h6" />
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{file.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {formatBytes(file.size)} · already uploaded
-                </p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
       <div
         role="button"
         tabIndex={disabled ? -1 : 0}
@@ -153,7 +163,7 @@ export function FileInput({
         </svg>
         <div className="text-sm">
           <span className="font-medium text-foreground">
-            {existing.length > 0 ? (multiple ? "Add more files" : "Replace file") : "Click to upload"}
+            {hasExistingKept ? (multiple ? "Add more files" : "Replace file") : "Click to upload"}
           </span>
           <span className="text-muted-foreground"> or drag and drop</span>
         </div>
@@ -169,7 +179,7 @@ export function FileInput({
           disabled={disabled}
           // When the server already has a file we don't want the browser to
           // demand a new upload — the existing one satisfies the requirement.
-          required={required && existing.length === 0}
+          required={required && !hasExistingKept}
           accept={accept}
           onChange={(e) => {
             const input = e.target;
@@ -178,14 +188,10 @@ export function FileInput({
               setFiles(picked);
               return;
             }
-            // Use functional state so we always merge with the latest
-            // selection, not the one captured by the closure.
             setFiles((prev) => {
               const dt = new DataTransfer();
               prev.forEach((f) => dt.items.add(f));
               picked.forEach((f) => {
-                // De-duplicate by name+size+lastModified so re-picking the
-                // same file doesn't create a duplicate row.
                 if (!prev.some((p) => p.name === f.name && p.size === f.size && p.lastModified === f.lastModified)) {
                   dt.items.add(f);
                 }
@@ -198,6 +204,7 @@ export function FileInput({
         />
       </div>
 
+      {/* Freshly picked files (before submit) */}
       {files.length > 0 && (
         <ul className="space-y-1.5">
           {files.map((file, i) => (
@@ -215,7 +222,45 @@ export function FileInput({
                 onClick={() => removeFile(i)}
                 disabled={disabled}
                 aria-label={`Remove ${file.name}`}
-                className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                className="cursor-pointer rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Existing files already on the server */}
+      {hasExistingKept && (
+        <ul className="space-y-1.5">
+          {visibleExisting.map(({ file, i }) => (
+            <li
+              key={`existing-${file.name}-${i}`}
+              className="flex items-center gap-3 rounded-md border border-input bg-muted/40 px-3 py-2 text-sm"
+            >
+              {/* Per-file hidden input — the server keeps any existing
+                  file whose index shows up here, removes the rest. */}
+              <input type="hidden" name={keepName} value={String(i)} />
+              <svg className="h-5 w-5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <path d="M14 2v6h6" />
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium">{file.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatBytes(file.size)} · already uploaded
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => removeExisting(i)}
+                disabled={disabled}
+                aria-label={`Remove ${file.name}`}
+                className="cursor-pointer rounded-md p-1 text-muted-foreground hover:bg-destructive hover:text-destructive-foreground disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M18 6 6 18M6 6l12 12" />

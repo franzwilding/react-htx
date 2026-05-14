@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0a0814" />
+    <title>Examples — Reactolith in real backend apps</title>
+    <meta
+      name="description"
+      content="Full, runnable examples of Reactolith integrated with real backend frameworks. Each example ships in the Reactolith repo under examples/ and demonstrates a specific integration: Symfony FormFlow multi-step forms, file uploads with server-side persistence, dynamic CollectionType prototypes, and more."
+    />
+    <meta name="keywords" content="reactolith examples, react symfony example, symfony multi-step form react, form flow react, collection type react, file upload react symfony" />
+    <meta name="author" content="Franz Mayr-Wilding" />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+    <link rel="canonical" href="https://reactolith.github.io/examples/" />
+    <link rel="alternate" type="text/plain" title="LLM index (llms.txt)" href="https://reactolith.github.io/llms.txt" />
+
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="Reactolith" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content="https://reactolith.github.io/examples/" />
+    <meta property="og:title" content="Reactolith — Examples" />
+    <meta property="og:description" content="Full, runnable examples of Reactolith with real backend frameworks." />
+    <meta property="og:image" content="https://reactolith.github.io/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Reactolith — use HTML to compose your React app." />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Reactolith — Examples" />
+    <meta name="twitter:description" content="Runnable example apps integrating Reactolith with real backend frameworks." />
+    <meta name="twitter:image" content="https://reactolith.github.io/og-image.png" />
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "CollectionPage",
+          "headline": "Reactolith Examples",
+          "description": "Runnable example apps demonstrating Reactolith with real backend frameworks.",
+          "url": "https://reactolith.github.io/examples/",
+          "mainEntityOfPage": "https://reactolith.github.io/examples/",
+          "image": "https://reactolith.github.io/og-image.png",
+          "inLanguage": "en",
+          "author": { "@type": "Person", "name": "Franz Mayr-Wilding", "url": "https://github.com/reactolith" },
+          "publisher": { "@type": "Organization", "name": "Reactolith", "url": "https://reactolith.github.io/" },
+          "isPartOf": { "@id": "https://reactolith.github.io/#website" }
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Reactolith", "item": "https://reactolith.github.io/" },
+            { "@type": "ListItem", "position": 2, "name": "Examples", "item": "https://reactolith.github.io/examples/" }
+          ]
+        }
+      ]
+    }
+    </script>
+  </head>
+  <body>
+    <div id="reactolith-app" class="hidden">
+      <app-page>
+        <h1>Examples</h1>
+        <p>
+          The Reactolith repo ships a growing collection of runnable example
+          apps under <code>examples/</code>. Each one is a complete, opinionated
+          integration with a real backend framework &mdash; not a snippet
+          isolated from its context. Clone the repo, run the example, and
+          read the source side by side with this documentation.
+        </p>
+
+        <h2>Available examples</h2>
+
+        <h3>
+          <a href="/examples/symfony-multistep-form/">Symfony FormFlow multi-step form</a>
+        </h3>
+        <p>
+          A six-step application wizard built with Symfony's
+          <code>FormFlow</code> component, fully themed with shadcn/ui, and
+          hydrated by Reactolith. Demonstrates how to build a non-trivial
+          backend-driven form without ever stepping outside the form theme:
+        </p>
+        <ul>
+          <li>
+            Every field type Symfony ships: text, email, number, choice
+            (single + multi), checkbox, radio, date/time, color, range,
+            URL, password, file, collection, hidden, UUID, ULID.
+          </li>
+          <li>
+            Custom shadcn-style <code>Select</code> with search and
+            keyboard navigation &mdash; rendered as
+            <code>&lt;ui-select&gt;</code> with options passed via
+            <code>json-options='[…]'</code> so React owns the list while
+            Symfony owns the form data.
+          </li>
+          <li>
+            File uploads that survive going back and forth between steps,
+            including delete and replace, with server-side persistence to
+            a temp directory.
+          </li>
+          <li>
+            <code>CollectionType</code> with React-managed add/remove
+            and a Symfony prototype that gets hydrated through
+            <code>ReactolithComponent</code> on the fly.
+          </li>
+          <li>
+            Step indicator with click-to-go-back that reuses Symfony's
+            <code>PreviousFlowType</code> button machinery.
+          </li>
+          <li>
+            Dark-mode toggle, scroll restoration, form-error display
+            wired through <code>useFormErrors</code>.
+          </li>
+        </ul>
+
+        <h2>Running an example</h2>
+        <p>
+          Each example has its own README, but the typical loop looks like:
+        </p>
+        <ui-code-block lang="bash">git clone https://github.com/reactolith/reactolith.git
+cd reactolith/examples/symfony-multistep-form
+composer install
+npm install
+npm run dev        # vite dev server with HMR
+symfony serve     # or any PHP server pointing at public/</ui-code-block>
+
+        <h2>What these examples are <em>not</em></h2>
+        <p>
+          Production-ready templates. They optimise for showing how a
+          specific backend feature meets Reactolith on the client &mdash;
+          file uploads live in <code>sys_get_temp_dir()</code>, sessions
+          are in-memory, validation messages are hard-coded English. Treat
+          them as recipes, not boilerplate to copy whole.
+        </p>
+      </app-page>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

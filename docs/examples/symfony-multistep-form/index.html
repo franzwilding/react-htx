@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0a0814" />
+    <title>Symfony FormFlow multi-step form — Reactolith example</title>
+    <meta
+      name="description"
+      content="Build a six-step Symfony FormFlow application wizard with Reactolith and shadcn/ui. Covers every Symfony field type, custom dropdowns rendered as React, file uploads that survive step navigation (with delete and replace), CollectionType with prototype hydration, click-to-go-back step indicator, and a dark-mode toggle. Source under examples/symfony-multistep-form in the Reactolith repo."
+    />
+    <meta name="keywords" content="symfony formflow react, symfony multi-step form, reactolith symfony, symfony file upload react, collection type prototype react, symfony shadcn theme, symfony react form theme, php form react frontend" />
+    <meta name="author" content="Franz Mayr-Wilding" />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+    <link rel="canonical" href="https://reactolith.github.io/examples/symfony-multistep-form/" />
+    <link rel="alternate" type="text/plain" title="LLM index (llms.txt)" href="https://reactolith.github.io/llms.txt" />
+
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="Reactolith" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content="https://reactolith.github.io/examples/symfony-multistep-form/" />
+    <meta property="og:title" content="Symfony FormFlow multi-step form — Reactolith example" />
+    <meta property="og:description" content="A six-step Symfony FormFlow wizard with shadcn/ui, file uploads, collections, and back-navigation — all server-driven via Reactolith." />
+    <meta property="og:image" content="https://reactolith.github.io/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Reactolith — use HTML to compose your React app." />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Symfony FormFlow + Reactolith" />
+    <meta name="twitter:description" content="Six-step Symfony FormFlow wizard, shadcn-themed, with file uploads that survive back-navigation." />
+    <meta name="twitter:image" content="https://reactolith.github.io/og-image.png" />
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "TechArticle",
+          "headline": "Symfony FormFlow multi-step form",
+          "description": "A complete six-step Symfony FormFlow wizard built with Reactolith and shadcn/ui.",
+          "url": "https://reactolith.github.io/examples/symfony-multistep-form/",
+          "mainEntityOfPage": "https://reactolith.github.io/examples/symfony-multistep-form/",
+          "image": "https://reactolith.github.io/og-image.png",
+          "inLanguage": "en",
+          "author": { "@type": "Person", "name": "Franz Mayr-Wilding", "url": "https://github.com/reactolith" },
+          "publisher": { "@type": "Organization", "name": "Reactolith", "url": "https://reactolith.github.io/" },
+          "isPartOf": { "@id": "https://reactolith.github.io/#website" }
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Reactolith", "item": "https://reactolith.github.io/" },
+            { "@type": "ListItem", "position": 2, "name": "Examples", "item": "https://reactolith.github.io/examples/" },
+            { "@type": "ListItem", "position": 3, "name": "Symfony FormFlow", "item": "https://reactolith.github.io/examples/symfony-multistep-form/" }
+          ]
+        }
+      ]
+    }
+    </script>
+  </head>
+  <body>
+    <div id="reactolith-app" class="hidden">
+      <app-page>
+        <h1>Symfony FormFlow multi-step form</h1>
+        <p>
+          A six-step application wizard &mdash;
+          <em>Personal &rarr; Address &rarr; Employment &rarr; Preferences
+          &rarr; Documents &rarr; Confirm</em> &mdash; built end-to-end
+          with Symfony's <code>FormFlow</code> component, shadcn/ui, and
+          Reactolith on the client. The source lives at
+          <a href="https://github.com/reactolith/reactolith/tree/main/examples/symfony-multistep-form"><code>examples/symfony-multistep-form/</code></a>
+          in the Reactolith repo.
+        </p>
+
+        <p>
+          Every visual decision is centralised in a single Twig form theme
+          (<code>templates/form/shadcn_form_theme.html.twig</code>); every
+          interactive concern is a kebab-cased custom element that Reactolith
+          hydrates into a React component on mount.
+        </p>
+
+        <h2>What it demonstrates</h2>
+        <ul>
+          <li>
+            <strong>Every Symfony field type</strong> rendered through the
+            same theme: <code>TextType</code>, <code>EmailType</code>,
+            <code>NumberType</code>, <code>IntegerType</code>,
+            <code>ChoiceType</code> (single, multi, expanded),
+            <code>CheckboxType</code>, <code>DateType</code>,
+            <code>DateTimeType</code>, <code>TimeType</code>,
+            <code>ColorType</code>, <code>RangeType</code>,
+            <code>UrlType</code>, <code>PasswordType</code>,
+            <code>FileType</code>, <code>CollectionType</code>,
+            <code>HiddenType</code>, <code>UuidType</code>,
+            <code>UlidType</code>.
+          </li>
+          <li>
+            <strong>FormFlow step navigation</strong> rendered as a
+            shadcn-styled progress indicator. Completed steps are real
+            submit buttons named after FormFlow's
+            <code>PreviousFlowType</code> &mdash; click one and the flow
+            jumps straight to that step.
+          </li>
+          <li>
+            <strong>File uploads that survive back-navigation.</strong> A
+            small adapter moves <code>UploadedFile</code> objects into a
+            temp directory before FormFlow's session storage tries to
+            serialise them, then surfaces them again as "already uploaded"
+            chips on the way back.
+          </li>
+          <li>
+            <strong>CollectionType with React-managed prototype.</strong>
+            Symfony's <code>data-prototype</code> HTML gets parsed into a
+            DOM node and rendered through
+            <code>&lt;ReactolithComponent&gt;</code> so newly-added rows
+            hydrate exactly like server-rendered ones.
+          </li>
+          <li>
+            <strong>Dark-mode toggle</strong> that survives navigation,
+            wired through <code>localStorage</code> with an inline boot
+            script to avoid the light-mode flash.
+          </li>
+        </ul>
+
+        <h2>Anatomy</h2>
+
+        <h3>1. The theme as the single styling source</h3>
+        <p>
+          The Symfony form theme emits kebab-cased custom elements instead
+          of native ones &mdash; <code>&lt;ui-input&gt;</code>,
+          <code>&lt;ui-select&gt;</code>, <code>&lt;ui-checkbox&gt;</code>,
+          etc. Reactolith resolves them at hydration time to React
+          components in <code>assets/components/ui/</code>:
+        </p>
+
+        <ui-code-block lang="twig">{# templates/form/shadcn_form_theme.html.twig #}
+{%- block form_widget_simple -%}
+    {%- set _attrs = {
+        name: full_name,
+        id: id,
+        type: type|default('text'),
+    } -%}
+    {%- if value is not empty %}{% set _attrs = _attrs|merge({'default-value': value}) %}{% endif -%}
+    {%- if required %}{% set _attrs = _attrs|merge({required: 'required'}) %}{% endif -%}
+    &lt;ui-input{% for k, v in _attrs %} {{ k }}="{{ v }}"{% endfor %}&gt;&lt;/ui-input&gt;
+{%- endblock -%}</ui-code-block>
+
+        <p>
+          The matching React component reads errors via
+          <code>useFormErrors</code> so the same field can render a
+          validation message without the theme having to know about
+          state:
+        </p>
+
+        <ui-code-block lang="tsx">// assets/components/ui/input.tsx
+export function Input({ name, value, defaultValue, ...rest }: InputProps) {
+  const errors = useFormErrors(name);
+  const invalid = errors.length > 0;
+  return (
+    &lt;input
+      name={name}
+      defaultValue={value ?? defaultValue}
+      aria-invalid={invalid || undefined}
+      {...rest}
+    /&gt;
+  );
+}</ui-code-block>
+
+        <h3>2. Choices as data, not children</h3>
+        <p>
+          Reactolith wraps every DOM child in a <code>ReactolithComponent</code>
+          before passing it to your component &mdash; which means a Select
+          can't inspect its <code>&lt;option&gt;</code> children the way it
+          would with raw JSX. The fix is to pass options as JSON instead:
+        </p>
+
+        <ui-code-block lang="twig">{%- block choice_widget_collapsed -%}
+    {%- set _options = [] -%}
+    {%- for choiceValue, choice in choices -%}
+        {%- set _options = _options|merge([{value: choice.value, label: choice.label}]) -%}
+    {%- endfor -%}
+    &lt;ui-select
+        name="{{ full_name }}"
+        id="{{ id }}"
+        json-value='{{ data|first|default('')|json_encode|e('html_attr') }}'
+        json-options='{{ _options|json_encode|e('html_attr') }}'
+    &gt;&lt;/ui-select&gt;
+{%- endblock -%}</ui-code-block>
+
+        <p>
+          The React component receives <code>options</code> as a plain
+          array prop, renders a real popover with keyboard navigation and a
+          search box, and writes a single <code>&lt;input type="hidden"&gt;</code>
+          so the form data still matches the field's <code>name</code>.
+        </p>
+
+        <h3>3. FormFlow session storage and uploaded files</h3>
+        <p>
+          Symfony's <code>SessionDataStorage</code> serialises the model
+          between steps. <code>UploadedFile</code> and even plain
+          <code>SplFileInfo</code> block serialisation &mdash; so this
+          example hooks the <code>SUBMIT</code> event on each file field
+          to move the upload into a temp directory and then teaches the
+          owning model how to (de)serialise file paths:
+        </p>
+
+        <ui-code-block lang="php">// src/Form/Step/DocumentsStepType.php
+$persistResume = static function (FormEvent $event) use (&amp;$keepResume): void {
+    $data = $event-&gt;getData();
+    $previous = $event-&gt;getForm()-&gt;getData();
+    if ($data instanceof UploadedFile) {
+        $event-&gt;setData(self::moveToTemp($data));
+        return;
+    }
+    if (null === $data) {
+        // User submitted no new file — restore the existing one unless
+        // they explicitly removed it via the FileInput's X button.
+        if ($keepResume &amp;&amp; $previous instanceof File) {
+            $event-&gt;setData($previous);
+        }
+    }
+};
+
+$builder-&gt;get('resume')-&gt;addEventListener(FormEvents::SUBMIT, $persistResume);</ui-code-block>
+
+        <ui-code-block lang="php">// src/Model/Documents.php
+public function __serialize(): array
+{
+    return [
+        'resume' =&gt; $this-&gt;resume?-&gt;getPathname(),
+        'portfolio' =&gt; array_map(fn (File $f) =&gt; $f-&gt;getPathname(), $this-&gt;portfolio),
+        // … the rest stays plain data …
+    ];
+}
+
+public function __unserialize(array $data): void
+{
+    $this-&gt;resume = isset($data['resume']) &amp;&amp; is_file($data['resume'])
+        ? new File($data['resume'])
+        : null;
+    // … rehydrate the rest …
+}</ui-code-block>
+
+        <h3>4. Delete-on-the-client without losing it on the server</h3>
+        <p>
+          When a step is shown again after going back, the FileInput renders
+          every previously-uploaded file as an "already uploaded" chip with
+          its own hidden input named <code>&lt;field&gt;_keep[]</code>.
+          Clicking the X drops the hidden input from the DOM; the parent
+          form's <code>PRE_SUBMIT</code> reads the remaining keep list and
+          reconciles it against the model's previous data.
+        </p>
+
+        <ui-code-block lang="tsx">// assets/components/ui/file-input.tsx (excerpt)
+{visibleExisting.map(({ file, i }) =&gt; (
+  &lt;li key={`existing-${i}`}&gt;
+    &lt;input type="hidden" name={keepName} value={String(i)} /&gt;
+    &lt;span&gt;{file.name} · {formatBytes(file.size)}&lt;/span&gt;
+    &lt;button onClick={() =&gt; removeExisting(i)}&gt;&times;&lt;/button&gt;
+  &lt;/li&gt;
+))}</ui-code-block>
+
+        <h3>5. CollectionType prototypes through Reactolith</h3>
+        <p>
+          Symfony's <code>data-prototype</code> attribute on a
+          CollectionType is HTML &mdash; when you append it client-side,
+          its custom-element children don't get hydrated by default. The
+          example uses Reactolith's exported
+          <code>ReactolithComponent</code> to render the parsed prototype
+          DOM through the same loader pipeline as everything else:
+        </p>
+
+        <ui-code-block lang="tsx">// assets/components/app/collection.tsx
+const app = useApp();
+const handleAdd = () =&gt; {
+  const html = prototype.split(prototypeName).join(String(index));
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = html.trim();
+  const node = wrapper.firstElementChild;
+  if (node) setAddedRows((cur) =&gt; [...cur, { key: `a${index}`, element: node }]);
+};
+
+return (
+  &lt;&gt;
+    {addedRows.map(({ key, element }) =&gt; (
+      &lt;ReactolithComponent key={key} element={element} component={app.component} /&gt;
+    ))}
+  &lt;/&gt;
+);</ui-code-block>
+
+        <h3>6. Click-to-go-back step indicator</h3>
+        <p>
+          FormFlow's <code>PreviousFlowType</code> already accepts a step
+          name as its view data &mdash; pass it to
+          <code>$flow-&gt;movePrevious(...)</code> and you skip straight
+          to that step. The progress component just renders each completed
+          step as a real submit button named after the previous button's
+          HTML name:
+        </p>
+
+        <ui-code-block lang="tsx">{isClickable &amp;&amp; (
+  &lt;button type="submit" name={previousName} value={step.name}&gt;
+    {circle}{label}
+  &lt;/button&gt;
+)}</ui-code-block>
+
+        <p>
+          The Twig template passes the previous button's full HTML name
+          (e.g. <code>application_flow[navigator][previous]</code>) to
+          <code>&lt;ui-progress&gt;</code> via a
+          <code>previous-name</code> attribute. Reactolith's submit
+          handler picks up the clicked <code>event.submitter</code> and
+          adds <code>name=value</code> to the FormData payload, so
+          FormFlow sees the exact button it expects.
+        </p>
+
+        <h2>Run it locally</h2>
+        <ui-code-block lang="bash">git clone https://github.com/reactolith/reactolith.git
+cd reactolith/examples/symfony-multistep-form
+composer install
+npm install
+# Two processes — Vite for the assets, PHP for the form flow:
+npm run dev
+symfony serve     # or: php -S 127.0.0.1:8000 -t public/</ui-code-block>
+        <p>
+          Visit <code>http://127.0.0.1:8000/apply</code> and walk through
+          the wizard. Try filling out three steps, going back two via the
+          progress indicator, uploading a PDF, removing it, replacing it,
+          and toggling dark mode in the top-right corner.
+        </p>
+
+        <h2>Where to read next</h2>
+        <p>
+          The patterns surfaced here are all documented in their own
+          right:
+        </p>
+        <ul>
+          <li>
+            <a href="/forms/">Forms</a> &mdash; the
+            <code>&lt;Form&gt;</code> component,
+            <code>useFormErrors</code> and the round-trip morph.
+          </li>
+          <li>
+            <a href="/props/">Props</a> &mdash; how the kebab-case attribute
+            soup turns into typed props in your React components.
+          </li>
+          <li>
+            <a href="/slots/">Slots</a> &mdash; for component compositions
+            beyond children.
+          </li>
+          <li>
+            <a href="/preloading/">Chunk preloading</a> &mdash; Vite plugin
+            that injects <code>&lt;link rel="modulepreload"&gt;</code> tags
+            for the components a page actually renders.
+          </li>
+        </ul>
+      </app-page>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -85,7 +85,7 @@ export function Progress({
                 name={previousName}
                 value={step.name}
                 aria-label={`Go back to ${step.label}`}
-                className="w-full min-w-0 rounded-sm text-left transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="w-full min-w-0 cursor-pointer rounded-sm text-left transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {inner}
               </button>

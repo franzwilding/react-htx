@@ -42,44 +42,71 @@ class DocumentsStepType extends AbstractType
                 'required' => false,
             ]);
 
+        // The `<ui-file-input>` React component emits a hidden
+        // `<field>_keep[]` input for every existing file the user still
+        // wants to keep. Reading these flags requires looking at the raw
+        // POST payload, so we capture them at the compound form's
+        // PRE_SUBMIT — before Symfony filters away unknown keys — and stash
+        // them in closure-local state for the field-level SUBMIT listeners
+        // below to consult.
+        $keepResume = true;
+        $keepPortfolio = [];
+        $builder->addEventListener(FormEvents::PRE_SUBMIT, function (FormEvent $event) use (&$keepResume, &$keepPortfolio): void {
+            $data = $event->getData();
+            if (!is_array($data)) {
+                return;
+            }
+            $keepResume = isset($data['resume_keep']) && [] !== array_filter((array) $data['resume_keep'], static fn ($v) => '' !== $v && null !== $v);
+            $keepPortfolio = isset($data['portfolio_keep'])
+                ? array_map('intval', array_values((array) $data['portfolio_keep']))
+                : [];
+        });
+
         // FormFlow persists step data to the session between steps. Symfony's
         // `UploadedFile` blocks serialization, so we move any freshly uploaded
         // file to a temp path and replace the field's value with the plain
-        // `File` returned by `->move()`. We also keep the previously-uploaded
-        // file in place when the user re-submits this step without picking a
-        // new file (e.g. clicking "Continue" after navigating back).
-        $persistOrKeep = static function (FormEvent $event): void {
+        // `File` returned by `->move()`. We also reconcile with whatever was
+        // already on the model: kept files survive, removed ones drop.
+        $persistResume = static function (FormEvent $event) use (&$keepResume): void {
             $data = $event->getData();
             $previous = $event->getForm()->getData();
-
             if ($data instanceof UploadedFile) {
                 $event->setData(self::moveToTemp($data));
 
                 return;
             }
-            if (null === $data && $previous instanceof \Symfony\Component\HttpFoundation\File\File) {
-                // No new upload — keep the previously stored file.
-                $event->setData($previous);
-
-                return;
-            }
-            if (is_array($data)) {
-                // For multi-file fields we merge any freshly uploaded files
-                // with whatever was already on the model.
-                $kept = is_array($previous) ? $previous : [];
-                foreach ($data as $file) {
-                    if ($file instanceof UploadedFile) {
-                        $kept[] = self::moveToTemp($file);
-                    } elseif ($file instanceof \Symfony\Component\HttpFoundation\File\File) {
-                        $kept[] = $file;
-                    }
+            if (null === $data) {
+                if ($keepResume && $previous instanceof \Symfony\Component\HttpFoundation\File\File) {
+                    $event->setData($previous);
+                } else {
+                    $event->setData(null);
                 }
-                $event->setData(array_values($kept));
             }
         };
 
-        $builder->get('resume')->addEventListener(FormEvents::SUBMIT, $persistOrKeep);
-        $builder->get('portfolio')->addEventListener(FormEvents::SUBMIT, $persistOrKeep);
+        $persistPortfolio = static function (FormEvent $event) use (&$keepPortfolio): void {
+            $data = $event->getData();
+            $previous = $event->getForm()->getData() ?? [];
+            $kept = [];
+            // First, retain whatever existing files the user did NOT remove.
+            foreach ($previous as $i => $file) {
+                if ($file instanceof \Symfony\Component\HttpFoundation\File\File && in_array((int) $i, $keepPortfolio, true)) {
+                    $kept[] = $file;
+                }
+            }
+            // Then, append any newly uploaded files.
+            if (is_array($data)) {
+                foreach ($data as $file) {
+                    if ($file instanceof UploadedFile) {
+                        $kept[] = self::moveToTemp($file);
+                    }
+                }
+            }
+            $event->setData(array_values($kept));
+        };
+
+        $builder->get('resume')->addEventListener(FormEvents::SUBMIT, $persistResume);
+        $builder->get('portfolio')->addEventListener(FormEvents::SUBMIT, $persistPortfolio);
 
         $builder
             ->add('skills', CollectionType::class, [
@@ -113,6 +140,10 @@ class DocumentsStepType extends AbstractType
         $resolver->setDefaults([
             'data_class' => Documents::class,
             'inherit_data' => false,
+            // Accept the unmapped `*_keep[]` POST keys emitted by the React
+            // FileInput when the user keeps existing uploads — without this
+            // Symfony would treat them as bogus extra fields.
+            'allow_extra_fields' => true,
         ]);
     }
 
