@@ -1,41 +1,61 @@
-name: Publish to npm
+name: Deploy docs to GitHub Pages
 
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
-  id-token: write
   contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
-  publish:
+  build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
+      - uses: actions/checkout@v6
+
+      # The docs build aliases the `reactolith` import to the library's
+      # src/, which lives in a separate repository. Check it out here and
+      # point REACTOLITH_LIB at it during the build.
+      - name: Checkout reactolith library
         uses: actions/checkout@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
         with:
-          node-version: 24
-          registry-url: https://registry.npmjs.org/
+          repository: reactolith/reactolith
+          ref: main
+          path: .reactolith-lib
 
-      - name: Install dependencies
-        run: npm ci --dev
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
 
-      - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=moderate
+      - run: npm ci --dev
 
-      - name: Typecheck
-        run: npm run typecheck
+      - name: Install reactolith library dependencies
+        working-directory: .reactolith-lib
+        run: npm install --no-fund --no-audit --ignore-scripts
+        continue-on-error: true
 
-      - name: Run tests
-        run: npm test -- --run
+      - run: npm run build
+        env:
+          REACTOLITH_LIB: ${{ github.workspace }}/.reactolith-lib
 
-      - name: Build package
-        run: npm run build --if-present
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
 
-      - name: Publish package
-        run: npm publish --provenance --access public
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
