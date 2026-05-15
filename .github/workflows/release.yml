@@ -1,61 +1,41 @@
-name: Deploy docs to GitHub Pages
+name: Publish to npm
 
 on:
-  push:
-    branches: [main]
-  workflow_dispatch:
+  release:
+    types: [published]
 
 permissions:
-  contents: read
-  pages: write
   id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
+  contents: read
 
 jobs:
-  build:
+  publish:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
 
-      # The docs build aliases the `reactolith` import to the library's
-      # src/, which lives in a separate repository. Check it out here and
-      # point REACTOLITH_LIB at it during the build.
-      - name: Checkout reactolith library
+    steps:
+      - name: Checkout code
         uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
         with:
-          repository: reactolith/reactolith
-          ref: main
-          path: .reactolith-lib
+          node-version: 24
+          registry-url: https://registry.npmjs.org/
 
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: npm
+      - name: Install dependencies
+        run: npm ci --dev
 
-      - run: npm ci --dev
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=moderate
 
-      - name: Install reactolith library dependencies
-        working-directory: .reactolith-lib
-        run: npm install --no-fund --no-audit --ignore-scripts
-        continue-on-error: true
+      - name: Typecheck
+        run: npm run typecheck
 
-      - run: npm run build
-        env:
-          REACTOLITH_LIB: ${{ github.workspace }}/.reactolith-lib
+      - name: Run tests
+        run: npm test -- --run
 
-      - uses: actions/upload-pages-artifact@v5
-        with:
-          path: dist
+      - name: Build package
+        run: npm run build --if-present
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v5
+      - name: Publish package
+        run: npm publish --provenance --access public
