@@ -47,7 +47,6 @@ export const NAV: NavGroup[] = [
   {
     label: "Examples",
     items: [
-      { label: "Overview", href: "/examples/" },
       { label: "Symfony FormFlow", href: "/examples/symfony-multistep-form/" },
     ],
   },
