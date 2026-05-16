@@ -773,4 +773,48 @@ describe("Router scroll restoration", () => {
 
     popSpy.mockRestore();
   });
+
+  it("popstate fired by a hash-only history traversal does not refetch", async () => {
+    // Reset the URL so prior tests' navigate() calls don't leak into the
+    // path Router records at construction time.
+    history.replaceState(null, "", "/");
+
+    document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+      <my-component>Foo</my-component>
+    </div>`;
+
+    const target = document.createElement("div");
+    target.id = "section";
+    document.body.appendChild(target);
+    const scrollIntoViewSpy = vi.fn();
+    target.scrollIntoView = scrollIntoViewSpy;
+
+    const fetchMock = createFetchMock(responseHtml);
+    global.fetch = fetchMock as any;
+
+    const app = new App(TestComponent);
+    await act(async () => {});
+
+    // Browser-native hash click: the URL hash changes without the path,
+    // then popstate fires (per the HTML spec for session-history traversal).
+    history.replaceState(history.state, "", "/#section");
+    const win = window;
+    win.dispatchEvent(new win.PopStateEvent("popstate"));
+
+    // Let any (incorrect) async visit run to completion.
+    await act(async () => {});
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    // ScrollRestoration handled the hash scroll via scrollIntoView.
+    expect(scrollIntoViewSpy).toHaveBeenCalled();
+
+    // After a real navigation, lastVisitedPath is updated, so a back-pop
+    // to a different path still fetches.
+    await app.router.navigate("/page");
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    history.replaceState(history.state, "", "/");
+    win.dispatchEvent(new win.PopStateEvent("popstate"));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+  });
 });
