@@ -111,6 +111,14 @@ export class Router extends EventEmitter<RouterEventMap> {
   private readonly boundOnSubmit: (e: SubmitEvent) => void;
   private readonly boundOnPopState?: () => void;
   private inflight: AbortController | null = null;
+  /**
+   * Path (pathname + search, no hash) of the URL whose HTML the App last
+   * rendered. Used by the popstate handler to recognise hash-only history
+   * traversals (clicking `<a href="#section">`, going back/forward between
+   * `#a` and `#b` on the same page) and skip the re-fetch that would
+   * otherwise wipe out the browser's native hash scroll.
+   */
+  private lastVisitedPath: string;
 
   constructor(
     app: App,
@@ -122,6 +130,11 @@ export class Router extends EventEmitter<RouterEventMap> {
     this.app = app;
     this.doc = doc;
     this.fetch = (input, init) => fetchImpl(input, init);
+
+    const initialLoc = doc.defaultView?.location;
+    this.lastVisitedPath = initialLoc
+      ? initialLoc.pathname + initialLoc.search
+      : "";
 
     // Swallow rejections from the DOM event handlers; visit() now throws
     // on fetch failures, but consumers learn about those via the
@@ -139,11 +152,19 @@ export class Router extends EventEmitter<RouterEventMap> {
 
       this.boundOnPopState = () => {
         const loc = win.location;
-        void this.visit(
-          loc.pathname + loc.search,
-          { method: "GET" },
-          false,
-        ).catch(() => {});
+        const newPath = loc.pathname + loc.search;
+        // Per HTML spec, clicking `<a href="#x">` traverses a new session
+        // history entry and fires popstate — even though only the fragment
+        // changed. Re-fetching the current page would clobber the
+        // browser-native scroll-to-id, so detect the hash-only case and
+        // hand it to ScrollRestoration instead.
+        if (newPath === this.lastVisitedPath) {
+          this.scrollRestoration?.pop();
+          this.scrollRestoration?.scroll(false, undefined, newPath + loc.hash);
+          return;
+        }
+        this.lastVisitedPath = newPath;
+        void this.visit(newPath, { method: "GET" }, false).catch(() => {});
       };
       win.addEventListener("popstate", this.boundOnPopState);
     }
@@ -239,6 +260,12 @@ export class Router extends EventEmitter<RouterEventMap> {
 
     if (result) {
       this.scrollRestoration?.scroll(pushState, scroll, finalUrl);
+      try {
+        const u = new URL(finalUrl, this.doc.baseURI);
+        this.lastVisitedPath = u.pathname + u.search;
+      } catch {
+        // Malformed finalUrl — leave lastVisitedPath alone.
+      }
     }
 
     const event = result ? "render:success" : "render:failed";
