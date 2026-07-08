@@ -5,12 +5,7 @@ import React, { ReactNode } from "react";
  * variants used by shadcn/ui.
  */
 export type ButtonVariant =
-  | "default"
-  | "destructive"
-  | "outline"
-  | "secondary"
-  | "ghost"
-  | "link";
+  "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
 
 /** Sizing variant. */
 export type ButtonSize = "default" | "sm" | "lg" | "icon";

@@ -307,9 +307,7 @@ export class Router extends EventEmitter<RouterEventMap> {
     // override the corresponding attributes on the <form>. The browser does
     // this automatically for full-page submits; we have to do it ourselves.
     const submitter = event.submitter as
-      | HTMLButtonElement
-      | HTMLInputElement
-      | null;
+      HTMLButtonElement | HTMLInputElement | null;
 
     const actionAttr =
       submitter?.getAttribute("formaction") ?? form.getAttribute("action");
