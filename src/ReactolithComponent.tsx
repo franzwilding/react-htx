@@ -1,5 +1,6 @@
 import React, { ElementType, JSX, ReactNode, Ref, useContext } from "react";
 import { AppContext } from "./provider/AppContext";
+import { kebabToPascal } from "./util/casing";
 import type { App } from "./App";
 
 const ELEMENT_NODE = 1;
@@ -17,17 +18,11 @@ function isTemplateElement(el: Element): el is HTMLTemplateElement {
   return el.tagName === "TEMPLATE" && "content" in el;
 }
 
-const toPascalCase = (str: string) => {
-  return str.replace(/(^\w|-\w)/g, (match) =>
-    match.replace(/-/, "").toUpperCase(),
-  );
-};
-
 const normalizePropName = (name: string) => {
   if (name.startsWith("json-")) {
     name = name.substring(5);
   }
-  name = toPascalCase(name);
+  name = kebabToPascal(name);
   return name.substring(0, 1).toLowerCase() + name.substring(1);
 };
 
@@ -35,49 +30,51 @@ const normalizePropName = (name: string) => {
 // intrinsic elements. Keys are matched case-insensitively against the raw
 // attribute name. Anything not listed here is passed through unchanged.
 // `aria-*` and `data-*` are not included because React accepts them verbatim.
-const HTML_TO_REACT_NATIVE_ATTR: Record<string, string> = {
-  class: "className",
-  for: "htmlFor",
-  tabindex: "tabIndex",
-  colspan: "colSpan",
-  rowspan: "rowSpan",
-  maxlength: "maxLength",
-  minlength: "minLength",
-  readonly: "readOnly",
-  enctype: "encType",
-  crossorigin: "crossOrigin",
-  viewbox: "viewBox",
-  autoplay: "autoPlay",
-  autofocus: "autoFocus",
-  autocomplete: "autoComplete",
-  autocapitalize: "autoCapitalize",
-  novalidate: "noValidate",
-  formaction: "formAction",
-  formenctype: "formEncType",
-  formmethod: "formMethod",
-  formnovalidate: "formNoValidate",
-  formtarget: "formTarget",
-  inputmode: "inputMode",
-  spellcheck: "spellCheck",
-  contenteditable: "contentEditable",
-  srcdoc: "srcDoc",
-  srclang: "srcLang",
-  srcset: "srcSet",
-  charset: "charSet",
-  usemap: "useMap",
-  accesskey: "accessKey",
-  itemprop: "itemProp",
-  itemref: "itemRef",
-  itemid: "itemId",
-  itemtype: "itemType",
-  itemscope: "itemScope",
-  hreflang: "hrefLang",
-  datetime: "dateTime",
-  "accept-charset": "acceptCharset",
-  "http-equiv": "httpEquiv",
-  allowfullscreen: "allowFullScreen",
-  referrerpolicy: "referrerPolicy",
-};
+// A Map (rather than a plain object) so that attribute names colliding with
+// Object.prototype members ("constructor", "toString", …) can never match.
+const HTML_TO_REACT_NATIVE_ATTR = new Map<string, string>([
+  ["class", "className"],
+  ["for", "htmlFor"],
+  ["tabindex", "tabIndex"],
+  ["colspan", "colSpan"],
+  ["rowspan", "rowSpan"],
+  ["maxlength", "maxLength"],
+  ["minlength", "minLength"],
+  ["readonly", "readOnly"],
+  ["enctype", "encType"],
+  ["crossorigin", "crossOrigin"],
+  ["viewbox", "viewBox"],
+  ["autoplay", "autoPlay"],
+  ["autofocus", "autoFocus"],
+  ["autocomplete", "autoComplete"],
+  ["autocapitalize", "autoCapitalize"],
+  ["novalidate", "noValidate"],
+  ["formaction", "formAction"],
+  ["formenctype", "formEncType"],
+  ["formmethod", "formMethod"],
+  ["formnovalidate", "formNoValidate"],
+  ["formtarget", "formTarget"],
+  ["inputmode", "inputMode"],
+  ["spellcheck", "spellCheck"],
+  ["contenteditable", "contentEditable"],
+  ["srcdoc", "srcDoc"],
+  ["srclang", "srcLang"],
+  ["srcset", "srcSet"],
+  ["charset", "charSet"],
+  ["usemap", "useMap"],
+  ["accesskey", "accessKey"],
+  ["itemprop", "itemProp"],
+  ["itemref", "itemRef"],
+  ["itemid", "itemId"],
+  ["itemtype", "itemType"],
+  ["itemscope", "itemScope"],
+  ["hreflang", "hrefLang"],
+  ["datetime", "dateTime"],
+  ["accept-charset", "acceptCharset"],
+  ["http-equiv", "httpEquiv"],
+  ["allowfullscreen", "allowFullScreen"],
+  ["referrerpolicy", "referrerPolicy"],
+]);
 
 function getKey(element: Element): string | undefined {
   return element.attributes.getNamedItem("key")?.value;
@@ -89,7 +86,9 @@ function getProps(
   isReactComponent: boolean = true,
   app?: App,
 ): { [key: string]: unknown } {
-  const props: { [key: string]: unknown } = {};
+  // Null prototype: attribute names come from server-controlled HTML, so a
+  // key like `json-__proto__` must never reach Object.prototype.
+  const props: { [key: string]: unknown } = Object.create(null);
   Array.from(element.attributes).forEach((attr) => {
     if (attr.name === "key" || attr.name.startsWith("#")) {
       return;
@@ -146,9 +145,9 @@ function getProps(
         // Native intrinsic element: prefer the known alias, then fall back to
         // camelCase for hyphenated names (so `read-only` still becomes
         // `readOnly`), otherwise pass through unchanged.
-        const lower = attr.name.toLowerCase();
-        if (lower in HTML_TO_REACT_NATIVE_ATTR) {
-          propName = HTML_TO_REACT_NATIVE_ATTR[lower];
+        const alias = HTML_TO_REACT_NATIVE_ATTR.get(attr.name.toLowerCase());
+        if (alias) {
+          propName = alias;
         } else if (attr.name.includes("-")) {
           propName = normalizePropName(attr.name);
         } else {

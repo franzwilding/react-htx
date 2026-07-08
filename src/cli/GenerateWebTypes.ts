@@ -14,6 +14,7 @@ import {
 } from "ts-morph";
 import fs from "fs";
 import path from "path";
+import { kebabToPascal, pascalToKebab } from "../util/casing";
 
 /**
  * One output file: scans the given folders, applies the prefix, and writes a
@@ -320,9 +321,7 @@ export function generateWebTypes(
           info.propsType,
           info.propsNode || info.sourceFile,
         );
-        const tagName =
-          prefix +
-          info.name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
+        const tagName = prefix + pascalToKebab(info.name);
 
         const element: WebTypeElement = {
           name: tagName,
@@ -443,10 +442,7 @@ function extractFromComponentFunctions(
           sourceFile.getFilePath(),
           path.extname(sourceFile.getFilePath()),
         );
-        const componentName = fileName
-          .split("-")
-          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-          .join("");
+        const componentName = kebabToPascal(fileName);
         results.push({
           name: componentName,
           propsType: propsInfo.type,
@@ -476,25 +472,8 @@ function resolveIdentifierToProps(
     return extractPropsFromDeclaration(localFunc);
   }
 
-  const identifierType = identifier.getType();
-  const callSignatures = identifierType.getCallSignatures();
-  if (callSignatures.length > 0) {
-    const sig = callSignatures[0];
-    const params = sig.getParameters();
-    if (params.length > 0) {
-      const firstParam = params[0];
-      const paramType = firstParam.getTypeAtLocation(identifier);
-      const returnType = sig.getReturnType();
-      if (isJsxReturnType(returnType)) {
-        return { type: paramType, node: identifier };
-      }
-    } else {
-      const returnType = sig.getReturnType();
-      if (isJsxReturnType(returnType)) {
-        return { type: null, node: identifier };
-      }
-    }
-  }
+  const fromCallable = propsFromCallableType(identifier.getType(), identifier);
+  if (fromCallable) return fromCallable;
 
   const importDecls = sourceFile.getImportDeclarations();
   for (const importDecl of importDecls) {
@@ -562,29 +541,25 @@ function extractPropsFromDeclaration(
   decl: Node,
 ): { type: Type | null; node: Node } | null {
   if (Node.isFunctionDeclaration(decl)) {
-    return extractPropsFromFunction(decl);
+    return extractPropsFromFunctionLike(decl);
   }
 
   if (Node.isVariableDeclaration(decl)) {
     const varDecl = decl as VariableDeclaration;
     const initializer = varDecl.getInitializer();
 
-    if (initializer && Node.isArrowFunction(initializer)) {
-      return extractPropsFromArrowFunction(initializer);
-    }
-
-    if (initializer && Node.isFunctionExpression(initializer)) {
-      return extractPropsFromFunctionExpression(initializer);
+    if (
+      initializer &&
+      (Node.isArrowFunction(initializer) ||
+        Node.isFunctionExpression(initializer))
+    ) {
+      return extractPropsFromFunctionLike(initializer);
     }
 
     if (initializer && Node.isCallExpression(initializer)) {
-      const args = initializer.getArguments();
-      for (const arg of args) {
-        if (Node.isArrowFunction(arg)) {
-          return extractPropsFromArrowFunction(arg);
-        }
-        if (Node.isFunctionExpression(arg)) {
-          return extractPropsFromFunctionExpression(arg);
+      for (const arg of initializer.getArguments()) {
+        if (Node.isArrowFunction(arg) || Node.isFunctionExpression(arg)) {
+          return extractPropsFromFunctionLike(arg);
         }
       }
     }
@@ -594,38 +569,25 @@ function extractPropsFromDeclaration(
       (Node.isPropertyAccessExpression(initializer) ||
         Node.isIdentifier(initializer))
     ) {
-      const varType = varDecl.getType();
-      const callSignatures = varType.getCallSignatures();
-      if (callSignatures.length > 0) {
-        const sig = callSignatures[0];
-        const params = sig.getParameters();
-        if (params.length > 0) {
-          const firstParam = params[0];
-          const paramType = firstParam.getTypeAtLocation(varDecl);
-          const returnType = sig.getReturnType();
-          if (isJsxReturnType(returnType)) {
-            return { type: paramType, node: varDecl };
-          }
-        }
-      }
+      const fromCallable = propsFromCallableType(varDecl.getType(), varDecl);
+      // Only accept declarations that actually take a props parameter here;
+      // zero-param values are too ambiguous when reached via an alias.
+      if (fromCallable?.type) return fromCallable;
     }
   }
 
   if (Node.isExportAssignment(decl)) {
     const expr = decl.getExpression();
-    if (Node.isArrowFunction(expr)) {
-      return extractPropsFromArrowFunction(expr);
-    }
-    if (Node.isFunctionExpression(expr)) {
-      return extractPropsFromFunctionExpression(expr);
+    if (Node.isArrowFunction(expr) || Node.isFunctionExpression(expr)) {
+      return extractPropsFromFunctionLike(expr);
     }
   }
 
   return null;
 }
 
-function extractPropsFromFunction(
-  func: FunctionDeclaration,
+function extractPropsFromFunctionLike(
+  func: FunctionDeclaration | ArrowFunction | FunctionExpression,
 ): { type: Type | null; node: Node } | null {
   const returnType = func.getReturnType();
   if (!isJsxReturnType(returnType)) return null;
@@ -634,36 +596,24 @@ function extractPropsFromFunction(
   if (params.length === 0) return { type: null, node: func };
 
   const firstParam = params[0];
-  const type = firstParam.getType();
-  return { type, node: firstParam };
+  return { type: firstParam.getType(), node: firstParam };
 }
 
-function extractPropsFromArrowFunction(
-  func: ArrowFunction,
+/**
+ * Derive props from a value whose *type* is callable and returns JSX —
+ * covers `React.forwardRef(...)`-style values and re-exported identifiers
+ * whose declaration is not itself a function node.
+ */
+function propsFromCallableType(
+  type: Type,
+  location: Node,
 ): { type: Type | null; node: Node } | null {
-  const returnType = func.getReturnType();
-  if (!isJsxReturnType(returnType)) return null;
+  const sig = type.getCallSignatures()[0];
+  if (!sig || !isJsxReturnType(sig.getReturnType())) return null;
 
-  const params = func.getParameters();
-  if (params.length === 0) return { type: null, node: func };
-
-  const firstParam = params[0];
-  const type = firstParam.getType();
-  return { type, node: firstParam };
-}
-
-function extractPropsFromFunctionExpression(
-  func: FunctionExpression,
-): { type: Type | null; node: Node } | null {
-  const returnType = func.getReturnType();
-  if (!isJsxReturnType(returnType)) return null;
-
-  const params = func.getParameters();
-  if (params.length === 0) return { type: null, node: func };
-
-  const firstParam = params[0];
-  const type = firstParam.getType();
-  return { type, node: firstParam };
+  const params = sig.getParameters();
+  if (params.length === 0) return { type: null, node: location };
+  return { type: params[0].getTypeAtLocation(location), node: location };
 }
 
 function isJsxReturnType(type: Type): boolean {
@@ -718,7 +668,7 @@ function extractAttributesAndSlots(
     if (propName === "children") return;
 
     const attr: WebTypeAttribute = {
-      name: toKebabCase(propName),
+      name: pascalToKebab(propName),
       description: description || undefined,
       required,
     };
@@ -794,10 +744,6 @@ function cleanTypeText(text: string): string {
     .replace(/import\([^)]+\)\./g, "")
     .replace(/\s+/g, " ")
     .trim();
-}
-
-function toKebabCase(str: string): string {
-  return str.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
 }
 
 function getPropertyDescription(prop: TsSymbol): string | undefined {

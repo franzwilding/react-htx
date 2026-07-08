@@ -43,6 +43,13 @@ const hasSetCustomValidity = (
   typeof (el as { setCustomValidity: unknown }).setCustomValidity ===
     "function";
 
+/** Read a non-empty string property off an arbitrary event target. */
+const stringProp = (obj: unknown, key: string): string | undefined => {
+  if (!obj || typeof obj !== "object") return undefined;
+  const value = (obj as Record<string, unknown>)[key];
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+};
+
 // `form.elements.namedItem` returns a `RadioNodeList` (not an Element)
 // when several inputs share the same name — e.g. a radio group. The
 // list itself has no `setCustomValidity`, so unwrap to the individual
@@ -171,28 +178,19 @@ export function Form({
     (event) => {
       const target = event.target;
       if (hasSetCustomValidity(target)) target.setCustomValidity("");
-      const name =
-        target && typeof target === "object" && "name" in target
-          ? (target as { name?: unknown }).name
-          : undefined;
-      const id =
-        target && typeof target === "object" && "id" in target
-          ? (target as { id?: unknown }).id
-          : undefined;
-      const hasName = typeof name === "string" && name.length > 0;
-      const hasId = typeof id === "string" && id.length > 0;
-      if (!hasName && !hasId) return;
+      const name = stringProp(target, "name");
+      const id = stringProp(target, "id");
+      if (!name && !id) return;
       setClearedState((prev) => {
-        const prevSet = prev.cleared;
         if (
-          (!hasName || prevSet.has(name as string)) &&
-          (!hasId || prevSet.has(id as string))
+          (!name || prev.cleared.has(name)) &&
+          (!id || prev.cleared.has(id))
         ) {
           return prev;
         }
-        const next = new Set(prevSet);
-        if (hasName) next.add(name as string);
-        if (hasId) next.add(id as string);
+        const next = new Set(prev.cleared);
+        if (name) next.add(name);
+        if (id) next.add(id);
         return { source: prev.source, cleared: next };
       });
     },

@@ -3,38 +3,39 @@ export type Handler<Args extends readonly unknown[]> = (...args: Args) => void;
 export type EventMap = Record<string, readonly unknown[]>;
 
 export class EventEmitter<TEvents extends EventMap> {
-  private listeners: Partial<
-    Record<keyof TEvents, Set<Handler<TEvents[keyof TEvents]>>>
-  > = {};
+  private readonly listeners = new Map<
+    keyof TEvents,
+    Set<Handler<readonly unknown[]>>
+  >();
 
   on<K extends keyof TEvents>(
     type: K,
     handler: Handler<TEvents[K]>,
   ): () => void {
-    let set = this.listeners[type] as Set<Handler<TEvents[K]>> | undefined;
+    let set = this.listeners.get(type);
     if (!set) {
-      set = new Set<Handler<TEvents[K]>>();
-      this.listeners[type] = set as unknown as Set<
-        Handler<TEvents[keyof TEvents]>
-      >;
+      set = new Set();
+      this.listeners.set(type, set);
     }
-    set.add(handler);
+    set.add(handler as Handler<readonly unknown[]>);
     return () => this.off(type, handler);
   }
 
   off<K extends keyof TEvents>(type: K, handler: Handler<TEvents[K]>): void {
-    this.listeners[type]?.delete(handler as Handler<TEvents[keyof TEvents]>);
+    this.listeners.get(type)?.delete(handler as Handler<readonly unknown[]>);
   }
 
   protected emit<K extends keyof TEvents>(type: K, ...args: TEvents[K]): void {
-    const set = this.listeners[type];
+    const set = this.listeners.get(type);
     if (!set) return;
-    for (const h of Array.from(set)) {
-      (h as Handler<TEvents[K]>)(...args);
+    // Copy before iterating so handlers that subscribe/unsubscribe during
+    // emit don't affect this dispatch.
+    for (const handler of Array.from(set)) {
+      handler(...args);
     }
   }
 
   protected clearListeners(): void {
-    this.listeners = {};
+    this.listeners.clear();
   }
 }

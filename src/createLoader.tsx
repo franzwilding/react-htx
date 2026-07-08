@@ -1,4 +1,5 @@
 import React, { ComponentType, ElementType, ReactNode, Suspense } from "react";
+import { kebabToPascal } from "./util/casing";
 
 export type ModuleLoader = () => Promise<Record<string, unknown>>;
 export type ModuleMap = Record<string, ModuleLoader>;
@@ -44,9 +45,6 @@ export interface LoaderOptions {
 
 const COMPONENT_EXTENSIONS = [".tsx", ".ts", ".jsx", ".js"];
 
-const kebabToPascal = (name: string): string =>
-  name.replace(/(^\w|-\w)/g, (m) => m.replace(/-/, "").toUpperCase());
-
 const stripExt = (path: string): string => {
   for (const ext of COMPONENT_EXTENSIONS) {
     if (path.endsWith(ext)) return path.slice(0, -ext.length);
@@ -59,18 +57,20 @@ const fileBaseName = (path: string): string => {
   return stripExt(slash >= 0 ? path.slice(slash + 1) : path);
 };
 
-function findModulePath(
-  modules: ModuleMap[],
-  name: string,
-): { loader: ModuleLoader } | null {
+/**
+ * Index module maps by file base name once, instead of scanning every path on
+ * each resolve. Earlier maps (and earlier paths within a map) take priority,
+ * matching the documented override order.
+ */
+function indexModules(modules: ModuleMap[]): Map<string, ModuleLoader> {
+  const index = new Map<string, ModuleLoader>();
   for (const map of modules) {
     for (const path of Object.keys(map)) {
-      if (fileBaseName(path) === name) {
-        return { loader: map[path] };
-      }
+      const base = fileBaseName(path);
+      if (!index.has(base)) index.set(base, map[path]);
     }
   }
-  return null;
+  return index;
 }
 
 // Recognises React-renderable values: plain function components, classes, and
@@ -106,16 +106,16 @@ function findExport(
 
 async function resolveComponent(
   name: string,
-  modules: ModuleMap[],
+  moduleIndex: Map<string, ModuleLoader>,
 ): Promise<{ default: ComponentType<unknown> }> {
   const segments = name.split("-");
   // Try the full name first, then progressively shorter prefixes so that
   // "accordion-item" resolves to "accordion.tsx" exporting AccordionItem.
   for (let i = segments.length; i >= 1; i--) {
     const candidate = segments.slice(0, i).join("-");
-    const found = findModulePath(modules, candidate);
-    if (!found) continue;
-    const mod = await found.loader();
+    const loader = moduleIndex.get(candidate);
+    if (!loader) continue;
+    const mod = await loader();
     const Component = findExport(mod, name);
     if (Component) return { default: Component };
   }
@@ -126,7 +126,7 @@ async function resolveComponent(
 }
 
 interface NormalizedGroup {
-  moduleMaps: ModuleMap[];
+  moduleIndex: Map<string, ModuleLoader>;
   prefix: string;
   /** When false (legacy single-group), a non-matching prefix falls through
    *  with `name = is` instead of skipping the group. */
@@ -145,7 +145,9 @@ function normalizeGroups(options: LoaderOptions): NormalizedGroup[] {
       throw new Error("[reactolith] createLoader: `groups` must not be empty.");
     }
     return options.groups.map((g) => ({
-      moduleMaps: Array.isArray(g.modules) ? g.modules : [g.modules],
+      moduleIndex: indexModules(
+        Array.isArray(g.modules) ? g.modules : [g.modules],
+      ),
       prefix: g.prefix ?? "",
       strict: true,
     }));
@@ -157,9 +159,9 @@ function normalizeGroups(options: LoaderOptions): NormalizedGroup[] {
   }
   return [
     {
-      moduleMaps: Array.isArray(options.modules)
-        ? options.modules
-        : [options.modules],
+      moduleIndex: indexModules(
+        Array.isArray(options.modules) ? options.modules : [options.modules],
+      ),
       prefix: options.prefix ?? "",
       strict: false,
     },
@@ -206,7 +208,7 @@ export function createLoader(options: LoaderOptions): ElementType<{
                 `No group prefix matched.`,
             );
           }
-          return await resolveComponent(name, match.group.moduleMaps);
+          return await resolveComponent(name, match.group.moduleIndex);
         } catch (err) {
           if (onMissing) {
             const Fallback = onMissing(name, is);

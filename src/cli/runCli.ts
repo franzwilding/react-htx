@@ -136,18 +136,16 @@ export function runCli(argv: string[]): number {
   const positionalTsconfig = positionals[1];
   const positionalOutFile = positionals[2];
 
-  const componentsRaw = (values.components as string[] | undefined) ?? [];
-  const outsRaw = (values.out as string[] | undefined) ?? [];
-  const prefixesRaw = (values.prefix as string[] | undefined) ?? [];
-  const namesRaw = (values.name as string[] | undefined) ?? [];
-  const versionsRaw = (values.version as string[] | undefined) ?? [];
+  const componentsRaw = values.components ?? [];
+  const outsRaw = values.out ?? [];
+  const prefixesRaw = values.prefix ?? [];
+  const namesRaw = values.name ?? [];
+  const versionsRaw = values.version ?? [];
 
   const tsconfig =
-    (values.tsconfig as string | undefined) ||
-    positionalTsconfig ||
-    detectDefaultTsconfig();
+    values.tsconfig || positionalTsconfig || detectDefaultTsconfig();
 
-  const sharedExclude = expandList(values.exclude as string[] | undefined);
+  const sharedExclude = expandList(values.exclude);
 
   console.log(`generate-web-types: using tsconfig ${tsconfig}`);
 
@@ -220,10 +218,7 @@ export function runCli(argv: string[]): number {
       return 1;
     }
 
-    const out =
-      outsRaw[0] ??
-      (positionalOutFile as string | undefined) ??
-      "web-types.json";
+    const out = outsRaw[0] ?? positionalOutFile ?? "web-types.json";
 
     groups = [
       {
