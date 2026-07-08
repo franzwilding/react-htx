@@ -325,16 +325,14 @@ export class Mercure extends EventEmitter<MercureEventMap> {
       this.routerUnsubscribe = null;
     }
 
-    if (this.eventSource) {
-      this.closeEventSource();
-      this.currentUrl = null;
-      this.currentTopic = null;
-    }
-
+    this.closeEventSource();
     this.options = null;
   }
 
-  /** Close the active EventSource (if any) and emit `sse:disconnected`. */
+  /**
+   * Close the active EventSource (if any), emit `sse:disconnected`, and reset
+   * the connection state.
+   */
   private closeEventSource(): void {
     if (!this.eventSource) return;
     this.eventSource.close();
@@ -342,6 +340,8 @@ export class Mercure extends EventEmitter<MercureEventMap> {
       this.emit("sse:disconnected", this.currentUrl);
     }
     this.eventSource = null;
+    this.currentUrl = null;
+    this.currentTopic = null;
   }
 
   /**

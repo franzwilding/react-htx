@@ -58,13 +58,16 @@ const fileBaseName = (path: string): string => {
 };
 
 /**
- * Index module maps by file base name once, instead of scanning every path on
- * each resolve. Earlier maps (and earlier paths within a map) take priority,
+ * Index module maps by file base name so resolves are O(1) instead of scanning
+ * every path. Earlier maps (and earlier paths within a map) take priority,
  * matching the documented override order.
  */
-function indexModules(modules: ModuleMap[]): Map<string, ModuleLoader> {
+function indexModules(
+  modules: ModuleMap | ModuleMap[],
+): Map<string, ModuleLoader> {
+  const maps = Array.isArray(modules) ? modules : [modules];
   const index = new Map<string, ModuleLoader>();
-  for (const map of modules) {
+  for (const map of maps) {
     for (const path of Object.keys(map)) {
       const base = fileBaseName(path);
       if (!index.has(base)) index.set(base, map[path]);
@@ -106,19 +109,31 @@ function findExport(
 
 async function resolveComponent(
   name: string,
-  moduleIndex: Map<string, ModuleLoader>,
+  group: NormalizedGroup,
 ): Promise<{ default: ComponentType<unknown> }> {
   const segments = name.split("-");
   // Try the full name first, then progressively shorter prefixes so that
   // "accordion-item" resolves to "accordion.tsx" exporting AccordionItem.
-  for (let i = segments.length; i >= 1; i--) {
-    const candidate = segments.slice(0, i).join("-");
-    const loader = moduleIndex.get(candidate);
-    if (!loader) continue;
-    const mod = await loader();
-    const Component = findExport(mod, name);
-    if (Component) return { default: Component };
-  }
+  const attempt = async (index: Map<string, ModuleLoader>) => {
+    for (let i = segments.length; i >= 1; i--) {
+      const candidate = segments.slice(0, i).join("-");
+      const loader = index.get(candidate);
+      if (!loader) continue;
+      const mod = await loader();
+      const Component = findExport(mod, name);
+      if (Component) return { default: Component };
+    }
+    return null;
+  };
+
+  group.index ??= indexModules(group.moduleMaps);
+  const resolved =
+    (await attempt(group.index)) ??
+    // Miss: the module maps may have been mutated after the index was built
+    // (late registration). Rebuild once and retry before giving up.
+    (await attempt((group.index = indexModules(group.moduleMaps))));
+  if (resolved) return resolved;
+
   throw new Error(
     `[reactolith] Could not resolve component "${name}". ` +
       `No matching file or export was found in the provided modules.`,
@@ -126,7 +141,9 @@ async function resolveComponent(
 }
 
 interface NormalizedGroup {
-  moduleIndex: Map<string, ModuleLoader>;
+  moduleMaps: ModuleMap | ModuleMap[];
+  /** Base-name → loader index, built lazily on first resolve. */
+  index: Map<string, ModuleLoader> | null;
   prefix: string;
   /** When false (legacy single-group), a non-matching prefix falls through
    *  with `name = is` instead of skipping the group. */
@@ -145,9 +162,8 @@ function normalizeGroups(options: LoaderOptions): NormalizedGroup[] {
       throw new Error("[reactolith] createLoader: `groups` must not be empty.");
     }
     return options.groups.map((g) => ({
-      moduleIndex: indexModules(
-        Array.isArray(g.modules) ? g.modules : [g.modules],
-      ),
+      moduleMaps: g.modules,
+      index: null,
       prefix: g.prefix ?? "",
       strict: true,
     }));
@@ -159,9 +175,8 @@ function normalizeGroups(options: LoaderOptions): NormalizedGroup[] {
   }
   return [
     {
-      moduleIndex: indexModules(
-        Array.isArray(options.modules) ? options.modules : [options.modules],
-      ),
+      moduleMaps: options.modules,
+      index: null,
       prefix: options.prefix ?? "",
       strict: false,
     },
@@ -208,7 +223,7 @@ export function createLoader(options: LoaderOptions): ElementType<{
                 `No group prefix matched.`,
             );
           }
-          return await resolveComponent(name, match.group.moduleIndex);
+          return await resolveComponent(name, match.group);
         } catch (err) {
           if (onMissing) {
             const Fallback = onMissing(name, is);

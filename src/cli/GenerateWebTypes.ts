@@ -14,7 +14,7 @@ import {
 } from "ts-morph";
 import fs from "fs";
 import path from "path";
-import { kebabToPascal, pascalToKebab } from "../util/casing";
+import { pascalToKebab } from "../util/casing";
 
 /**
  * One output file: scans the given folders, applies the prefix, and writes a
@@ -442,7 +442,13 @@ function extractFromComponentFunctions(
           sourceFile.getFilePath(),
           path.extname(sourceFile.getFilePath()),
         );
-        const componentName = kebabToPascal(fileName);
+        // Not the shared kebabToPascal: file names may start with non-ASCII
+        // letters or contain consecutive hyphens, which the \w-based regex
+        // handles differently. Keep the split-based, Unicode-tolerant form.
+        const componentName = fileName
+          .split("-")
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join("");
         results.push({
           name: componentName,
           propsType: propsInfo.type,

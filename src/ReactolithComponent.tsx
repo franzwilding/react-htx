@@ -86,9 +86,14 @@ function getProps(
   isReactComponent: boolean = true,
   app?: App,
 ): { [key: string]: unknown } {
-  // Null prototype: attribute names come from server-controlled HTML, so a
-  // key like `json-__proto__` must never reach Object.prototype.
-  const props: { [key: string]: unknown } = Object.create(null);
+  const props: { [key: string]: unknown } = {};
+  // Attribute names come from server-controlled HTML. A computed key of
+  // `__proto__` would rebind the object's prototype instead of creating a
+  // property (and would poison React's props copy downstream) — drop it.
+  const setProp = (name: string, value: unknown) => {
+    if (name === "__proto__") return;
+    props[name] = value;
+  };
   Array.from(element.attributes).forEach((attr) => {
     if (attr.name === "key" || attr.name.startsWith("#")) {
       return;
@@ -108,12 +113,12 @@ function getProps(
     if (attr.name.startsWith("json-")) {
       const propName = normalizePropName(attr.name);
       try {
-        props[propName] = JSON.parse(attr.value);
+        setProp(propName, JSON.parse(attr.value));
       } catch (err) {
         // Set the prop explicitly to undefined so consumers can distinguish
         // "the backend didn't send it" from "it was sent but malformed" by
         // listening on the App-level "json-parse:failed" event.
-        props[propName] = undefined;
+        setProp(propName, undefined);
         const error = err instanceof Error ? err : new Error(String(err));
         console.warn(
           `reactolith: failed to parse JSON for "${attr.name}" on <${element.tagName.toLowerCase()}>:`,
@@ -131,7 +136,7 @@ function getProps(
     ) {
       // React accepts data-* and aria-* attributes verbatim on intrinsic
       // elements; keep the hyphenated name so they land on the DOM as-is.
-      props[attr.name] = attr.value;
+      setProp(attr.name, attr.value);
     } else {
       // Special case: empty attribute value is treated as boolean true. This
       // matches HTML boolean-attribute semantics (`<input readonly>`,
@@ -158,7 +163,7 @@ function getProps(
           attr.name === "class" ? "className" : normalizePropName(attr.name);
       }
 
-      props[propName] = value;
+      setProp(propName, value);
     }
   });
   return props;
