@@ -60,8 +60,7 @@ export class App extends EventEmitter<AppEventMap> {
     component: ElementType,
     appProvider: ElementType<PropsWithChildren<{ app: App }>> = AppProvider,
     selector:
-      | ((doc: Document) => HTMLElement | null)
-      | string = "#reactolith-app",
+      ((doc: Document) => HTMLElement | null) | string = "#reactolith-app",
     root?: Root,
     doc: Document = document,
     fetchImp: FetchLike = fetch,
