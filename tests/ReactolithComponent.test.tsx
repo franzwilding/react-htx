@@ -312,6 +312,34 @@ describe("ReactolithComponent HTML to React transformation", () => {
       expect(root.querySelectorAll("li")[0]).toHaveTextContent("a");
     });
 
+    it("drops __proto__ attributes instead of polluting component props", async () => {
+      document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
+        <my-probe json-__proto__='{"polluted": true}' plain="ok">Probe</my-probe>
+      </div>`;
+
+      let seen: Record<string, unknown> | null = null;
+      function probeComponent(props: Record<string, unknown>) {
+        seen = props;
+        return <span data-testid="probe">Probe</span>;
+      }
+
+      new App(probeComponent);
+
+      const root = await screen.findByTestId("reactolith-app");
+      await waitFor(() => {
+        expect(root.querySelector("span")).not.toBeNull();
+      });
+
+      // Neither an own nor an inherited `polluted` prop may appear, and the
+      // global Object.prototype must stay untouched.
+      expect(seen).not.toBeNull();
+      expect(
+        (seen as unknown as Record<string, unknown>).polluted,
+      ).toBeUndefined();
+      expect((seen as unknown as Record<string, unknown>).plain).toBe("ok");
+      expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+    });
+
     it("normalizes attribute names to camelCase", async () => {
       document.body.innerHTML = `<div id="reactolith-app" data-testid="reactolith-app">
         <my-input place-holder="Enter text" max-length="100">Input</my-input>

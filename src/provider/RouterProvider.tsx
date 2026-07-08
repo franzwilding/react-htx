@@ -98,16 +98,15 @@ export function RouterProvider({ children }: { children: React.ReactNode }) {
       });
     };
 
-    router.on("nav:started", start);
-    router.on("nav:ended", end);
-    router.on("render:failed", onRenderFailed);
-    router.on("nav:error", onNavError);
+    const unsubscribes = [
+      router.on("nav:started", start),
+      router.on("nav:ended", end),
+      router.on("render:failed", onRenderFailed),
+      router.on("nav:error", onNavError),
+    ];
 
     return () => {
-      router.off("nav:started", start);
-      router.off("nav:ended", end);
-      router.off("render:failed", onRenderFailed);
-      router.off("nav:error", onNavError);
+      for (const unsubscribe of unsubscribes) unsubscribe();
     };
   }, [router]);
 

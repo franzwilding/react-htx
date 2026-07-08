@@ -98,9 +98,7 @@ export class Mercure extends EventEmitter<MercureEventMap> {
     }
 
     // Unsubscribe from previous router listener
-    if (this.routerUnsubscribe) {
-      this.routerUnsubscribe();
-    }
+    this.routerUnsubscribe?.();
 
     // Listen to router navigation to re-subscribe with new pathname
     this.routerUnsubscribe = this.app.router.on("render:success", () => {
@@ -135,13 +133,7 @@ export class Mercure extends EventEmitter<MercureEventMap> {
     }
 
     // Close existing connection if any
-    if (this.eventSource) {
-      this.eventSource.close();
-      if (this.currentUrl) {
-        this.emit("sse:disconnected", this.currentUrl);
-      }
-      this.eventSource = null;
-    }
+    this.closeEventSource();
 
     const { hubUrl, withCredentials = false } = this.options;
 
@@ -333,17 +325,23 @@ export class Mercure extends EventEmitter<MercureEventMap> {
       this.routerUnsubscribe = null;
     }
 
-    if (this.eventSource) {
-      this.eventSource.close();
-      if (this.currentUrl) {
-        this.emit("sse:disconnected", this.currentUrl);
-      }
-      this.eventSource = null;
-      this.currentUrl = null;
-      this.currentTopic = null;
-    }
-
+    this.closeEventSource();
     this.options = null;
+  }
+
+  /**
+   * Close the active EventSource (if any), emit `sse:disconnected`, and reset
+   * the connection state.
+   */
+  private closeEventSource(): void {
+    if (!this.eventSource) return;
+    this.eventSource.close();
+    if (this.currentUrl) {
+      this.emit("sse:disconnected", this.currentUrl);
+    }
+    this.eventSource = null;
+    this.currentUrl = null;
+    this.currentTopic = null;
   }
 
   /**
