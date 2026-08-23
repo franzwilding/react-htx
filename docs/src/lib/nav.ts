@@ -24,6 +24,7 @@ export const NAV: NavGroup[] = [
     label: "Realtime & SSR",
     items: [
       { label: "Mercure", href: "/mercure/" },
+      { label: "Streaming", href: "/streaming/" },
       { label: "Server-Side Rendering", href: "/ssr/" },
     ],
   },

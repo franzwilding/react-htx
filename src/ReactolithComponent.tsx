@@ -1,22 +1,9 @@
 import React, { ElementType, JSX, ReactNode, Ref, useContext } from "react";
 import { AppContext } from "./provider/AppContext";
 import { kebabToPascal } from "./util/casing";
+import { isElement, isTemplateElement, isTextNode } from "./util/dom";
+import { FRAGMENT_ATTRIBUTE } from "./streaming/protocol";
 import type { App } from "./App";
-
-const ELEMENT_NODE = 1;
-const TEXT_NODE = 3;
-
-function isElement(node: Node): node is Element {
-  return node.nodeType === ELEMENT_NODE;
-}
-
-function isTextNode(node: Node): node is Text {
-  return node.nodeType === TEXT_NODE;
-}
-
-function isTemplateElement(el: Element): el is HTMLTemplateElement {
-  return el.tagName === "TEMPLATE" && "content" in el;
-}
 
 const normalizePropName = (name: string) => {
   if (name.startsWith("json-")) {
@@ -95,7 +82,11 @@ function getProps(
     props[name] = value;
   };
   Array.from(element.attributes).forEach((attr) => {
-    if (attr.name === "key" || attr.name.startsWith("#")) {
+    if (
+      attr.name === "key" ||
+      attr.name === FRAGMENT_ATTRIBUTE ||
+      attr.name.startsWith("#")
+    ) {
       return;
     }
 
@@ -172,6 +163,7 @@ function getProps(
 function getSlots(
   element: Element,
   component: ElementType,
+  app?: App,
 ): Record<string, ReactNode[]> {
   const slots: Record<string, ReactNode[]> = {};
   Array.from(element.childNodes).forEach((child) => {
@@ -180,12 +172,33 @@ function getSlots(
     const slotName = child.getAttribute("slot");
     if (!slotName) return;
 
+    // A slot that is itself a placeholder hands its whole content over to the
+    // fragment once that arrived.
+    const fragment = getFragment(child, app);
+    if (fragment) {
+      slots[slotName] = getChildren(fragment, component);
+      return;
+    }
+
     const root: Element | DocumentFragment = isTemplateElement(child)
       ? child.content
       : child;
     slots[slotName] = getChildren(root, component);
   });
   return slots;
+}
+
+/**
+ * Content that replaces `element`, if it carries `data-fragment` and the app
+ * has already received a fragment under that name.
+ */
+function getFragment(
+  element: Element,
+  app?: App,
+): DocumentFragment | undefined {
+  const name = element.getAttribute(FRAGMENT_ATTRIBUTE);
+  if (name === null) return undefined;
+  return app?.fragment?.(name);
 }
 
 function getChildren(
@@ -259,6 +272,14 @@ export function ReactolithComponent({
   const app = useContext(AppContext);
   if (!element) return null;
 
+  // A placeholder with content renders the fragment instead of its skeleton.
+  // The component itself keeps the key its parent gave it, so the siblings
+  // around it keep their identity no matter how many nodes move in.
+  const fragment = getFragment(element, app);
+  if (fragment) {
+    return <>{getChildren(fragment, Component)}</>;
+  }
+
   const tagName = element.tagName.toLowerCase();
   const children = getChildren(element, Component);
 
@@ -270,7 +291,7 @@ export function ReactolithComponent({
 
   const allProps = {
     ...getProps(element, Component, isReactComponent, app),
-    ...getSlots(element, Component),
+    ...getSlots(element, Component, app),
     key: getKey(element),
     ...(isReactComponent ? { is: tagName } : {}),
     ...props,

@@ -73,6 +73,7 @@ new App(createLoader({
 - 🔄 **Morphing navigation** — like Turbo's `morph`: the tree is diffed in place, React state is preserved across link clicks and form submits
 - 📋 **Forms** — modify forms dynamically (server can add/remove fields on a checkbox click) without losing input state or focus
 - 📡 **Realtime** — Mercure SSE pipes server-pushed HTML through the same render path
+- 🚚 **Streaming** — flush the shell now and the slow section after, over the same response; `<template data-fragment="…">` is swapped into the live tree without rebuilding it
 - 🧠 **Scroll restoration** — browser-like behavior across SPA-style navigations
 - 🧩 **IDE autocomplete** — generate web-types for JetBrains/VS Code so `<my-button>` autocompletes like a native element
 - 🪶 **No new backend layer** — no JSON page-prop contract to maintain, no shadow API; your existing controllers and templates are the API
@@ -137,6 +138,7 @@ End-to-end example apps live in [`/examples`](./examples):
 | Forms & validation | [Forms](https://reactolith.github.io/forms/) |
 | Scroll | [Scroll Restoration](https://reactolith.github.io/scroll-restoration/) |
 | Realtime | [Mercure](https://reactolith.github.io/mercure/) |
+| Streaming | [Streaming Fragments](https://reactolith.github.io/streaming/) |
 | SSR | [Server-Side Rendering](https://reactolith.github.io/ssr/) |
 | Tooling | [Web Types](https://reactolith.github.io/web-types/) · [API Cheatsheet](https://reactolith.github.io/api/) |
 

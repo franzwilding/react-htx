@@ -84,6 +84,26 @@
   createLoader,         // resolve tag names against import.meta.glob() maps
 } from "reactolith";</ui-code-block>
 
+        <h2>Streaming fragments</h2>
+        <ui-code-block lang="ts">import {
+  SHELL_END,            // "&lt;!--rl-shell-end--&gt;" — where the Router cuts
+  FRAGMENT_ATTRIBUTE,   // "data-fragment" — placeholder / template name
+  FRAGMENT_READY_TAG,   // "rl-fragment" — completion marker
+  FRAGMENT_READY_END,   // "&lt;/rl-fragment&gt;" — stream delimiter
+} from "reactolith";
+
+const app = new App(component, undefined, undefined, undefined, undefined, undefined, {
+  streaming: true,
+});
+
+app.replace(name, content);  // HTML string | Node | Node[] | null → boolean
+app.applyFragments(html);    // → string[] of applied names
+app.isFragmentPayload(html); // → boolean
+app.pendingFragments();      // → string[] still waiting
+
+app.on("fragment:received", (name, content) =&gt; {});
+app.on("stream:ended", (pending) =&gt; {});</ui-code-block>
+
         <h2>Form helpers</h2>
         <ui-code-block lang="ts">import {
   Form,

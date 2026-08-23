@@ -7,6 +7,16 @@ export { ScrollRestoration, detectScrollContainer } from "./ScrollRestoration";
 export { Mercure } from "./Mercure";
 export type { MercureOptions } from "./Mercure";
 export { ReactolithComponent } from "./ReactolithComponent";
+export {
+  SHELL_END,
+  FRAGMENT_ATTRIBUTE,
+  FRAGMENT_READY_TAG,
+  FRAGMENT_READY_END,
+} from "./streaming/protocol";
+export type { FragmentSink, FragmentStream } from "./streaming/FragmentSink";
+export type { FragmentContent, FragmentEntry } from "./streaming/fragments";
+export { DocumentFragmentStream } from "./streaming/DocumentFragmentStream";
+export { FetchFragmentStream } from "./streaming/FetchFragmentStream";
 export { AppProvider, useApp } from "./provider/AppProvider";
 export { RouterProvider, useRouter } from "./provider/RouterProvider";
 export { useMercureTopic } from "./useMercureTopic";

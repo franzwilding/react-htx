@@ -13,6 +13,11 @@ export type MercureEventMap = {
    * Subscribe to a name via `events` in MercureOptions to start receiving them.
    */
   "sse:named": [name: string, event: MessageEvent, data: string];
+  /**
+   * A push that carried only `<template data-fragment="…">` was applied to the
+   * live tree. No page render happened.
+   */
+  "fragments:applied": [event: MessageEvent, names: string[]];
   "render:success": [event: MessageEvent, html: string];
   "render:failed": [event: MessageEvent, html: string];
   "refetch:started": [event: MessageEvent];
@@ -188,6 +193,15 @@ export class Mercure extends EventEmitter<MercureEventMap> {
         } catch (error) {
           this.emit("refetch:failed", event, error as Error);
         }
+        return;
+      }
+
+      // A push that is nothing but fragment templates updates just those
+      // parts — the rest of the tree is not even walked. A page that merely
+      // contains a template still renders as a page.
+      if (this.app.streaming && this.app.isFragmentPayload(html)) {
+        const applied = this.app.applyFragments(html);
+        this.emit("fragments:applied", event, applied);
         return;
       }
 

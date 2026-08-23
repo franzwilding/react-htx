@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0a0814" />
+    <title>Streaming HTML Fragments into a Live React Tree — Reactolith</title>
+    <meta
+      name="description"
+      content="Flush the page now and the slow section after, over the same response. Reactolith swaps <template data-fragment='…'> content into placeholders without rebuilding the React tree — one request, no JSON contract, no second controller run."
+    />
+    <meta name="keywords" content="reactolith streaming, react out-of-band html, html streaming react, react streaming fragments, out of band swaps, turbo streams react, deferred rendering react, react skeleton placeholder, symfony streamed response react" />
+    <meta name="author" content="Franz Mayr-Wilding" />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large" />
+    <link rel="canonical" href="https://reactolith.github.io/streaming/" />
+    <link rel="alternate" type="text/plain" title="LLM index (llms.txt)" href="https://reactolith.github.io/llms.txt" />
+
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="Reactolith" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content="https://reactolith.github.io/streaming/" />
+    <meta property="og:title" content="Streaming HTML fragments into a live React tree" />
+    <meta property="og:description" content="Send the page now and the slow part after, over the same response." />
+    <meta property="og:image" content="https://reactolith.github.io/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Reactolith — use HTML to compose your React app." />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Streaming HTML fragments" />
+    <meta name="twitter:description" content="One response: the shell first, the slow section after." />
+    <meta name="twitter:image" content="https://reactolith.github.io/og-image.png" />
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "TechArticle",
+          "headline": "Streaming HTML fragments",
+          "description": "Out-of-band <template data-fragment> swaps over a streamed response, on first load, on router navigation and over Mercure.",
+          "url": "https://reactolith.github.io/streaming/",
+          "mainEntityOfPage": "https://reactolith.github.io/streaming/",
+          "image": "https://reactolith.github.io/og-image.png",
+          "inLanguage": "en",
+          "author": { "@type": "Person", "name": "Franz Mayr-Wilding", "url": "https://github.com/reactolith" },
+          "publisher": { "@type": "Organization", "name": "Reactolith", "url": "https://reactolith.github.io/" },
+          "isPartOf": { "@id": "https://reactolith.github.io/#website" }
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Reactolith", "item": "https://reactolith.github.io/" },
+            { "@type": "ListItem", "position": 2, "name": "Streaming", "item": "https://reactolith.github.io/streaming/" }
+          ]
+        }
+      ]
+    }
+    </script>
+  </head>
+  <body>
+    <div id="reactolith-app" class="hidden">
+      <app-page>
+        <h1>Streaming HTML Fragments</h1>
+        <p>
+          Most slow pages are not slow. <strong>One section</strong> of them
+          is &mdash; a chart, a report, a search across a big table &mdash; and
+          the other twenty parts were ready in milliseconds and waited with it.
+          The visitor does not see &ldquo;almost everything&rdquo;; the visitor
+          sees nothing.
+        </p>
+        <p>
+          Streaming lets the server send the page <em>now</em> and that one
+          section <em>after</em>, over the <strong>same response</strong>.
+          <code>reactolith</code> swaps the late part into the live tree
+          without rebuilding the rest of it. One request, no API, no JSON
+          contract, no second controller run.
+        </p>
+
+        <h2>Turning it on</h2>
+        <p>
+          Streaming is <strong>off by default</strong>. With the option off
+          nothing observes the document and the Router reads responses exactly
+          as it always did &mdash; existing apps are untouched.
+        </p>
+        <ui-code-block lang="ts" filename="src/main.tsx">import { App } from "reactolith";
+
+const app = new App(
+  component,
+  undefined,      // appProvider
+  undefined,      // selector
+  undefined,      // root
+  undefined,      // document
+  undefined,      // fetch
+  { streaming: true },
+);</ui-code-block>
+
+        <h2>Placeholders</h2>
+        <p>
+          Any element carrying <code>data-fragment="name"</code> is a
+          <strong>placeholder</strong>. Render whatever should be on screen
+          while the real content is still being computed &mdash; a skeleton, a
+          spinner, last week's cached number:
+        </p>
+        <ui-code-block lang="html">&lt;ui-skeleton data-fragment="chart" class="h-[420px]"&gt;&lt;/ui-skeleton&gt;</ui-code-block>
+        <p>
+          A <code>&lt;template data-fragment="chart"&gt;…&lt;/template&gt;</code>
+          that arrives later <strong>replaces</strong> every placeholder with
+          that name. Replacement, not filling: a fragment may be several
+          top-level nodes or none at all, and an empty fragment makes the
+          placeholder disappear &mdash; which is exactly what an empty section
+          should do.
+        </p>
+        <p>
+          <code>data-fragment</code> is a document-wide address, not a React
+          <code>key</code>: two placeholders may carry the same name on
+          purpose, and both get filled. The attribute is stripped before props
+          are built, so it reaches neither your component nor the DOM.
+        </p>
+        <blockquote>
+          <strong>The siblings survive.</strong> The swap happens inside the
+          component that renders the placeholder, so the components around it
+          keep their identity and their state &mdash; even when one node turns
+          into five.
+        </blockquote>
+
+        <h2>The wire format</h2>
+        <ui-code-block lang="html">&lt;!doctype html&gt;
+&lt;html&gt;
+&lt;body&gt;
+&lt;!-- the shell, flushed immediately --&gt;
+&lt;div id="reactolith-app"&gt;
+  &lt;app-dashboard&gt;
+    &lt;ui-stats json-values="…"&gt;&lt;/ui-stats&gt;
+    &lt;ui-skeleton data-fragment="chart" class="h-[420px]"&gt;&lt;/ui-skeleton&gt;
+  &lt;/app-dashboard&gt;
+&lt;/div&gt;
+&lt;script type="module" async src="/build/app.js"&gt;&lt;/script&gt;
+&lt;!--rl-shell-end--&gt;
+
+&lt;!-- … seconds later, over the same response … --&gt;
+&lt;template data-fragment="chart"&gt;&lt;ui-chart json-points="…"&gt;&lt;/ui-chart&gt;&lt;/template&gt;
+&lt;rl-fragment data-fragment="chart"&gt;&lt;/rl-fragment&gt;
+
+&lt;/body&gt;&lt;/html&gt;</ui-code-block>
+
+        <p>Three constants, and each one earns its place:</p>
+        <table>
+          <thead>
+            <tr><th>Constant</th><th>Value</th><th>Why it exists</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>SHELL_END</code></td>
+              <td><code>&lt;!--rl-shell-end--&gt;</code></td>
+              <td>Where the Router cuts. Without it a client cannot tell a complete page from a page that was cut off mid-tag.</td>
+            </tr>
+            <tr>
+              <td><code>FRAGMENT_ATTRIBUTE</code></td>
+              <td><code>data-fragment</code></td>
+              <td>Names a placeholder, and names the <code>&lt;template&gt;</code> that replaces it.</td>
+            </tr>
+            <tr>
+              <td><code>FRAGMENT_READY_TAG</code></td>
+              <td><code>rl-fragment</code></td>
+              <td>The completion marker. A <code>&lt;template&gt;</code> that appears in the DOM is <em>not</em> finished &mdash; its content is still arriving. The empty element behind it proves everything in front of it is whole.</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          The <code>&lt;template&gt;</code> is the container because its
+          content is inert &mdash; no images load, no scripts run, nothing is
+          visible &mdash; and because it sits outside the app root, so the
+          browser's parser never writes into the subtree React owns.
+        </p>
+        <p>
+          Import the strings instead of retyping them (handy for a PHP/Ruby
+          constant generated from the same source of truth):
+        </p>
+        <ui-code-block lang="ts">import {
+  SHELL_END,           // "&lt;!--rl-shell-end--&gt;"
+  FRAGMENT_ATTRIBUTE,  // "data-fragment"
+  FRAGMENT_READY_TAG,  // "rl-fragment"
+  FRAGMENT_READY_END,  // "&lt;/rl-fragment&gt;"
+} from "reactolith";</ui-code-block>
+
+        <blockquote>
+          <strong>No response header, no token.</strong> A response
+          <em>without</em> the sentinel is read to the end and rendered as one
+          page, exactly as before &mdash; pages that do not stream need no
+          changes at all. And nothing has to be echoed back by the backend: the
+          stream that delivered the shell is the stream that delivers its
+          fragments, and reactolith binds them to the render they belong to.
+        </blockquote>
+
+        <h2>Where fragments may go</h2>
+        <p>
+          <strong>Recommended:</strong> inside <code>&lt;body&gt;</code>, with
+          the closing tags written last. Everything stays valid HTML and every
+          intermediary treats the response as an ordinary document.
+        </p>
+        <p>
+          Fragments after <code>&lt;/html&gt;</code> also work &mdash; the HTML
+          parser puts trailing content back into the body &mdash; but a
+          validator will complain, and an intermediary that decides a document
+          is finished at <code>&lt;/html&gt;</code> may truncate the rest. Use
+          it only if your framework cannot hold the closing tags back.
+        </p>
+        <p>
+          Do not put fragments <em>inside</em> the app root. That subtree
+          belongs to React; the parser writing into it while React reconciles
+          is the one thing this design exists to avoid.
+        </p>
+
+        <h2>The script tag</h2>
+        <p>
+          On a streamed page the entry script goes <strong>after the app
+          root</strong>, with <code>async</code>:
+        </p>
+        <ui-code-block lang="html">&lt;div id="reactolith-app"&gt;…&lt;/div&gt;
+&lt;script type="module" async src="/build/app.js"&gt;&lt;/script&gt;
+&lt;!--rl-shell-end--&gt;</ui-code-block>
+        <p>
+          A plain <code>&lt;script type="module"&gt;</code> in
+          <code>&lt;head&gt;</code> is deferred until the document has been
+          parsed &mdash; and on a streamed page that is exactly the slow part.
+          The app would boot only after the last fragment arrived, and the
+          placeholder nobody ever saw would have been pointless. With
+          <code>async</code> the app boots while the response is still open,
+          paints the shell, and collects the fragments as the parser appends
+          them.
+        </p>
+        <p>
+          This applies to the <strong>first page load only</strong>.
+          Navigations go through the Router, where the app is already running.
+        </p>
+        <blockquote>
+          <strong>Production shape.</strong> In dev, bundler preambles (Vite's
+          React Fast Refresh, for one) must run before your entry module, and
+          <code>async</code> gives up that ordering. Emit the
+          <code>async</code> form for production builds and keep the ordinary
+          module script in dev.
+        </blockquote>
+
+        <h2>A Symfony backend</h2>
+        <p>
+          Any framework that can flush a response works. The shape is always
+          the same: render the shell, flush, do the slow work, render the
+          fragment, flush again.
+        </p>
+        <ui-code-block lang="php">#[Route('/dashboard')]
+public function dashboard(ChartRepository $charts): StreamedResponse
+{
+    return new StreamedResponse(function () use ($charts) {
+        echo $this-&gt;renderView('dashboard/shell.html.twig');
+        echo "&lt;!--rl-shell-end--&gt;";
+        flush();
+
+        // The expensive part — the visitor is already looking at the page.
+        $points = $charts-&gt;lastQuarter();
+
+        echo $this-&gt;renderView('dashboard/_chart.html.twig', ['points' =&gt; $points]);
+        echo '&lt;/body&gt;&lt;/html&gt;';
+        flush();
+    });
+}</ui-code-block>
+        <ui-code-block lang="twig" filename="dashboard/_chart.html.twig">&lt;template data-fragment="chart"&gt;
+  &lt;ui-chart json-points="{{ points|json_encode|e('html_attr') }}"&gt;&lt;/ui-chart&gt;
+&lt;/template&gt;
+&lt;rl-fragment data-fragment="chart"&gt;&lt;/rl-fragment&gt;</ui-code-block>
+        <p>
+          Make sure nothing between your app and the browser buffers the
+          response: disable output compression and buffering for the route
+          (<code>ob_end_flush()</code>, <code>X-Accel-Buffering: no</code>
+          behind nginx).
+        </p>
+
+        <h2>Mercure pushes</h2>
+        <p>
+          A Mercure message that is <strong>nothing but</strong> fragment
+          templates is applied as fragments instead of being rendered as a
+          page. This is the finest-grained update the library can do: one badge
+          is reconciled and the rest of the tree is not even walked.
+        </p>
+        <ui-code-block lang="php">$hub-&gt;publish(new Update('/dashboard',
+    '&lt;template data-fragment="unread"&gt;&lt;ui-badge&gt;7&lt;/ui-badge&gt;&lt;/template&gt;'
+));</ui-code-block>
+        <p>
+          &ldquo;Nothing but&rdquo; is precise: whitespace and comments are
+          fine, any other node means it is a page. A page that merely
+          <em>contains</em> a template still renders as a page. Over Mercure
+          there is no <code>&lt;rl-fragment&gt;</code> marker &mdash; an SSE
+          message arrives whole. Listen with:
+        </p>
+        <ui-code-block lang="ts">mercure.on("fragments:applied", (_event, names) =&gt; {
+  console.log("updated in place:", names);
+});</ui-code-block>
+
+        <h2>API</h2>
+        <ui-code-block lang="ts">const app = new App(component, undefined, undefined, undefined, undefined, undefined, {
+  streaming: true,
+});
+
+app.replace("chart", "&lt;ui-chart&gt;…&lt;/ui-chart&gt;");  // string | Node | Node[] | null → boolean
+app.applyFragments(html);   // → string[] of applied names
+app.isFragmentPayload(html);// → boolean
+app.pendingFragments();     // → string[] still waiting
+
+app.on("fragment:received", (name, content) =&gt; { /* DocumentFragment */ });
+app.on("stream:ended", (pending) =&gt; {
+  if (pending.length) console.warn("never arrived:", pending);
+});</ui-code-block>
+        <table>
+          <thead>
+            <tr><th>Member</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>streaming</code></td><td><code>true</code> when the app accepts out-of-band fragments.</td></tr>
+            <tr><td><code>replace(name, content)</code></td><td>Replace every placeholder carrying <code>name</code>. Returns <code>false</code> and warns when no placeholder wants it &mdash; the content is remembered anyway, so a fragment that arrives before its placeholder is not lost.</td></tr>
+            <tr><td><code>applyFragments(html)</code></td><td>Apply every <code>&lt;template data-fragment&gt;</code> in a payload; returns the names that landed.</td></tr>
+            <tr><td><code>isFragmentPayload(html)</code></td><td>Whether a payload is fragments only.</td></tr>
+            <tr><td><code>pendingFragments()</code></td><td>Placeholders in the current tree that have no content yet.</td></tr>
+            <tr><td><code>fragment:received</code></td><td>Fires for every fragment taken in, with the name and its <code>DocumentFragment</code>.</td></tr>
+            <tr><td><code>stream:ended</code></td><td>Fires when the stream of the current render is over, with the names that never came.</td></tr>
+          </tbody>
+        </table>
+
+        <h2>What happens when</h2>
+        <ul>
+          <li><strong>First load:</strong> a <code>MutationObserver</code> collects what the parser appends, plus one sweep for whatever arrived before the app booted. <code>DOMContentLoaded</code> ends the stream.</li>
+          <li><strong>Navigation:</strong> the Router cuts the response at the sentinel, renders the shell, and keeps reading the rest in the background.</li>
+          <li><strong>Navigating away mid-stream:</strong> the abandoned response is cancelled and its late fragments are dropped &mdash; they can never land in the page that replaced it.</li>
+          <li><strong>A new page:</strong> the fragment registry is cleared. The previous page's fragments address placeholders that no longer exist.</li>
+          <li><strong>Server-side rendering:</strong> there is no &ldquo;later&rdquo; on the server, so <code>renderToString</code> renders a placeholder's skeleton.</li>
+        </ul>
+      </app-page>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
