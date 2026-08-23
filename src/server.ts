@@ -60,6 +60,18 @@ function createServerApp(
     onHydrated: () => noopUnsubscribe,
     render: () => false,
     renderElement: () => {},
+    // Streaming is a client-only mechanism: on the server there is no
+    // "later", so a placeholder renders its skeleton. Every method still has
+    // to exist — a missing one is a runtime TypeError, not a type error.
+    streaming: false,
+    fragment: () => undefined,
+    replace: () => false,
+    applyFragments: () => [],
+    isFragmentPayload: () => false,
+    pendingFragments: () => [],
+    adoptStream: () => {},
+    acceptFragments: () => {},
+    endStream: () => {},
     unmount: () => {},
     destroy: () => {},
   };

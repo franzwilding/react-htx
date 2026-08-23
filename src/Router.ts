@@ -1,5 +1,8 @@
 import { App } from "./App";
 import { ScrollRestoration } from "./ScrollRestoration";
+import { SHELL_END } from "./streaming/protocol";
+import { FetchFragmentStream } from "./streaming/FetchFragmentStream";
+import type { FragmentStream } from "./streaming/FragmentSink";
 import { EventEmitter } from "./util/EventEmitter";
 import type { Handler } from "./util/EventEmitter";
 
@@ -210,12 +213,13 @@ export class Router extends EventEmitter<RouterEventMap> {
 
     let response: Response;
     let html: string;
+    let stream: FragmentStream | null = null;
     try {
       response = await this.fetch(input, {
         ...init,
         signal: controller.signal,
       });
-      html = await response.text();
+      ({ html, stream } = await this.readDocument(response));
     } catch (error) {
       if (controller.signal.aborted) {
         // Superseded by a newer visit(). Emit a terminal `nav:cancelled`
@@ -238,6 +242,9 @@ export class Router extends EventEmitter<RouterEventMap> {
     // so the superseded visit doesn't clobber the page that the newer
     // visit is about to render.
     if (controller.signal.aborted) {
+      // The tail of a superseded response must never reach the page that
+      // replaced it, so drop the stream instead of adopting it.
+      stream?.cancel();
       this.emit("nav:cancelled", input, init, pushState);
       return { cancelled: true, result: false };
     }
@@ -246,6 +253,9 @@ export class Router extends EventEmitter<RouterEventMap> {
 
     const original = typeof input === "string" ? input : input.toString();
     const finalUrl = response.redirected ? response.url : original;
+    // Adopt before rendering: the App starts the stream once the render it
+    // serves has happened.
+    if (stream) this.app.adoptStream(stream);
     const result = this.app.render(html);
 
     if (result && pushState && replace) {
@@ -272,6 +282,48 @@ export class Router extends EventEmitter<RouterEventMap> {
     this.emit(event, input, init, pushState, response, html, finalUrl);
     this.emit("nav:ended", input, init, pushState, response, html, finalUrl);
     return { result, response, html, finalUrl };
+  }
+
+  /**
+   * Read a response body into the HTML the App renders.
+   *
+   * Without streaming — or without a readable body — this is plain
+   * `response.text()`. Otherwise the body is read until `<!--rl-shell-end-->`
+   * shows up: everything before it is the shell, and the still-open reader
+   * (plus whatever already followed the sentinel) becomes a
+   * `FetchFragmentStream`. A body that ends without the sentinel is returned
+   * whole, so a backend that does not stream needs no response header.
+   *
+   * Doing this here instead of wrapping `fetch` keeps the real `Response`, so
+   * `response.redirected` and `response.url` still decide the final URL.
+   */
+  private async readDocument(
+    response: Response,
+  ): Promise<{ html: string; stream: FragmentStream | null }> {
+    if (!this.app.streaming || !response.body) {
+      return { html: await response.text(), stream: null };
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (value) buffer += decoder.decode(value, { stream: true });
+
+      const index = buffer.indexOf(SHELL_END);
+      if (index !== -1) {
+        const shell = buffer.slice(0, index);
+        const rest = buffer.slice(index + SHELL_END.length);
+        return {
+          html: shell,
+          stream: new FetchFragmentStream(this.app, reader, rest, decoder),
+        };
+      }
+
+      if (done) return { html: buffer, stream: null };
+    }
   }
 
   public async onClick(event: MouseEvent) {
