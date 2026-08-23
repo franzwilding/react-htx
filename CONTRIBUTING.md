@@ -11,8 +11,11 @@ cd reactolith
 npm install
 ```
 
-Node 18+ is required (the package targets Node 18 in `engines`). All commands
-below run from the repository root unless noted otherwise.
+**Node 22.22.2+** is required to run the local checks (jsdom 30 declares
+`^22.22.2 || ^24.15.0 || >=26`, and `@testing-library/jest-dom` 7 wants
+`>=22`); CI runs Node 22. That is a *development* requirement — the published
+package still targets Node 18 in `engines`, which is what consumers need. All
+commands below run from the repository root unless noted otherwise.
 
 ## Local checks
 
