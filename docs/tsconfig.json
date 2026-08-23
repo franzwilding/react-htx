@@ -16,9 +16,8 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
+      "@/*": ["./src/*"],
       "reactolith": ["../src/index.ts"],
       "reactolith/server": ["../src/server.ts"]
     }

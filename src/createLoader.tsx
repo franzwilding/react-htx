@@ -1,7 +1,13 @@
 import React, { ComponentType, ElementType, ReactNode, Suspense } from "react";
 import { kebabToPascal } from "./util/casing";
 
-export type ModuleLoader = () => Promise<Record<string, unknown>>;
+/**
+ * A lazy module import, as produced by `import.meta.glob()`. The resolved
+ * value is `unknown` on purpose: a bundler types each entry with that file's
+ * own module namespace, and those types are not assignable to a single
+ * concrete shape. `findExport` narrows before reading anything off it.
+ */
+export type ModuleLoader = () => Promise<unknown>;
 export type ModuleMap = Record<string, ModuleLoader>;
 
 export interface LoaderGroup {
@@ -88,9 +94,11 @@ function isComponent(value: unknown): value is ComponentType<unknown> {
 }
 
 function findExport(
-  mod: Record<string, unknown>,
+  module: unknown,
   name: string,
 ): ComponentType<unknown> | null {
+  if (!module || typeof module !== "object") return null;
+  const mod = module as Record<string, unknown>;
   const pascal = kebabToPascal(name);
   const candidate = mod[pascal];
   if (isComponent(candidate)) return candidate;
