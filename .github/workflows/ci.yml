@@ -43,3 +43,27 @@ jobs:
 
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=moderate
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      # The docs site typechecks the library source through a path mapping
+      # (`reactolith` -> ../src), so it needs the root install for React's
+      # types as well as its own.
+      - run: npm ci --dev
+
+      - run: npm ci
+        working-directory: docs
+
+      - run: npm run typecheck
+        working-directory: docs
+
+      - run: npm run build
+        working-directory: docs
