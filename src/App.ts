@@ -65,6 +65,12 @@ export type AppOptions = {
    * it always did.
    */
   streaming?: boolean;
+  /**
+   * Send the placeholder names currently in the tree as
+   * `X-Reactolith-Fragments` on every navigation. Off by default — headers
+   * are finite, and most backends decide from the path alone.
+   */
+  sendFragmentNames?: boolean;
 };
 
 export class App extends EventEmitter<AppEventMap> implements FragmentSink {
@@ -77,6 +83,8 @@ export class App extends EventEmitter<AppEventMap> implements FragmentSink {
   public readonly hiddenClass: string;
   /** Whether this app accepts out-of-band fragments. */
   public readonly streaming: boolean;
+  /** Whether the Router announces the tree's placeholder names. */
+  public readonly sendFragmentNames: boolean;
   private _mercureConfig?: MercureConfig;
   private readonly mercureConfigListeners = new Set<() => void>();
   private readonly hydratedListeners = new Set<() => void>();
@@ -112,6 +120,7 @@ export class App extends EventEmitter<AppEventMap> implements FragmentSink {
     this.hideUntilHydrated = options.hideUntilHydrated ?? true;
     this.hiddenClass = options.hiddenClass ?? "hidden";
     this.streaming = options.streaming ?? false;
+    this.sendFragmentNames = options.sendFragmentNames ?? false;
 
     if (typeof selector === "string") {
       const selStr = selector;
@@ -302,11 +311,14 @@ export class App extends EventEmitter<AppEventMap> implements FragmentSink {
     return isFragmentPayload(html, this.doc);
   }
 
+  /** Every fragment name addressed by the current tree, filled or not. */
+  public fragmentNames(): string[] {
+    return Array.from(this.fragmentNameSet());
+  }
+
   /** Fragment names addressed by the current tree that have no content yet. */
   public pendingFragments(): string[] {
-    return Array.from(this.fragmentNameSet()).filter(
-      (name) => !this.fragments.has(name),
-    );
+    return this.fragmentNames().filter((name) => !this.fragments.has(name));
   }
 
   /**
