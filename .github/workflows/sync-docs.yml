@@ -20,12 +20,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: source
 
       - name: Checkout target repo (reactolith/reactolith.github.io)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: reactolith/reactolith.github.io
           ref: main

@@ -31,6 +31,15 @@ updates:
         update-types:
           - minor
           - patch
+    ignore:
+      # The docs site would survive TypeScript 7 on its own, but it
+      # typechecks the library source through a path mapping — running two
+      # compiler generations over the same files is not worth it. Held with
+      # the root package until TypeScript 7.1 ships the compiler API that
+      # 7.0 left out.
+      - dependency-name: typescript
+        versions:
+          - 7.x
 
   - package-ecosystem: github-actions
     directory: /

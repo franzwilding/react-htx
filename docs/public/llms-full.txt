@@ -804,7 +804,7 @@ npm run typecheck   # tsc --noEmit
 npm run lint        # eslint src tests
 ```
 
-CI runs `typecheck`, `lint`, `test`, `build`, and `npm audit --omit=dev` on every PR and push to `main`. The `prepublishOnly` script runs `npm run build` so published artifacts always come from a fresh build.
+CI runs `typecheck`, `lint`, `test`, `build` (on Node 22 and 24), plus `npm audit --omit=dev` and a docs typecheck/build, on every PR and push to `main`. The `prepublishOnly` script runs `npm run build` so published artifacts always come from a fresh build.
 
 Project structure:
 
