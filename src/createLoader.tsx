@@ -207,6 +207,11 @@ export function createLoader(options: LoaderOptions): ElementType<{
   const onMissing = options.onMissing;
   const cache = new Map<string, ComponentType<unknown>>();
 
+  // The lazy wrapper is built during render, but it is memoized in `cache`
+  // under the tag name — a given `is` keeps one component identity for the
+  // lifetime of the loader, so the remount this rule warns about cannot
+  // happen here.
+  /* eslint-disable @eslint-react/static-components */
   const Loader: React.FC<{ is: string; [key: string]: unknown }> = ({
     is,
     ...rest
@@ -250,6 +255,7 @@ export function createLoader(options: LoaderOptions): ElementType<{
       </Suspense>
     );
   };
+  /* eslint-enable @eslint-react/static-components */
 
   Loader.displayName = "ReactolithLoader";
   return Loader;

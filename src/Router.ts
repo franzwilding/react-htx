@@ -252,7 +252,9 @@ export class Router extends EventEmitter<RouterEventMap> {
 
     let response: Response;
     let html: string;
-    let stream: FragmentStream | null = null;
+    // Assigned by readDocument() below; every path out of the catch either
+    // returns or rethrows, so it is never read before it is set.
+    let stream: FragmentStream | null;
     try {
       response = await this.fetch(input, {
         ...init,

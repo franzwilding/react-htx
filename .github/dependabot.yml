@@ -12,16 +12,6 @@ updates:
           - minor
           - patch
     ignore:
-      # eslint 10 is blocked by eslint-plugin-react@7.37.5, whose peer range
-      # stops at ^9.7 — and 7.37.5 is its latest release, so there is nothing
-      # to upgrade to. Drop these two entries once the plugin ships eslint 10
-      # support; eslint 9 is out of support, so it is worth watching.
-      - dependency-name: eslint
-        versions:
-          - 10.x
-      - dependency-name: "@eslint/js"
-        versions:
-          - 10.x
       # TypeScript 7 breaks `npm run build`: rollup-plugin-dts needs the
       # compiler API, which the 7.0 native compiler no longer exposes. Taking
       # it is a toolchain change (add @typescript/typescript6, or bundle the
