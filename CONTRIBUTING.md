@@ -13,8 +13,9 @@ npm install
 
 **Node 22.22.2+** is required to run the local checks (jsdom 30 declares
 `^22.22.2 || ^24.15.0 || >=26`, and `@testing-library/jest-dom` 7 wants
-`>=22`); CI runs Node 22. That is a *development* requirement — the published
-package still targets Node 18 in `engines`, which is what consumers need. All
+`>=22`); CI runs the test suite on Node 22 and 24. That is a *development*
+requirement — the published package still targets Node 18 in `engines`, which
+is what consumers need. All
 commands below run from the repository root unless noted otherwise.
 
 ## Local checks
