@@ -1,6 +1,14 @@
 import { App } from "./App";
 import { ScrollRestoration } from "./ScrollRestoration";
-import { SHELL_END } from "./streaming/protocol";
+import {
+  FRAGMENTS_ACCEPT,
+  FRAGMENTS_CONTENT_TYPE,
+  REACTOLITH_FRAGMENTS_HEADER,
+  REACTOLITH_FROM_HEADER,
+  REACTOLITH_HEADER,
+  REACTOLITH_VERSION,
+  SHELL_END,
+} from "./streaming/protocol";
 import { FetchFragmentStream } from "./streaming/FetchFragmentStream";
 import type { FragmentStream } from "./streaming/FragmentSink";
 import { EventEmitter } from "./util/EventEmitter";
@@ -47,6 +55,19 @@ export type RouterEventMap = {
     pushState: boolean,
     error: unknown,
   ];
+  /**
+   * A fragments-only response was applied to the live tree. No page was
+   * rendered, so `render:success` does not fire.
+   */
+  "fragments:applied": [
+    input: URL | string,
+    init: RequestInit,
+    pushState: boolean,
+    response: Response,
+    html: string,
+    finalUrl: string,
+    names: string[],
+  ];
   "nav:cancelled": [input: URL | string, init: RequestInit, pushState: boolean];
 };
 
@@ -57,6 +78,8 @@ export type VisitResult =
       response: Response;
       html: string;
       finalUrl: string;
+      /** Names applied when the response carried fragments only. */
+      fragments?: string[];
     }
   | {
       cancelled: true;
@@ -198,6 +221,22 @@ export class Router extends EventEmitter<RouterEventMap> {
     scroll?: ScrollOption,
     replace: boolean = false,
   ): Promise<VisitResult> {
+    return this.performVisit(input, init, pushState, scroll, replace, false);
+  }
+
+  /**
+   * @param isFragmentsRetry `true` for the one full-page retry a
+   * fragments-only response that matched nothing is given. The flag lives on
+   * the visit, not in a header, so the server cannot make it loop.
+   */
+  private async performVisit(
+    input: URL | string,
+    init: RequestInit,
+    pushState: boolean,
+    scroll: ScrollOption | undefined,
+    replace: boolean,
+    isFragmentsRetry: boolean,
+  ): Promise<VisitResult> {
     // Cancel any in-flight visit. Its fetch will reject with AbortError,
     // which we catch below and translate into a terminal `nav:cancelled`
     // event. This guarantees that two rapid visit() calls don't race —
@@ -217,6 +256,7 @@ export class Router extends EventEmitter<RouterEventMap> {
     try {
       response = await this.fetch(input, {
         ...init,
+        headers: this.buildHeaders(init),
         signal: controller.signal,
       });
       ({ html, stream } = await this.readDocument(response));
@@ -253,6 +293,22 @@ export class Router extends EventEmitter<RouterEventMap> {
 
     const original = typeof input === "string" ? input : input.toString();
     const finalUrl = response.redirected ? response.url : original;
+    // A fragments-only response updates parts of the page instead of
+    // replacing it. A streamed page (shell + sentinel + tail) is a page.
+    if (!stream && this.isFragmentsResponse(response, html)) {
+      return this.applyPartial(
+        input,
+        init,
+        pushState,
+        scroll,
+        replace,
+        isFragmentsRetry,
+        response,
+        html,
+        finalUrl,
+      );
+    }
+
     // Adopt before rendering: the App starts the stream once the render it
     // serves has happened.
     if (stream) this.app.adoptStream(stream);
@@ -282,6 +338,150 @@ export class Router extends EventEmitter<RouterEventMap> {
     this.emit(event, input, init, pushState, response, html, finalUrl);
     this.emit("nav:ended", input, init, pushState, response, html, finalUrl);
     return { result, response, html, finalUrl };
+  }
+
+  /**
+   * Merge reactolith's navigation headers into the caller's `init`. The
+   * caller always wins: a header that is already set is never overwritten.
+   */
+  private buildHeaders(init: RequestInit): Headers {
+    const headers = new Headers(init.headers);
+    const setDefault = (name: string, value: string) => {
+      if (!headers.has(name)) headers.set(name, value);
+    };
+
+    // Same-origin, so no CORS preflight — and a backend that ignores them
+    // sees no change at all.
+    setDefault(REACTOLITH_HEADER, REACTOLITH_VERSION);
+    setDefault(REACTOLITH_FROM_HEADER, this.lastVisitedPath);
+
+    // Only an app that can apply fragments may invite them.
+    if (this.app.streaming) {
+      setDefault("Accept", FRAGMENTS_ACCEPT);
+    }
+
+    if (this.app.sendFragmentNames) {
+      const names = this.app.fragmentNames();
+      if (names.length > 0) {
+        setDefault(REACTOLITH_FRAGMENTS_HEADER, names.join(","));
+      }
+    }
+
+    return headers;
+  }
+
+  /**
+   * Whether a response carries fragments instead of a page. The content type
+   * is the contract; as a courtesy a payload that is nothing but fragment
+   * templates counts too. Both require `streaming` — an app that never asked
+   * for fragments must not have them applied behind its back.
+   */
+  private isFragmentsResponse(response: Response, html: string): boolean {
+    if (!this.app.streaming) return false;
+
+    let contentType = "";
+    try {
+      contentType = response.headers?.get("content-type") ?? "";
+    } catch {
+      // Test doubles and opaque responses may not expose headers at all.
+    }
+    if (contentType.toLowerCase().includes(FRAGMENTS_CONTENT_TYPE)) return true;
+
+    return this.app.isFragmentPayload(html);
+  }
+
+  /**
+   * Apply a fragments-only response: no page render, no scroll to top, and a
+   * history entry only when the final URL differs from the one in the address
+   * bar. `nav:ended` still fires — a form that never learns it is done stays
+   * disabled forever.
+   */
+  private async applyPartial(
+    input: URL | string,
+    init: RequestInit,
+    pushState: boolean,
+    scroll: ScrollOption | undefined,
+    replace: boolean,
+    isFragmentsRetry: boolean,
+    response: Response,
+    html: string,
+    finalUrl: string,
+  ): Promise<VisitResult> {
+    const applied = this.app.applyFragments(html);
+
+    if (applied.length === 0) {
+      console.warn(
+        `reactolith: the response for "${finalUrl}" carried fragments only, ` +
+          `but none of them matched a placeholder in the current page.` +
+          (isFragmentsRetry ? "" : " Retrying as a full page."),
+      );
+      if (!isFragmentsRetry) {
+        const headers = new Headers(init.headers);
+        headers.set("Accept", "text/html");
+        return this.performVisit(
+          input,
+          { ...init, headers },
+          pushState,
+          scroll,
+          replace,
+          true,
+        );
+      }
+    }
+
+    const win = this.doc.defaultView;
+    const currentPath = win
+      ? win.location.pathname + win.location.search
+      : this.lastVisitedPath;
+    const targetPath = this.toPath(finalUrl);
+    const addressChanged = targetPath !== null && targetPath !== currentPath;
+
+    if (pushState && replace) {
+      const state = this.scrollRestoration?.replace() ?? {};
+      win?.history.replaceState(state, "", finalUrl);
+    } else if (pushState && addressChanged) {
+      // A submit answered with fragments for the page you are already on adds
+      // nothing to the history.
+      const state = this.scrollRestoration?.push() ?? {};
+      win?.history.pushState(state, "", finalUrl);
+    }
+
+    if (pushState && (replace || addressChanged) && targetPath !== null) {
+      this.lastVisitedPath = targetPath;
+    }
+
+    // Never scroll to top on a partial response.
+    this.scrollRestoration?.scroll(pushState, "preserve", finalUrl);
+
+    this.emit(
+      "fragments:applied",
+      input,
+      init,
+      pushState,
+      response,
+      html,
+      finalUrl,
+      applied,
+    );
+    this.emit("nav:ended", input, init, pushState, response, html, finalUrl);
+
+    return {
+      result: applied.length > 0,
+      response,
+      html,
+      finalUrl,
+      fragments: applied,
+    };
+  }
+
+  /** `pathname + search` of a URL resolved against the document, if valid. */
+  private toPath(url: string): string | null {
+    try {
+      const resolved = new URL(url, this.doc.baseURI);
+      return resolved.pathname + resolved.search;
+    } catch {
+      return null;
+    }
   }
 
   /**

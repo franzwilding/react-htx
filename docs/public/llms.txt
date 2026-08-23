@@ -55,7 +55,7 @@ Any tag with a hyphen → React component. Everything else → native DOM.
 - [Forms](https://reactolith.github.io/forms/): `<Form>`, `useFormErrors`, `useFormSubmitting`, server validation flow
 - [Scroll Restoration](https://reactolith.github.io/scroll-restoration/): browser-like back/forward behavior
 - [Mercure](https://reactolith.github.io/mercure/): real-time SSE updates, `<mercure-live>` partial-update component
-- [Streaming](https://reactolith.github.io/streaming/): out-of-band `<template data-fragment="…">` swaps over a streamed response — send the shell now, the slow section after, on one request
+- [Streaming](https://reactolith.github.io/streaming/): out-of-band `<template data-fragment="…">` swaps over a streamed response — send the shell now, the slow section after, on one request; plus partial responses (`X-Reactolith*` request headers and `text/vnd.reactolith.fragments+html` answers that update parts of the page instead of replacing it)
 - [Chunk Preloading](https://reactolith.github.io/preloading/): `modulepreload` hints from build manifest
 - [Server-Side Rendering](https://reactolith.github.io/ssr/): `renderToString` from `reactolith/server`
 - [Web Types (IDE autocomplete)](https://reactolith.github.io/web-types/): JetBrains/VS Code custom-tag autocomplete via the `generate-web-types` CLI

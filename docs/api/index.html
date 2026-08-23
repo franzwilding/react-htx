@@ -104,6 +104,25 @@ app.pendingFragments();      // → string[] still waiting
 app.on("fragment:received", (name, content) =&gt; {});
 app.on("stream:ended", (pending) =&gt; {});</ui-code-block>
 
+        <h2>Partial responses</h2>
+        <ui-code-block lang="ts">import {
+  FRAGMENTS_CONTENT_TYPE,       // "text/vnd.reactolith.fragments+html"
+  FRAGMENTS_ACCEPT,             // what the Router asks for when streaming is on
+  REACTOLITH_HEADER,            // "X-Reactolith"
+  REACTOLITH_VERSION,           // "1"
+  REACTOLITH_FROM_HEADER,       // "X-Reactolith-From"
+  REACTOLITH_FRAGMENTS_HEADER,  // "X-Reactolith-Fragments" (opt-in)
+} from "reactolith";
+
+new App(component, undefined, undefined, undefined, undefined, undefined, {
+  streaming: true,
+  sendFragmentNames: true,
+});
+
+app.fragmentNames();  // → every placeholder name in the tree
+
+router.on("fragments:applied", (input, init, pushState, response, html, finalUrl, names) =&gt; {});</ui-code-block>
+
         <h2>Form helpers</h2>
         <ui-code-block lang="ts">import {
   Form,

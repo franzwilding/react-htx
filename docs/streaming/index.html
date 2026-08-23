@@ -328,6 +328,114 @@ app.on("stream:ended", (pending) =&gt; {
           </tbody>
         </table>
 
+        <h2>Partial responses</h2>
+        <p>
+          Every navigation returns a whole page by default, which reactolith
+          morphs in place. That is cheap on the client and often expensive on
+          the server: after a form submit that toggles one flag, the backend
+          re-renders a whole dashboard so the client can discover that one
+          badge changed. The Router gives the backend the context to decide
+          &mdash; and a way to answer smaller.
+        </p>
+
+        <h3>What the Router sends</h3>
+        <table>
+          <thead>
+            <tr><th>Header</th><th>Value</th><th>When</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>X-Reactolith</code></td>
+              <td><code>1</code> (protocol version)</td>
+              <td>Every visit. Its presence means &ldquo;router navigation, not an address-bar load&rdquo;.</td>
+            </tr>
+            <tr>
+              <td><code>X-Reactolith-From</code></td>
+              <td><code>/dashboard?tab=sales</code></td>
+              <td>Every visit &mdash; pathname and search of the page the request starts on.</td>
+            </tr>
+            <tr>
+              <td><code>Accept</code></td>
+              <td><code>text/vnd.reactolith.fragments+html, text/html;q=0.9, */*;q=0.8</code></td>
+              <td>Only with <code>streaming: true</code>. An app that cannot apply fragments must never invite them.</td>
+            </tr>
+            <tr>
+              <td><code>X-Reactolith-Fragments</code></td>
+              <td><code>unread,chart</code></td>
+              <td>Only with <code>sendFragmentNames: true</code> &mdash; the placeholder names currently in the tree. Opt-in, because headers are finite.</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          They ride along on link clicks, form submits,
+          <code>router.navigate()</code> and back/forward alike. All of them
+          are same-origin, so no CORS preflight is added, and a backend that
+          ignores them sees no change at all. A header you pass yourself is
+          never overwritten &mdash; the caller wins.
+        </p>
+
+        <h3>What the backend may answer</h3>
+        <ui-code-block lang="http">Content-Type: text/vnd.reactolith.fragments+html; charset=utf-8
+
+&lt;template data-fragment="unread"&gt;&lt;ui-badge&gt;7&lt;/ui-badge&gt;&lt;/template&gt;</ui-code-block>
+        <p>
+          The content type is the contract. As a courtesy a response whose body
+          is <em>nothing but</em> fragment templates is treated the same way
+          &mdash; the content type wins where both are present. Either way this
+          only ever happens in an app with <code>streaming: true</code>.
+        </p>
+        <p>
+          A streamed page (shell + sentinel + tail) stays a page: the two paths
+          do not overlap.
+        </p>
+
+        <h3>What a backend can rely on</h3>
+        <ul>
+          <li><strong>No page render.</strong> Nothing outside the named placeholders is touched — component state and DOM nodes are exactly the ones from before the request.</li>
+          <li><strong>History.</strong> An entry is pushed only when the final URL differs from the one in the address bar. A submit answered with fragments for the page you are already on adds nothing. <code>replace</code> keeps working as before.</li>
+          <li><strong>Scroll.</strong> Never a jump to top, whatever the link or the caller asked for.</li>
+          <li><strong>Events.</strong> <code>fragments:applied</code> fires with the applied names, and <code>nav:ended</code> still fires — a form that never learns it is done stays disabled forever. <code>render:success</code> does <em>not</em> fire: nothing was rendered.</li>
+          <li><strong>The retry.</strong> If none of the fragments matched a placeholder, reactolith warns and fetches the same URL once more as a full page (<code>Accept: text/html</code>). The guard is internal, so a server cannot make it loop.</li>
+          <li><strong>Redirects.</strong> <code>response.redirected</code> / <code>response.url</code> still decide the final URL; a 302 to a page that answers with a whole page keeps working.</li>
+        </ul>
+        <blockquote>
+          <strong>Caching.</strong> A partial response for a URL that also
+          serves a whole page must send <code>Vary: Accept</code>, or a shared
+          cache will hand the fragments to a browser that asked for the page.
+        </blockquote>
+
+        <h3>A Symfony controller</h3>
+        <ui-code-block lang="php">if ($request-&gt;getPreferredFormat() === 'reactolith-fragments'
+    &amp;&amp; $request-&gt;headers-&gt;get('X-Reactolith-From') === $this-&gt;generateUrl('dashboard')) {
+    return new Response(
+        $this-&gt;renderView('_unread.html.twig', ['count' =&gt; $count]),
+        200,
+        ['Content-Type' =&gt; 'text/vnd.reactolith.fragments+html'],
+    );
+}
+
+return $this-&gt;render('dashboard.html.twig', …); // the whole page, as before</ui-code-block>
+        <p>
+          Register the format once (in a request listener or
+          <code>Request::setFormat()</code>) so
+          <code>getPreferredFormat()</code> knows it:
+        </p>
+        <ui-code-block lang="php">Request::setFormat('reactolith-fragments', ['text/vnd.reactolith.fragments+html']);</ui-code-block>
+        <p>
+          Turning the names on is one option, and worth it when one URL serves
+          several trees:
+        </p>
+        <ui-code-block lang="ts">new App(component, undefined, undefined, undefined, undefined, undefined, {
+  streaming: true,
+  sendFragmentNames: true,   // → X-Reactolith-Fragments: unread,chart
+});</ui-code-block>
+        <ui-code-block lang="ts">app.fragmentNames();     // every placeholder in the tree
+app.pendingFragments();  // the ones still waiting
+
+app.router.on("fragments:applied", (_input, _init, _push, _res, _html, url, names) =&gt; {
+  console.log("updated", names, "from", url);
+});</ui-code-block>
+
         <h2>What happens when</h2>
         <ul>
           <li><strong>First load:</strong> a <code>MutationObserver</code> collects what the parser appends, plus one sweep for whatever arrived before the app booted. <code>DOMContentLoaded</code> ends the stream.</li>

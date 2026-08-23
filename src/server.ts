@@ -64,11 +64,13 @@ function createServerApp(
     // "later", so a placeholder renders its skeleton. Every method still has
     // to exist — a missing one is a runtime TypeError, not a type error.
     streaming: false,
+    sendFragmentNames: false,
     fragment: () => undefined,
     replace: () => false,
     applyFragments: () => [],
     isFragmentPayload: () => false,
     pendingFragments: () => [],
+    fragmentNames: () => [],
     adoptStream: () => {},
     acceptFragments: () => {},
     endStream: () => {},

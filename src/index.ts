@@ -12,6 +12,12 @@ export {
   FRAGMENT_ATTRIBUTE,
   FRAGMENT_READY_TAG,
   FRAGMENT_READY_END,
+  FRAGMENTS_CONTENT_TYPE,
+  FRAGMENTS_ACCEPT,
+  REACTOLITH_HEADER,
+  REACTOLITH_VERSION,
+  REACTOLITH_FROM_HEADER,
+  REACTOLITH_FRAGMENTS_HEADER,
 } from "./streaming/protocol";
 export type { FragmentSink, FragmentStream } from "./streaming/FragmentSink";
 export type { FragmentContent, FragmentEntry } from "./streaming/fragments";
